@@ -56,19 +56,24 @@ namespace ams::ncm {
             RightsIdCache *m_rights_id_cache;
             util::optional<ContentIterator> m_content_iterator;
             util::optional<s32> m_last_content_offset;
+            bool m_is_external_content_enabled;
         public:
             static Result InitializeBase(const char *root_path);
             static Result CleanupBase(const char *root_path);
             static Result VerifyBase(const char *root_path);
         public:
-            ContentStorageImpl() : m_placeholder_accessor(), m_cached_content_id(InvalidContentId), m_cached_file_handle(), m_rights_id_cache(nullptr), m_content_iterator(util::nullopt), m_last_content_offset(util::nullopt) { /* ... */ }
+            ContentStorageImpl() : m_placeholder_accessor(), m_cached_content_id(InvalidContentId), m_cached_file_handle(), m_rights_id_cache(nullptr), m_content_iterator(util::nullopt), m_last_content_offset(util::nullopt), m_is_external_content_enabled(false) { /* ... */ }
             ~ContentStorageImpl();
 
             Result Initialize(const char *root_path, MakeContentPathFunction content_path_func, MakePlaceHolderPathFunction placeholder_path_func, bool delay_flush, RightsIdCache *rights_id_cache);
+
+            /* USB Loader NX: lets Has/GetSize/GetRightsId/GetProgramId/ReadContentIdFile answer for content served from outside this storage. */
+            void EnableExternalContent() { m_is_external_content_enabled = true; }
         private:
             /* Helpers. */
             Result OpenContentIdFile(ContentId content_id);
             void InvalidateFileCache();
+            bool FindExternalContent(ExternalContentInfo *out, ContentId content_id, ExternalContentQuery query) const;
         public:
             /* Actual commands. */
             virtual Result GeneratePlaceHolderId(sf::Out<PlaceHolderId> out) override;

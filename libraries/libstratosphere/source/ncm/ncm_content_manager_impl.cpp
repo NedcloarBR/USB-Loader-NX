@@ -338,6 +338,7 @@ namespace ams::ncm {
                     break;
                 case StorageId::SdCard:
                     R_TRY(content_storage.GetImpl().Initialize(root.path, MakeSha256HierarchicalContentFilePath_ForFat16KCluster, MakeSha256HierarchicalPlaceHolderFilePath_ForFat16KCluster, true, std::addressof(rights_id_cache)));
+                    content_storage.GetImpl().EnableExternalContent();
                     break;
                 default:
                     R_TRY(content_storage.GetImpl().Initialize(root.path, MakeSha256HierarchicalContentFilePath_ForFat16KCluster, MakeSha256HierarchicalPlaceHolderFilePath_ForFat16KCluster, false, std::addressof(rights_id_cache)));

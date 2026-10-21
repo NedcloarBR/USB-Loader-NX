@@ -452,11 +452,38 @@ namespace ams::ncm {
     Result ContentStorageImpl::Delete(ContentId content_id) {
         R_TRY(this->EnsureEnabled());
         this->InvalidateFileCache();
-        R_RETURN(DeleteContentFile(content_id, m_make_content_path_func, m_root_path));
+
+        /* Deleting content that only exists externally forgets it, so an installer replacing it can then register a file. */
+        const Result result = DeleteContentFile(content_id, m_make_content_path_func, m_root_path);
+        if (ncm::ResultContentNotFound::Includes(result) && m_is_external_content_enabled && ncm::ForgetExternalContent(content_id)) {
+            R_SUCCEED();
+        }
+        R_RETURN(result);
+    }
+
+    bool ContentStorageImpl::FindExternalContent(ExternalContentInfo *out, ContentId content_id, ExternalContentQuery query) const {
+        if (!m_is_external_content_enabled) {
+            return false;
+        }
+
+        /* A real file always wins over the external copy (e.g. the same content installed afterwards). */
+        PathString content_path;
+        MakeContentPath(std::addressof(content_path), content_id, m_make_content_path_func, m_root_path);
+        if (bool has_file = false; R_FAILED(fs::HasFile(std::addressof(has_file), content_path)) || has_file) {
+            return false;
+        }
+
+        return ncm::FindExternalContent(out, content_id, query);
     }
 
     Result ContentStorageImpl::Has(sf::Out<bool> out, ContentId content_id) {
         R_TRY(this->EnsureEnabled());
+
+        /* Externally served content exists even though there is no file for it. */
+        if (ExternalContentInfo info; this->FindExternalContent(std::addressof(info), content_id, ExternalContentQuery::Has)) {
+            out.SetValue(true);
+            R_SUCCEED();
+        }
 
         /* Create the content path. */
         PathString content_path;
@@ -637,6 +664,11 @@ namespace ams::ncm {
     Result ContentStorageImpl::GetSizeFromContentId(sf::Out<s64> out_size, ContentId content_id) {
         R_TRY(this->EnsureEnabled());
 
+        if (ExternalContentInfo info; this->FindExternalContent(std::addressof(info), content_id, ExternalContentQuery::GetSize)) {
+            out_size.SetValue(info.size);
+            R_SUCCEED();
+        }
+
         /* Create the content path. */
         PathString content_path;
         MakeContentPath(std::addressof(content_path), content_id, m_make_content_path_func, m_root_path);
@@ -700,6 +732,10 @@ namespace ams::ncm {
         R_UNLESS(offset >= 0, ncm::ResultInvalidOffset());
         R_TRY(this->EnsureEnabled());
 
+        if (ExternalContentInfo info; this->FindExternalContent(std::addressof(info), content_id, ExternalContentQuery::ReadContentIdFile)) {
+            R_RETURN(ncm::ReadExternalContent(buf.GetPointer(), buf.GetSize(), content_id, offset));
+        }
+
         /* Create the content path. */
         PathString content_path;
         MakeContentPath(std::addressof(content_path), content_id, m_make_content_path_func, m_root_path);
@@ -752,6 +788,12 @@ namespace ams::ncm {
 
     Result ContentStorageImpl::GetRightsIdFromContentId(sf::Out<ncm::RightsId> out_rights_id, ContentId content_id, fs::ContentAttributes attr) {
         R_TRY(this->EnsureEnabled());
+
+        /* Externally served content: gamecard content has no rights id, eShop content carries its own. */
+        if (ExternalContentInfo info; this->FindExternalContent(std::addressof(info), content_id, ExternalContentQuery::GetRightsId)) {
+            out_rights_id.SetValue(ncm::RightsId{ .id = info.rights_id, .key_generation = info.key_generation, .reserved = {} });
+            R_SUCCEED();
+        }
 
         /* Attempt to obtain the rights id from the cache. */
         if (m_rights_id_cache->Find(out_rights_id.GetPointer(), content_id)) {
@@ -920,6 +962,12 @@ namespace ams::ncm {
 
     Result ContentStorageImpl::GetProgramId(sf::Out<ncm::ProgramId> out, ContentId content_id, fs::ContentAttributes attr) {
         R_TRY(this->EnsureEnabled());
+
+        /* FS would read the NCA header at the content path, which does not exist for externally served content. */
+        if (ExternalContentInfo info; this->FindExternalContent(std::addressof(info), content_id, ExternalContentQuery::GetProgramId)) {
+            out.SetValue(info.program_id);
+            R_SUCCEED();
+        }
 
         /* Get the path of the content. */
         Path path;
