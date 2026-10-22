@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include "ncm_usbl_external_content.hpp"
 
 namespace ams {
 
@@ -201,6 +202,11 @@ namespace ams {
 
             /* Initialize our connection to sm. */
             R_ABORT_UNLESS(sm::Initialize());
+
+            /* USB Loader NX: SD card content may be served from a USB drive. */
+            ncm::SetFindExternalContentFunction(ncm::FindUsblContent);
+            ncm::SetReadExternalContentFunction(ncm::ReadUsblContent);
+            ncm::SetForgetExternalContentFunction(ncm::ForgetUsblContent);
         }
 
         void FinalizeSystemModule() { /* ... */ }
