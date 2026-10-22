@@ -69,7 +69,16 @@ namespace ams::fs {
             return GetReference(g_stratosphere_romfs_fs);
         }
 
+        constinit ExternalCodeFileSystemFunction g_external_code_file_system_func = nullptr;
+
         Result OpenCodeFileSystemImpl(CodeVerificationData *out_verification_data, std::unique_ptr<fsa::IFileSystem> *out, const char *path, fs::ContentAttributes attr, ncm::ProgramId program_id, ncm::StorageId storage_id) {
+            /* Externally served programs never reach FS, which could not open their content. */
+            if (g_external_code_file_system_func != nullptr) {
+                const Result result = g_external_code_file_system_func(out_verification_data, out, program_id);
+                R_SUCCEED_IF(R_SUCCEEDED(result));
+                R_UNLESS(fs::ResultTargetNotFound::Includes(result), result);
+            }
+
             /* Print a path suitable for the remote service. */
             fssrv::sf::Path sf_path;
             R_TRY(FormatToFspPath(std::addressof(sf_path), "%s", path));
@@ -390,6 +399,10 @@ namespace ams::fs {
                 }
         };
 
+    }
+
+    void SetExternalCodeFileSystemFunction(ExternalCodeFileSystemFunction func) {
+        g_external_code_file_system_func = func;
     }
 
     Result MountCode(CodeVerificationData *out, const char *name, const char *path, fs::ContentAttributes attr, ncm::ProgramId program_id, ncm::StorageId storage_id) {

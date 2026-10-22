@@ -20,6 +20,13 @@
 
 namespace ams::fs {
 
+    namespace fsa { class IFileSystem; }
+
+    /* USB Loader NX: lets loader take code for some programs from outside FS (e.g. a USB drive). */
+    /* Must return fs::ResultTargetNotFound for programs it does not serve; when unset, behavior is identical to upstream. */
+    using ExternalCodeFileSystemFunction = Result (*)(CodeVerificationData *out_verification_data, std::unique_ptr<fsa::IFileSystem> *out, ncm::ProgramId program_id);
+    void SetExternalCodeFileSystemFunction(ExternalCodeFileSystemFunction func);
+
     /* ACCURATE_TO_VERSION: 16.2.0.0 */
     Result MountCode(CodeVerificationData *out, const char *name, const char *path, fs::ContentAttributes attr, ncm::ProgramId program_id, ncm::StorageId storage_id);
 
