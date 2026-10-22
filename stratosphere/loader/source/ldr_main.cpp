@@ -16,6 +16,7 @@
 #include <stratosphere.hpp>
 #include "ldr_development_manager.hpp"
 #include "ldr_loader_service.hpp"
+#include "ldr_usbl_code.hpp"
 
 namespace ams {
 
@@ -110,6 +111,9 @@ namespace ams {
             lr::Initialize();
             R_ABORT_UNLESS(fsldrInitialize());
             spl::Initialize();
+
+            /* USB Loader NX: applications served from a USB drive. */
+            fs::SetExternalCodeFileSystemFunction(ldr::OpenUsblCodeFileSystem);
 
             /* Verify that we can sanely execute. */
             ams::CheckApiVersion();
