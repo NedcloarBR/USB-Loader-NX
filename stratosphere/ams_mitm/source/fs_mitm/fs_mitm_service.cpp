@@ -22,6 +22,7 @@
 #include "fsmitm_calibration_binary_storage.hpp"
 #include "fsmitm_layered_romfs_storage.hpp"
 #include "fsmitm_save_utils.hpp"
+#include "fsmitm_usbl_hooks.hpp"
 #include "fsmitm_readonly_layered_filesystem.hpp"
 
 namespace ams::mitm::fs {
@@ -177,15 +178,27 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenFileSystemWithPatch(sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>> out, ncm::ProgramId program_id, u32 file_system_proxy_type) {
+        if (const Result usbl_result = usbl_hooks::OpenFileSystemWithPatch(out, m_forward_service.get(), program_id, file_system_proxy_type); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         R_RETURN(OpenWebContentFileSystem(out, m_client_info.program_id, program_id, static_cast<FsFileSystemType>(file_system_proxy_type), m_forward_service.get(), nullptr, false, false, m_client_info.override_status.IsProgramSpecific()));
     }
 
     Result FsMitmService::OpenFileSystemWithIdObsolete(sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>> out, const fssrv::sf::Path &path, ncm::ProgramId program_id, u32 file_system_proxy_type) {
+        if (const Result usbl_result = usbl_hooks::OpenFileSystemByPath(out, m_forward_service.get(), path, file_system_proxy_type); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         R_RETURN(OpenWebContentFileSystem(out, m_client_info.program_id, program_id, static_cast<FsFileSystemType>(file_system_proxy_type), m_forward_service.get(), std::addressof(path), true, false, m_client_info.override_status.IsProgramSpecific()));
     }
     
     Result FsMitmService::OpenFileSystemWithId(sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>> out, const fssrv::sf::Path &path, u8 content_attributes, ncm::ProgramId program_id, u32 file_system_proxy_type) {
         AMS_UNUSED(content_attributes);
+        if (const Result usbl_result = usbl_hooks::OpenFileSystemByPath(out, m_forward_service.get(), path, file_system_proxy_type); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         R_RETURN(OpenWebContentFileSystem(out, m_client_info.program_id, program_id, static_cast<FsFileSystemType>(file_system_proxy_type), m_forward_service.get(), std::addressof(path), true, true, m_client_info.override_status.IsProgramSpecific()));
     }
 
@@ -325,6 +338,10 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageByCurrentProcess(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
 
@@ -342,6 +359,10 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageByProgramId(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, ncm::ProgramId program_id) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), program_id); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
 
@@ -359,6 +380,10 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageByDataId(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, ncm::DataId data_id, u8 storage_id) {
+        if (const Result usbl_result = usbl_hooks::OpenAddOnContentDataStorage(out, m_forward_service.get(), data_id); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(), sm::mitm::ResultShouldForwardToSession());
 
@@ -379,6 +404,11 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageWithProgramIndex(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, u8 program_index) {
+        /* USB Loader NX only serves single-program applications: index 0 is the client itself. */
+        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(), sm::mitm::ResultShouldForwardToSession());
 
@@ -400,6 +430,10 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageByPath(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, const fssrv::sf::Path &path, u8 content_attributes, u32 file_system_proxy_type) {
+        if (const Result usbl_result = usbl_hooks::OpenDataStorageByPath(out, m_forward_service.get(), path, file_system_proxy_type); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
         
@@ -408,6 +442,30 @@ namespace ams::mitm::fs {
         R_SUCCEED();
     }
     
+    Result FsMitmService::OpenContentStorageFileSystem(sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>> out, u32 content_storage_id) {
+        R_RETURN(usbl_hooks::OpenContentStorageFileSystem(out, m_forward_service.get(), content_storage_id));
+    }
+
+    Result FsMitmService::GetRightsIdAndKeyGenerationByPath(sf::Out<ams::fs::RightsId> out, sf::Out<u8> out_key_generation, const fssrv::sf::FspPath &path, ams::fs::ContentAttributes attr) {
+        AMS_UNUSED(attr);
+        R_RETURN(usbl_hooks::GetRightsIdAndKeyGenerationByPath(out, out_key_generation, path));
+    }
+
+    Result FsMitmService::RegisterExternalKey(const ExternalKeyRegistration &registration) {
+        usbl_hooks::RegisterExternalKey(registration.rights_id, registration.access_key, m_client_info.program_id);
+        R_THROW(sm::mitm::ResultShouldForwardToSession());
+    }
+
+    Result FsMitmService::UnregisterAllExternalKey() {
+        usbl_hooks::UnregisterAllExternalKeys(m_client_info.program_id);
+        R_THROW(sm::mitm::ResultShouldForwardToSession());
+    }
+
+    Result FsMitmService::GetProgramId(sf::Out<ncm::ProgramId> out, const fssrv::sf::FspPath &path, ams::fs::ContentAttributes attr) {
+        AMS_UNUSED(attr);
+        R_RETURN(usbl_hooks::GetProgramId(out, path));
+    }
+
     Result FsMitmService::OpenDataStorageByCurrentProcessForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out) {
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());

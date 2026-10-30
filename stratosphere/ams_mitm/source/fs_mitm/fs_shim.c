@@ -77,6 +77,14 @@ Result fsOpenSdCardFileSystemFwd(Service* s, FsFileSystem* out) {
     return _fsOpenSession(s, &out->s, 18);
 }
 
+Result fsOpenContentStorageFileSystemFwd(Service* s, FsFileSystem* out, FsContentStorageId content_storage_id) {
+    const u32 tmp = content_storage_id;
+    return serviceDispatchIn(s, 110, tmp,
+        .out_num_objects = 1,
+        .out_objects = &out->s,
+    );
+}
+
 Result fsOpenSaveDataFileSystemFwd(Service* s, FsFileSystem* out, FsSaveDataSpaceId save_data_space_id, const FsSaveDataAttribute *attr) {
     const struct {
         u8 save_data_space_id;
