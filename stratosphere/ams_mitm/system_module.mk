@@ -25,6 +25,14 @@ SFILES      :=	$(call FIND_SOURCE_FILES,$(SOURCES),s)
 
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
+# USB Loader NX: module sources, locales and icons from the repository's src/ams_mitm.
+USBL_SOURCES	:=	ams_mitm
+USBL_DATA	:=	ams_mitm/usbl/i18n/locales ams_mitm/usbl/assets
+USBL_INCLUDES	=	$(CURDIR)/source/fs_mitm $(USBL_ROOT)/src/ams_mitm $(USBL_ROOT)/src/ams_mitm/fs_mitm
+# The fork is checked out at <repo>/atmosphere; the top-level build exports USBL_ROOT.
+USBL_ROOT	?=	$(abspath $(CURDIR)/../../..)
+include $(USBL_ROOT)/usbl.mk
+
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
 #---------------------------------------------------------------------------------
@@ -45,7 +53,8 @@ export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			$(foreach dir,$(AMS_LIBDIRS),-I$(dir)/include) \
-			-I$(CURDIR)/$(BUILD)
+			-I$(CURDIR)/$(BUILD) \
+			$(USBL_INCLUDE)
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) $(foreach dir,$(AMS_LIBDIRS),-L$(dir)/$(ATMOSPHERE_LIBRARY_DIR))
 
@@ -121,6 +130,14 @@ $(OFILES) : $(ATMOSPHERE_LIBRARIES_DIR)/libstratosphere/$(ATMOSPHERE_LIBRARY_DIR
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin
 #---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+
+%.json.o	:	%.json
+	@echo $(notdir $<)
+	@$(bin2o)
+
+%.rgba.o	:	%.rgba
 	@echo $(notdir $<)
 	@$(bin2o)
 

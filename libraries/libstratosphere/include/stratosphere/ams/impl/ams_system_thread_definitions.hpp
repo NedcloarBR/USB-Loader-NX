@@ -67,6 +67,9 @@ namespace ams::impl {
     AMS_DEFINE_SYSTEM_THREAD(21, mitm,            DebugThrowThread);
     AMS_DEFINE_SYSTEM_THREAD(21, mitm_sysupdater, IpcServer);
     AMS_DEFINE_SYSTEM_THREAD(21, mitm_sysupdater, AsyncPrepareSdCardUpdateTask);
+    AMS_DEFINE_SYSTEM_THREAD(16, mitm_usbl,       IpcServer);
+    AMS_DEFINE_SYSTEM_THREAD(16, mitm_usbl,       UsbVolume);
+    AMS_DEFINE_SYSTEM_THREAD(16, mitm_usbl,       PowerState);
 
     /* boot2. */
     AMS_DEFINE_SYSTEM_THREAD(20, boot2, Main);
