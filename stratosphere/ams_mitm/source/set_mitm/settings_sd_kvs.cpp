@@ -398,6 +398,17 @@ namespace ams::settings::fwdbg {
             /* 0 = Disabled, 1 = Enabled */
             R_ABORT_UNLESS(ParseSettingsItemValue("atmosphere", "enable_external_bluetooth_db", "u8!0x0"));
 
+            /* USB Loader NX custom settings. */
+
+            /* Controls whether ams.mitm serves XCI/NSP dumps from a USB drive. On by default: installing it is the opt-in. */
+            /* 0 = Disabled, 1 = Enabled */
+            R_ABORT_UNLESS(ParseSettingsItemValue("usbloadernx", "enable", "u8!0x1"));
+
+            /* Controls whether USB Loader NX runs diagnostics on every drive attach (index self-test, content meta dump) and logs them. */
+            /* NOTE: Slows down every attach; only meant for troubleshooting. */
+            /* 0 = Disabled, 1 = Enabled */
+            R_ABORT_UNLESS(ParseSettingsItemValue("usbloadernx", "debug", "u8!0x0"));
+
             /* Hbloader custom settings. */
 
             /* Controls the size of the homebrew heap when running as applet. */

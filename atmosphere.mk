@@ -3,6 +3,9 @@
 #---------------------------------------------------------------------------------
 THIS_MAKEFILE     := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURRENT_DIRECTORY := $(abspath $(dir $(THIS_MAKEFILE)))
+
+# USB Loader NX: repository root (this fork is checked out at <repo>/atmosphere); module makefiles include $(USBL_ROOT)/usbl.mk.
+export USBL_ROOT ?= $(abspath $(CURRENT_DIRECTORY)/..)
 include $(CURRENT_DIRECTORY)/libraries/config/common.mk
 
 # Get Atmosphere version fields
@@ -74,6 +77,7 @@ dist-no-debug: package3 $(CURRENT_DIRECTORY)/$(ATMOSPHERE_OUT_DIR)
 	cp config_templates/override_config.ini $(DIST_DIR)/atmosphere/config_templates/override_config.ini
 	cp config_templates/system_settings.ini $(DIST_DIR)/atmosphere/config_templates/system_settings.ini
 	cp config_templates/exosphere.ini $(DIST_DIR)/atmosphere/config_templates/exosphere.ini
+	cp $(USBL_ROOT)/config_templates/usbloadernx.ini $(DIST_DIR)/atmosphere/config_templates/usbloadernx.ini
 	mkdir -p config_templates/kip_patches
 	cp -r config_templates/kip_patches $(DIST_DIR)/atmosphere/kip_patches
 	cp -r config_templates/hbl_html $(DIST_DIR)/atmosphere/hbl_html
