@@ -1,0 +1,10 @@
+{
+	"Notifications": {
+		"Title": "USB Loader NX",
+		"DriveConnected": "USB storage connected · {{SIZE}} · Games: {{GAME_COUNT}} · Updates: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
+		"DriveRemoved": "USB storage removed. Its games are unavailable until it is reconnected.",
+		"DriveRequired": "Connect the USB storage device with this game to play it.",
+		"DriveWithoutGamesFolder": "USB storage connected, but it has no /usbloadernx/games folder.",
+		"DriveUnreadable": "Could not read the USB storage device: unsupported file system."
+	}
+}
