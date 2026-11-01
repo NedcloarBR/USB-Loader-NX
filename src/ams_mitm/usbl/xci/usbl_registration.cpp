@@ -403,6 +403,9 @@ namespace ams::mitm::usbl::xci {
 
         Result DeleteApplicationRecord(ncm::ApplicationId application_id);
 
+        /* The game ShowGameForLaunch is registering: pushed even if hidden in the Manager. */
+        constinit ncm::ApplicationId g_launching_application = {};
+
         Result RegisterApplication(ncm::ContentMetaDatabase &db, const IndexedContent &meta_content) {
             ncm::AutoBuffer meta;
             R_TRY(ReadPackagedContentMeta(std::addressof(meta), meta_content.program_id));
@@ -449,7 +452,7 @@ namespace ams::mitm::usbl::xci {
             }
 
             /* Metas and tickets stay in place, so showing the game again only takes a push. */
-            if (IsHiddenGame({ key.id })) {
+            if (IsHiddenGame({ key.id }) && g_launching_application.value != key.id) {
                 R_TRY(DeleteApplicationRecord({ key.id }));
                 Log("register %016" PRIx64 ": hidden in the Manager, not shown on HOME", key.id);
                 R_SUCCEED();
@@ -746,6 +749,24 @@ namespace ams::mitm::usbl::xci {
             g_pushed_count = 0;
         }
         RegisterIndexedApplicationsIfEnabled();
+    }
+
+    Result ShowGameForLaunch(ncm::ApplicationId application_id) {
+        AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
+        std::scoped_lock lk(g_registration_lock);
+
+        IndexedContent meta;
+        R_UNLESS(CollectMetaContents(std::addressof(meta), 1, [application_id](ncm::ProgramId id) { return id.value == application_id.value; }) == 1, usbl::ResultContentNotFound());
+
+        ncm::ContentMetaDatabase db;
+        R_TRY(OpenSdCardContentMetaDatabase(std::addressof(db)));
+
+        g_launching_application = application_id;
+        ON_SCOPE_EXIT { g_launching_application = {}; };
+        R_TRY(RegisterApplication(db, meta));
+
+        Log("launch %016" PRIx64 ": shown on HOME for a launch from the Manager", application_id.value);
+        R_SUCCEED();
     }
 
     Result SetGameHidden(ncm::ApplicationId application_id, bool hidden) {

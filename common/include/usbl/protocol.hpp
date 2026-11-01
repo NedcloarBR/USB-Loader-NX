@@ -36,6 +36,8 @@ namespace usbl::protocol {
         ListDrives           = 12,
         ListGames            = 13,
         SetGameHidden        = 14,
+        /* Registers and shows one plugged-in game whatever auto_register and the Manager's hide say, so ns can launch it. */
+        ShowGameForLaunch    = 15,
         /* Puts HOME back in line with the options (after ShowGameForLaunch, once the game was played). */
         ApplyHomeVisibility  = 16,
     };

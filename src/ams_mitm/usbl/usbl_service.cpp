@@ -125,6 +125,10 @@ namespace ams::mitm::usbl {
         R_RETURN(xci::SetGameHidden({ input.application_id }, input.hidden));
     }
 
+    Result Service::ShowGameForLaunch(ncm::ApplicationId application_id) {
+        R_RETURN(xci::ShowGameForLaunch(application_id));
+    }
+
     Result Service::ApplyHomeVisibility() {
         xci::ApplyHomeVisibility();
         R_SUCCEED();

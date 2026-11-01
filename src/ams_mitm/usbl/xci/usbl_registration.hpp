@@ -41,6 +41,10 @@ namespace ams::mitm::usbl::xci {
      * Must be called without the volume lock. */
     void RefreshApplicationRecords();
 
+    /* Manager: registers and pushes one plugged-in game even with auto_register off or hidden in the Manager, so ns can
+     * launch it; ApplyHomeVisibility puts HOME back afterwards. Writes the SD card ncm database and ns records. */
+    Result ShowGameForLaunch(ncm::ApplicationId application_id);
+
     /* Manager: hides a USB game from HOME (its ns record goes, persisted in hidden_games.txt) or shows it again.
      * Writes the ns records and the SD card. Must be called without the volume lock. */
     Result SetGameHidden(ncm::ApplicationId application_id, bool hidden);
