@@ -246,6 +246,23 @@ namespace ams::mitm::usbl {
         return (layer == ContentLayer::Current && find(true)) || find(false);
     }
 
+    s64 GetKnownApplicationSize(ncm::ProgramId application_id) {
+        std::scoped_lock lk(g_lock);
+
+        /* Update NCAs carry the application's program id; add-on contents are the application id + 0x1000 + index. */
+        constexpr u64 AddOnContentBaseOffset = 0x1000;
+        constexpr u64 AddOnContentIndexMask  = 0xFFF;
+        const u64 add_on_base = application_id.value + AddOnContentBaseOffset;
+        s64 size = 0;
+        for (size_t i = 0; i < g_known_count; ++i) {
+            const u64 id = g_known[i].program_id.value;
+            if (id == application_id.value || id == GetPatchId(application_id).value || (id & ~AddOnContentIndexMask) == add_on_base) {
+                size += g_known[i].size;
+            }
+        }
+        return size;
+    }
+
     bool IsKnownPatchedProgram(ncm::ProgramId program_id) {
         std::scoped_lock lk(g_lock);
         return std::any_of(g_known, g_known + g_known_count, [program_id](const KnownContent &known) {

@@ -56,6 +56,8 @@ namespace ams::mitm::usbl {
     bool FindKnownContent(KnownContent *out, ncm::ContentId content_id);
     bool FindKnownProgramContent(KnownContent *out, ncm::ProgramId program_id, u8 content_type, ContentLayer layer);
     bool IsKnownProgram(ncm::ProgramId program_id);
+    /* Bytes of an application with its update and add-on contents. */
+    s64 GetKnownApplicationSize(ncm::ProgramId application_id);
     /* Whether the application's update Program is known: its RomFS then has to be layered over the base game's. */
     bool IsKnownPatchedProgram(ncm::ProgramId program_id);
 

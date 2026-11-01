@@ -89,6 +89,8 @@ namespace usbl::protocol {
         /* Registered versions (SD card ncm database); 0 when not registered. */
         std::uint32_t version;
         std::uint32_t update_version;
+        /* Game, update and DLC on the drive, in bytes. */
+        std::uint64_t size;
         std::int32_t drive;
         /* Pieces of the game's file(s) on the drive: 1 = contiguous, negative = too fragmented to map; valid only when connected. */
         std::int32_t fragments;
@@ -100,7 +102,7 @@ namespace usbl::protocol {
         std::uint8_t reserved[3];
         char file_name[0x100];
     };
-    static_assert(sizeof(GameStatus) == 0x120);
+    static_assert(sizeof(GameStatus) == 0x128);
 
     /* Commands with several inputs take a single struct: libstratosphere lays separate arguments out sorted by alignment
      * (smallest first), which a client cannot see from the signature. */

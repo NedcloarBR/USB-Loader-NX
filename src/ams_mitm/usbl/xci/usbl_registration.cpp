@@ -718,7 +718,7 @@ namespace ams::mitm::usbl::xci {
 
         for (s32 i = 0; i < count; ++i) {
             GameStatus &game = out[i];
-            game = { .application_id = applications[i].value, .drive = -1, .fragments = 1 };
+            game = { .application_id = applications[i].value, .size = static_cast<u64>(GetKnownApplicationSize(applications[i])), .drive = -1, .fragments = 1 };
 
             KnownContent program;
             if (FindKnownProgramContent(std::addressof(program), applications[i], static_cast<u8>(NcaContentType::Program), ContentLayer::Base)) {
