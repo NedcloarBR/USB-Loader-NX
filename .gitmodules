@@ -1,0 +1,4 @@
+[submodule "atmosphere"]
+	path = atmosphere
+	url = ./
+	branch = atmosphere
