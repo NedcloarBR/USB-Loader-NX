@@ -36,6 +36,12 @@ namespace ams::mitm::fs {
     bool IsUsblProgram(ncm::ProgramId program_id);
     Result OpenUsblProgramFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> *out, ncm::ProgramId program_id, FsFileSystemType filesystem_type);
 
+    /* The program's icon as the game ships it (no badge), from its Control NCA; English first, then any language. */
+    Result ReadUsblProgramIcon(size_t *out_size, void *dst, size_t dst_size, ncm::ProgramId program_id);
+
+    /* The NACP's display version ("1.0.2") of the program, from the update's Control NCA when one is served. */
+    Result ReadUsblProgramDisplayVersion(char *out, size_t out_size, ncm::ProgramId program_id);
+
     /* Section storage of the program's NCA (OpenDataStorageByCurrentProcess/ByProgramId/WithProgramIndex: the RomFS). */
     Result OpenUsblProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, FsFileSystemType filesystem_type);
 

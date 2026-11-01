@@ -41,4 +41,8 @@ namespace ams::mitm::usbl {
     Result OpenServedProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type);
     Result OpenServedBaseProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type);
 
+    /* For the Manager: the program's icon without the badge (implemented with fs_mitm's NCA mounting). */
+    Result ReadServedProgramIcon(size_t *out_size, void *dst, size_t dst_size, ncm::ProgramId program_id);
+    Result ReadServedProgramDisplayVersion(char *out, size_t out_size, ncm::ProgramId program_id);
+
 }

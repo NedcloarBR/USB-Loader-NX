@@ -40,7 +40,19 @@ namespace usbl::protocol {
         ShowGameForLaunch    = 15,
         /* Puts HOME back in line with the options (after ShowGameForLaunch, once the game was played). */
         ApplyHomeVisibility  = 16,
+        /* The game's own icon JPEG, without the badge HOME shows; only while its drive is plugged in. */
+        GetGameIcon          = 17,
+        /* The game's version as players know it ("1.0.2", from the update when one is on the drive); only while its drive is plugged in. */
+        GetGameDisplayVersion = 18,
     };
+
+    struct DisplayVersion {
+        char text[0x10];
+    };
+    static_assert(sizeof(DisplayVersion) == 0x10);
+
+    /* NACP icons are 256x256 JPEGs, well under this. */
+    constexpr std::size_t MaxIconSize = 0x40000;
 
     enum class ConfigKey : std::uint8_t {
         AutoRegister    = 0,

@@ -134,6 +134,20 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
+    Result Service::GetGameIcon(sf::Out<u32> out_size, const sf::OutBuffer &out, ncm::ApplicationId application_id) {
+        size_t size = 0;
+        R_TRY(ReadServedProgramIcon(std::addressof(size), out.GetPointer(), out.GetSize(), { application_id.value }));
+        out_size.SetValue(static_cast<u32>(size));
+        R_SUCCEED();
+    }
+
+    Result Service::GetGameDisplayVersion(sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id) {
+        ::usbl::protocol::DisplayVersion version = {};
+        R_TRY(ReadServedProgramDisplayVersion(version.text, sizeof(version.text), { application_id.value }));
+        out.SetValue(version);
+        R_SUCCEED();
+    }
+
 
     Result Service::ReadCachedContent(ncm::ContentId content_id, s64 offset, void *dst, size_t size) {
         std::scoped_lock lk(m_read_cache_lock);

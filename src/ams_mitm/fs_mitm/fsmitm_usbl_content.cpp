@@ -162,6 +162,62 @@ namespace ams::mitm::fs {
         R_SUCCEED();
     }
 
+    namespace {
+
+        Result OpenControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> *out, ncm::ProgramId program_id) {
+            std::shared_ptr<ams::fs::IStorage> storage;
+            fssystem::NcaFsHeaderReader header_reader;
+            R_TRY(OpenProgramSection(std::addressof(storage), std::addressof(header_reader), program_id, FsFileSystemType_ContentControl));
+            R_RETURN(MountStorage(out, std::move(storage), header_reader));
+        }
+
+    }
+
+    Result ReadUsblProgramDisplayVersion(char *out, size_t out_size, ncm::ProgramId program_id) {
+        /* ApplicationControlProperty::display_version. */
+        constexpr s64 DisplayVersionOffset = 0x3060;
+        constexpr size_t DisplayVersionSize = 0x10;
+        R_UNLESS(out_size >= DisplayVersionSize, ams::fs::ResultInvalidSize());
+
+        std::shared_ptr<ams::fs::fsa::IFileSystem> control_fs;
+        R_TRY(OpenControlFileSystem(std::addressof(control_fs), program_id));
+
+        std::unique_ptr<ams::fs::fsa::IFile> file;
+        R_TRY(control_fs->OpenFile(std::addressof(file), ams::fs::MakeConstantPath("/control.nacp"), ams::fs::OpenMode_Read));
+        size_t read = 0;
+        R_TRY(file->Read(std::addressof(read), DisplayVersionOffset, out, DisplayVersionSize, ams::fs::ReadOption::None));
+        R_UNLESS(read == DisplayVersionSize, ams::fs::ResultInvalidSize());
+        out[DisplayVersionSize - 1] = '\0';
+        R_SUCCEED();
+    }
+
+    Result ReadUsblProgramIcon(size_t *out_size, void *dst, size_t dst_size, ncm::ProgramId program_id) {
+        std::shared_ptr<ams::fs::fsa::IFileSystem> control_fs;
+        R_TRY(OpenControlFileSystem(std::addressof(control_fs), program_id));
+
+        constexpr const char *Languages[] = {
+            "AmericanEnglish", "BritishEnglish", "BrazilianPortuguese", "Portuguese", "LatinAmericanSpanish", "Spanish", "French", "CanadianFrench",
+            "German", "Italian", "Dutch", "Russian", "Japanese", "Korean", "TraditionalChinese", "SimplifiedChinese",
+        };
+        for (const char *language : Languages) {
+            char name[0x40];
+            util::SNPrintf(name, sizeof(name), "/icon_%s.dat", language);
+            ams::fs::Path path;
+            R_TRY(path.InitializeWithNormalization(name));
+
+            std::unique_ptr<ams::fs::fsa::IFile> file;
+            if (R_FAILED(control_fs->OpenFile(std::addressof(file), path, ams::fs::OpenMode_Read))) {
+                continue;
+            }
+            s64 size = 0;
+            R_TRY(file->GetSize(std::addressof(size)));
+            R_UNLESS(0 < size && static_cast<size_t>(size) <= dst_size, ams::fs::ResultInvalidSize());
+            R_TRY(file->Read(out_size, 0, dst, static_cast<size_t>(size), ams::fs::ReadOption::None));
+            R_SUCCEED();
+        }
+        R_THROW(ams::fs::ResultPathNotFound());
+    }
+
     Result OpenUsblProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, FsFileSystemType filesystem_type) {
         fssystem::NcaFsHeaderReader header_reader;
         R_RETURN(OpenProgramSection(out, std::addressof(header_reader), program_id, filesystem_type));
@@ -214,6 +270,18 @@ namespace ams::mitm::fs {
 
         fssystem::NcaFsHeaderReader header_reader;
         R_RETURN(OpenSection(out, std::addressof(header_reader), std::move(raw_nca), filesystem_type));
+    }
+
+}
+
+namespace ams::mitm::usbl {
+
+    Result ReadServedProgramIcon(size_t *out_size, void *dst, size_t dst_size, ncm::ProgramId program_id) {
+        R_RETURN(fs::ReadUsblProgramIcon(out_size, dst, dst_size, program_id));
+    }
+
+    Result ReadServedProgramDisplayVersion(char *out, size_t out_size, ncm::ProgramId program_id) {
+        R_RETURN(fs::ReadUsblProgramDisplayVersion(out, out_size, program_id));
     }
 
 }
