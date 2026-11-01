@@ -1,0 +1,10 @@
+build*.log
+manager/build/
+manager/*.nro
+manager/*.elf
+manager/*.nacp
+manager/*.map
+tools/**/__pycache__/
+docs/
+common/include/usbl/version.hpp
+dist/
