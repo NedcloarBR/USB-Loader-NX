@@ -404,8 +404,8 @@ namespace ams::mitm::usbl {
 
                 if (boot_hide_pending && os::GetSystemTick() >= boot_hide_tick) {
                     boot_hide_pending = false;
-                    Log("boot: hiding known games whose drive is not plugged in");
-                    xci::HideUnpluggedKnownApplications();
+                    Log("boot: putting HOME in line with the options");
+                    xci::ApplyHomeVisibility();
                 }
 
                 if (boot_hide_pending) {

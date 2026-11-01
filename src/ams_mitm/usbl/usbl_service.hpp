@@ -64,7 +64,8 @@ namespace ams::mitm::usbl {
     AMS_SF_METHOD_INFO(C, H, 11, Result, SetConfigValue,         (const ::usbl::protocol::SetConfigValueInput &input),                                                      (input))          \
     AMS_SF_METHOD_INFO(C, H, 12, Result, ListDrives,             (sf::Out<s32> out_count, const sf::OutArray<ams::mitm::usbl::DriveStatus> &out),                           (out_count, out)) \
     AMS_SF_METHOD_INFO(C, H, 13, Result, ListGames,              (sf::Out<s32> out_count, const sf::OutArray<ams::mitm::usbl::xci::GameStatus> &out),                       (out_count, out)) \
-    AMS_SF_METHOD_INFO(C, H, 14, Result, SetGameHidden,          (const ::usbl::protocol::SetGameHiddenInput &input),                                                       (input))
+    AMS_SF_METHOD_INFO(C, H, 14, Result, SetGameHidden,          (const ::usbl::protocol::SetGameHiddenInput &input),                                                       (input))          \
+    AMS_SF_METHOD_INFO(C, H, 16, Result, ApplyHomeVisibility,    (),                                                                                                        ())              
 
 AMS_SF_DEFINE_INTERFACE(ams::mitm::usbl::impl, IService, AMS_USBL_I_SERVICE_INTERFACE_INFO, 0x00000000)
 
@@ -84,6 +85,7 @@ namespace ams::mitm::usbl {
             Result ListDrives(sf::Out<s32> out_count, const sf::OutArray<DriveStatus> &out);
             Result ListGames(sf::Out<s32> out_count, const sf::OutArray<xci::GameStatus> &out);
             Result SetGameHidden(const ::usbl::protocol::SetGameHiddenInput &input);
+            Result ApplyHomeVisibility();
         private:
             ServedContentInfo FindContent(ncm::ContentId content_id);
             Result ReadCachedContent(ncm::ContentId content_id, s64 offset, void *dst, size_t size);

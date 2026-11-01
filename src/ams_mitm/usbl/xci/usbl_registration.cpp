@@ -462,12 +462,19 @@ namespace ams::mitm::usbl::xci {
 
     }
 
+    namespace {
+
+        void HideKnownApplicationsLocked();
+
+    }
+
     void RegisterIndexedApplicationsIfEnabled() {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
         std::scoped_lock lk(g_registration_lock);
 
         if (!IsAutoRegisterEnabled()) {
             Log("auto register disabled (usbloadernx!auto_register)");
+            HideKnownApplicationsLocked();
             return;
         }
 
@@ -603,6 +610,22 @@ namespace ams::mitm::usbl::xci {
 
     }
 
+    namespace {
+
+        /* auto_register off: no USB game stays on HOME, plugged in or not. */
+        void HideKnownApplicationsLocked() {
+            ncm::ProgramId applications[MaxApplicationCount];
+            const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+            for (s32 i = 0; i < count; ++i) {
+                if (const Result result = DeleteApplicationRecord({ applications[i].value }); R_FAILED(result)) {
+                    Log("hide %016" PRIx64 ": ns record not removed 2%03d-%04d", applications[i].value, result.GetModule(), result.GetDescription());
+                }
+            }
+            Log("hide: %d known games off HOME (auto register disabled)", count);
+        }
+
+    }
+
     void HideUnpluggedApplications(const ncm::ProgramId *applications, s32 count) {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
         std::scoped_lock lk(g_registration_lock);
@@ -631,9 +654,98 @@ namespace ams::mitm::usbl::xci {
         }
     }
 
-    void HideUnpluggedKnownApplications() {
+    namespace {
+
+        bool HasApplicationRecord(ncm::ApplicationId application_id) {
+            if (R_FAILED(::nsInitialize())) {
+                return false;
+            }
+            ON_SCOPE_EXIT { ::nsExit(); };
+            return FindApplicationRecordEvent(application_id).has_value();
+        }
+
+        /* The record an unplugged game had while its drive was in, rebuilt from the metas left in the SD card ncm database. */
+        Result PushRecordFromDatabase(ncm::ContentMetaDatabase &db, ncm::ApplicationId application_id) {
+            ContentStorageRecord records[2 + MaxAddOnContentCount];
+            s32 record_count = 0;
+
+            ncm::ContentMetaKey key;
+            R_TRY(db.GetLatest(std::addressof(key), application_id.value));
+            records[record_count++] = MakeSdCardRecord(key);
+            if (R_SUCCEEDED(db.GetLatest(std::addressof(key), GetPatchId({ application_id.value }).value))) {
+                records[record_count++] = MakeSdCardRecord(key);
+            }
+
+            ncm::ContentMetaKey add_ons[MaxAddOnContentCount];
+            const auto listed = db.ListContentMeta(add_ons, MaxAddOnContentCount, ncm::ContentMetaType::AddOnContent, application_id);
+            for (s32 i = 0; i < std::min<s32>(listed.written, MaxAddOnContentCount); ++i) {
+                records[record_count++] = MakeSdCardRecord(add_ons[i]);
+            }
+
+            R_RETURN(PushApplicationRecord(application_id, records, record_count));
+        }
+
+    }
+
+    void ApplyHomeVisibility() {
+        AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
+        std::scoped_lock lk(g_registration_lock);
+
+        if (!IsAutoRegisterEnabled()) {
+            HideKnownApplicationsLocked();
+            return;
+        }
+
+        /* Plugged-in games: registered and pushed (or kept off HOME when hidden in the Manager). */
+        RegisterIndexedApplicationsIfEnabled();
+
+        /* Unplugged games: off HOME with hide_when_removed, otherwise on HOME as when their drive was in. */
+        const bool hide_unplugged = IsHideWhenRemovedEnabled();
+        ncm::ContentMetaDatabase db;
+        if (const Result result = OpenSdCardContentMetaDatabase(std::addressof(db)); R_FAILED(result) && !hide_unplugged) {
+            Log("visibility: cannot open SD ncm database 2%03d-%04d", result.GetModule(), result.GetDescription());
+            return;
+        }
+
         ncm::ProgramId applications[MaxApplicationCount];
-        HideUnpluggedApplications(applications, GetKnownApplications(applications, MaxApplicationCount));
+        const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        for (s32 i = 0; i < count; ++i) {
+            const ncm::ApplicationId application_id = { applications[i].value };
+            {
+                std::scoped_lock lk(GetVolumeLock());
+                if (IsIndexedProgram(applications[i])) {
+                    continue;
+                }
+            }
+
+            if (hide_unplugged || IsHiddenGame(application_id)) {
+                if (const Result result = DeleteApplicationRecord(application_id); R_FAILED(result)) {
+                    Log("visibility %016" PRIx64 ": ns record not removed 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
+                } else {
+                    Log("visibility %016" PRIx64 ": off HOME until its drive is plugged in", application_id.value);
+                }
+                continue;
+            }
+
+            /* Already on HOME: pushing again would only make HOME reload its grid. */
+            if (HasApplicationRecord(application_id)) {
+                continue;
+            }
+            if (const Result result = PushRecordFromDatabase(db, application_id); R_FAILED(result)) {
+                Log("visibility %016" PRIx64 ": ns record not pushed 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
+            } else {
+                Log("visibility %016" PRIx64 ": on HOME while its drive is unplugged", application_id.value);
+            }
+        }
+    }
+
+    void RefreshApplicationRecords() {
+        AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
+        {
+            std::scoped_lock lk(g_registration_lock);
+            g_pushed_count = 0;
+        }
+        RegisterIndexedApplicationsIfEnabled();
     }
 
     Result SetGameHidden(ncm::ApplicationId application_id, bool hidden) {

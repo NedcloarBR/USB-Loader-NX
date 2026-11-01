@@ -36,6 +36,8 @@ namespace usbl::protocol {
         ListDrives           = 12,
         ListGames            = 13,
         SetGameHidden        = 14,
+        /* Puts HOME back in line with the options (after ShowGameForLaunch, once the game was played). */
+        ApplyHomeVisibility  = 16,
     };
 
     enum class ConfigKey : std::uint8_t {

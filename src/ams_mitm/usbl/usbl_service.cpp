@@ -20,6 +20,7 @@
 #include "nca/usbl_nca_filesystem.hpp"
 #include "xci/usbl_content_index.hpp"
 #include "xci/usbl_known_contents.hpp"
+#include "xci/usbl_registration.hpp"
 #include "storage/usbl_volume.hpp"
 #include "usbl_content_api.hpp"
 #include "usbl_results.hpp"
@@ -93,7 +94,21 @@ namespace ams::mitm::usbl {
 
     Result Service::SetConfigValue(const ::usbl::protocol::SetConfigValueInput &input) {
         R_UNLESS(input.key < ConfigKey::Count, usbl::ResultOutOfRange());
-        R_RETURN(usbl::SetConfigValue(input.key, input.enabled));
+        R_TRY(usbl::SetConfigValue(input.key, input.enabled));
+
+        /* HOME follows the new value right away instead of at the next boot or plug. Notifications are read at each one. */
+        switch (input.key) {
+            case ConfigKey::AutoRegister:
+            case ConfigKey::HideWhenRemoved:
+                xci::ApplyHomeVisibility();
+                break;
+            case ConfigKey::Badge:
+                xci::RefreshApplicationRecords();
+                break;
+            default:
+                break;
+        }
+        R_SUCCEED();
     }
 
     Result Service::ListDrives(sf::Out<s32> out_count, const sf::OutArray<DriveStatus> &out) {
@@ -108,6 +123,11 @@ namespace ams::mitm::usbl {
 
     Result Service::SetGameHidden(const ::usbl::protocol::SetGameHiddenInput &input) {
         R_RETURN(xci::SetGameHidden({ input.application_id }, input.hidden));
+    }
+
+    Result Service::ApplyHomeVisibility() {
+        xci::ApplyHomeVisibility();
+        R_SUCCEED();
     }
 
 
