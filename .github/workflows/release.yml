@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ github.ref_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: usb-loader-nx
+          path: dist
+
+      - name: Atmosphère base version
+        id: base
+        run: |
+          echo "atmosphere=$(cat ATMOSPHERE_VERSION)" >> "$GITHUB_OUTPUT"
+          echo "fork=$(git ls-tree HEAD atmosphere | awk '{print substr($3, 1, 9)}')" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=$([[ "$TAG" == *-* ]] && echo --prerelease || true)
+          gh release create "$TAG" dist/*.zip --title "USB Loader NX $TAG" --generate-notes $prerelease \
+            --notes "Atmosphère ${{ steps.base.outputs.atmosphere }} (fork ${{ steps.base.outputs.fork }})."

@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # atmosphere/ is this repository's "atmosphere" branch (relative submodule URL); manager/lib/Plutonium is public.
+          submodules: recursive
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (Atmosphère's Dockerfile)
+        uses: docker/build-push-action@v6
+        with:
+          context: atmosphere
+          tags: atms-build
+          load: true
+          cache-from: type=gha,scope=atms-build
+          cache-to: type=gha,mode=max,scope=atms-build
+
+      - name: Build image (+ libnx from git)
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          build-args: BASE_IMAGE=atms-build
+          tags: atms-build-libnx
+          load: true
+          cache-from: type=gha,scope=atms-build-libnx
+          cache-to: type=gha,mode=max,scope=atms-build-libnx
+
+      - name: Build
+        env:
+          USBL_VERSION: ${{ inputs.version || format('dev-{0}', github.sha) }}
+        run: |
+          scripts/build.sh
+          scripts/package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: usb-loader-nx
+          path: dist/*.zip
+          retention-days: ${{ inputs.version && 1 || 7 }}
