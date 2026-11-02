@@ -17,6 +17,7 @@
 #include "usbl_content_api.hpp"
 #include "xci/usbl_content_index.hpp"
 #include "xci/usbl_known_contents.hpp"
+#include "storage/usbl_volume.hpp"
 #include "usbl_results.hpp"
 
 namespace ams::mitm::usbl {
@@ -45,9 +46,25 @@ namespace ams::mitm::usbl {
         return true;
     }
 
+    namespace {
+
+        /* With the game plugged in, the index knows whether its update is usable (on the game's drive, see
+         * FindIndexedContent); unplugged, the known contents decide as before. */
+        ContentLayer GetServedLayer(ncm::ProgramId program_id) {
+            std::scoped_lock lk(GetVolumeLock());
+            IndexedContent content;
+            const char *path;
+            if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Base))) {
+                return ContentLayer::Current;
+            }
+            return R_SUCCEEDED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Current)) && content.is_patch ? ContentLayer::Current : ContentLayer::Base;
+        }
+
+    }
+
     bool FindServedProgramContent(ServedContent *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type) {
         KnownContent known;
-        if (!FindKnownProgramContent(std::addressof(known), program_id, static_cast<u8>(content_type), ContentLayer::Current)) {
+        if (!FindKnownProgramContent(std::addressof(known), program_id, static_cast<u8>(content_type), GetServedLayer(program_id))) {
             return false;
         }
 
@@ -60,7 +77,7 @@ namespace ams::mitm::usbl {
     }
 
     bool IsServedPatchedProgram(ncm::ProgramId program_id) {
-        return IsKnownPatchedProgram(program_id);
+        return IsKnownPatchedProgram(program_id) && GetServedLayer(program_id) == ContentLayer::Current;
     }
 
     Result OpenServedContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ContentId content_id) {

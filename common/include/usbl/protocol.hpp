@@ -115,7 +115,9 @@ namespace usbl::protocol {
         bool has_update;
         bool is_connected;
         bool is_hidden;
-        std::uint8_t reserved[3];
+        /* An update or add-on content of the game is on another drive: only the game's own drive is used. */
+        bool has_parts_elsewhere;
+        std::uint8_t reserved[2];
         char file_name[0x100];
     };
     static_assert(sizeof(GameStatus) == 0x128);

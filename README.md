@@ -50,7 +50,7 @@ What comes next, from compressed dumps to installing to USB, is in [TODO.md](TOD
    enable = u8!0x1
    ```
 
-3. Put your dumps in `usbloadernx/games/` on the USB drive and plug it in. Subfolders one level deep are scanned too.
+3. Put your dumps in `usbloadernx/games/` on the USB drive and plug it in. Subfolders one level deep are scanned too. Keep each game's update and DLC on the same drive as the game: parts on another drive are not used.
 
 ## Configuration
 

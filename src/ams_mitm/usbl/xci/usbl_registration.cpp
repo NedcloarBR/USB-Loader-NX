@@ -105,8 +105,9 @@ namespace ams::mitm::usbl::xci {
             return count;
         }
 
-        /* Registering a title with a missing NCA would leave a "corrupted data" entry on the HOME menu. */
-        bool AreAllContentsIndexed(const ncm::PackagedContentMetaReader &reader) {
+        /* Registering a title with a missing NCA would leave a "corrupted data" entry on the HOME menu. With `drive`, every
+         * content must also be on that drive: a game's update and add-on contents are only used from the game's own drive. */
+        bool AreAllContentsIndexed(const ncm::PackagedContentMetaReader &reader, s32 drive = -1) {
             std::scoped_lock lk(GetVolumeLock());
 
             for (size_t i = 0; i < reader.GetContentCount(); ++i) {
@@ -117,7 +118,7 @@ namespace ams::mitm::usbl::xci {
                 if (info->GetType() == ncm::ContentType::DeltaFragment) {
                     continue;
                 }
-                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(xci_path), info->GetId()))) {
+                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(xci_path), info->GetId())) || (drive >= 0 && content.drive != drive)) {
                     return false;
                 }
             }
@@ -327,7 +328,7 @@ namespace ams::mitm::usbl::xci {
         }
 
         /* The update's meta, when the update is indexed with every content it lists. */
-        Result RegisterPatch(util::optional<ncm::ContentMetaKey> *out_key, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id) {
+        Result RegisterPatch(util::optional<ncm::ContentMetaKey> *out_key, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id, s32 drive) {
             const ncm::ProgramId patch_id = GetPatchId(application_id);
 
             IndexedContent meta_content;
@@ -336,12 +337,16 @@ namespace ams::mitm::usbl::xci {
                 const char *path;
                 R_SUCCEED_IF(R_FAILED(FindIndexedContent(std::addressof(meta_content), std::addressof(path), patch_id, NcaContentType::Meta, ContentLayer::Current)));
             }
+            if (meta_content.drive != drive) {
+                Log("register %016" PRIx64 ": update not used, it is on drive %d and the game on drive %d", patch_id.value, meta_content.drive, drive);
+                R_SUCCEED();
+            }
 
             ncm::AutoBuffer meta;
             R_TRY(ReadPackagedContentMeta(std::addressof(meta), patch_id));
 
             ncm::PackagedContentMetaReader reader(meta.Get(), meta.GetSize());
-            if (reader.GetKey().type != ncm::ContentMetaType::Patch || !AreAllContentsIndexed(reader)) {
+            if (reader.GetKey().type != ncm::ContentMetaType::Patch || !AreAllContentsIndexed(reader, drive)) {
                 Log("register %016" PRIx64 ": update skipped, not every content passed validation", patch_id.value);
                 DropPatch(application_id);
                 R_SUCCEED();
@@ -361,7 +366,7 @@ namespace ams::mitm::usbl::xci {
         constexpr s32 MaxAddOnContentCount = 32;
 
         /* Each add-on content's meta names its application; those with every content and their ticket go into the application's record. */
-        void RegisterAddOnContents(ContentStorageRecord *records, s32 *record_count, s32 max_records, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id) {
+        void RegisterAddOnContents(ContentStorageRecord *records, s32 *record_count, s32 max_records, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id, s32 drive) {
             IndexedContent metas[MaxAddOnContentCount];
             const s32 meta_count = CollectMetaContents(metas, MaxAddOnContentCount, IsAddOnContentTitleId);
 
@@ -378,7 +383,11 @@ namespace ams::mitm::usbl::xci {
                     continue;
                 }
 
-                if (!AreAllContentsIndexed(reader)) {
+                if (metas[i].drive != drive) {
+                    Log("register %016" PRIx64 ": add-on content not used, it is on drive %d and the game on drive %d", key.id, metas[i].drive, drive);
+                    continue;
+                }
+                if (!AreAllContentsIndexed(reader, drive)) {
                     Log("register %016" PRIx64 ": add-on content skipped, not every content passed validation", key.id);
                     continue;
                 }
@@ -396,6 +405,58 @@ namespace ams::mitm::usbl::xci {
                 *out_written |= written;
                 records[(*record_count)++] = MakeSdCardRecord(key);
             }
+        }
+
+        /* The update and add-on content metas registered for an application that came from USB: those whose content is a
+         * known USB content. Anything really installed on the SD card is not ours and is never removed. Taken before
+         * registering, since a failed update is forgotten on the way. */
+        struct OwnedParts {
+            ncm::ContentMetaKey keys[1 + MaxAddOnContentCount];
+            s32 count;
+        };
+
+        void CollectOwnedParts(OwnedParts *out, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id) {
+            out->count = 0;
+            const auto add_if_ours = [&](const ncm::ContentMetaKey &key, ncm::ContentType main_type) {
+                ncm::ContentId content_id;
+                KnownContent known;
+                if (out->count < static_cast<s32>(util::size(out->keys)) && R_SUCCEEDED(db.GetContentIdByType(std::addressof(content_id), key, main_type)) && FindKnownContent(std::addressof(known), content_id)) {
+                    out->keys[out->count++] = key;
+                }
+            };
+
+            ncm::ContentMetaKey key;
+            if (R_SUCCEEDED(db.GetLatest(std::addressof(key), GetPatchId(application_id).value))) {
+                add_if_ours(key, ncm::ContentType::Program);
+            }
+            ncm::ContentMetaKey add_ons[MaxAddOnContentCount];
+            const auto listed = db.ListContentMeta(add_ons, MaxAddOnContentCount, ncm::ContentMetaType::AddOnContent, ncm::ApplicationId{ application_id.value });
+            for (s32 i = 0; i < std::min<s32>(listed.written, MaxAddOnContentCount); ++i) {
+                add_if_ours(add_ons[i], ncm::ContentType::Data);
+            }
+        }
+
+        /* Our parts that did not make it into the record (deleted from the game's drive, moved to another drive, or no
+         * longer valid) leave the SD card database, so ns sees the game as it now is. Returns whether any was removed. */
+        bool RemoveUnusedParts(ncm::ContentMetaDatabase &db, const OwnedParts &owned, const ContentStorageRecord *records, s32 record_count) {
+            bool removed = false;
+            for (s32 i = 0; i < owned.count; ++i) {
+                const auto &key = owned.keys[i];
+                if (std::any_of(records, records + record_count, [&](const ContentStorageRecord &record) { return record.key == key; })) {
+                    continue;
+                }
+                const char *what = key.type == ncm::ContentMetaType::Patch ? "update" : "add-on content";
+                if (const Result result = db.Remove(key); R_FAILED(result)) {
+                    Log("register %016" PRIx64 ": %s v%u not removed 2%03d-%04d", key.id, what, key.version, result.GetModule(), result.GetDescription());
+                    continue;
+                }
+                Log("register %016" PRIx64 ": %s v%u removed, no longer on the game's drive", key.id, what, key.version);
+                removed = true;
+            }
+            if (removed) {
+                R_DISCARD(db.Commit());
+            }
+            return removed;
         }
 
         /* Registration runs on the USB thread and, for the Manager, on a service thread. */
@@ -430,9 +491,12 @@ namespace ams::mitm::usbl::xci {
             s32 record_count = 1;
             u32 version = key.version;
 
+            OwnedParts owned;
+            CollectOwnedParts(std::addressof(owned), db, meta_content.program_id);
+
             util::optional<ncm::ContentMetaKey> patch_key;
             bool patch_written = false;
-            if (const Result result = RegisterPatch(std::addressof(patch_key), std::addressof(patch_written), db, meta_content.program_id); R_FAILED(result)) {
+            if (const Result result = RegisterPatch(std::addressof(patch_key), std::addressof(patch_written), db, meta_content.program_id, meta_content.drive); R_FAILED(result)) {
                 Log("register %016" PRIx64 ": update not registered 2%03d-%04d", key.id, result.GetModule(), result.GetDescription());
                 DropPatch(meta_content.program_id);
             }
@@ -443,7 +507,8 @@ namespace ams::mitm::usbl::xci {
 
             bool add_on_content_written = false;
             const s32 application_record_count = record_count;
-            RegisterAddOnContents(records, std::addressof(record_count), util::size(records), std::addressof(add_on_content_written), db, meta_content.program_id);
+            RegisterAddOnContents(records, std::addressof(record_count), util::size(records), std::addressof(add_on_content_written), db, meta_content.program_id, meta_content.drive);
+            add_on_content_written |= RemoveUnusedParts(db, owned, records, record_count);
 
             /* Every push makes HOME reload its whole grid; once per boot is enough unless a meta changed. */
             if (!meta_written && !patch_written && !add_on_content_written && WasPushedSinceBoot({ key.id })) {
@@ -817,8 +882,22 @@ namespace ams::mitm::usbl::xci {
 
             IndexedContent patch;
             const char *patch_path;
-            if (R_SUCCEEDED(FindIndexedContent(std::addressof(patch), std::addressof(patch_path), program_id, NcaContentType::Program, ContentLayer::Current)) && patch.is_patch) {
+            if (R_SUCCEEDED(FindIndexedContent(std::addressof(patch), std::addressof(patch_path), program_id, NcaContentType::Program, ContentLayer::Current)) && patch.is_patch && patch.drive == base.drive) {
                 out->fragments = WorseFragments(out->fragments, GetContainerFragments(patch));
+            }
+
+            /* Parts on another drive are not used; the Manager tells the user to move them next to the game. */
+            const ncm::ProgramId patch_id = GetPatchId(program_id);
+            for (s32 i = 0; i < GetIndexedContentCount(); ++i) {
+                IndexedContent content;
+                if (R_FAILED(GetIndexedContent(std::addressof(content), i)) || content.content_type != NcaContentType::Meta || content.drive == base.drive) {
+                    continue;
+                }
+                const bool is_add_on_of_game = IsAddOnContentTitleId(content.program_id) && ((content.program_id.value - 0x1000) & ~TitleIdKindMask) == program_id.value;
+                if (content.program_id == patch_id || is_add_on_of_game) {
+                    out->has_parts_elsewhere = true;
+                    break;
+                }
             }
         }
 

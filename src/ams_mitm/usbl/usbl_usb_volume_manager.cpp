@@ -23,6 +23,7 @@
 #include "xci/usbl_known_contents.hpp"
 #include "xci/usbl_registration.hpp"
 #include "xci/usbl_xci_indexer.hpp"
+#include "usbl_config.hpp"
 #include "usbl_disk_io.hpp"
 #include "usbl_log.hpp"
 #include "usbl_notifications.hpp"
@@ -305,6 +306,9 @@ namespace ams::mitm::usbl {
                     }
                     RememberIndexedContents();
                     xci::RegisterIndexedApplicationsIfEnabled();
+                    if (IsConfigEnabled(ConfigKey::AutoRegister)) {
+                        ForgetDeletedGameParts();
+                    }
                     break;
                 case DriveState::NoGamesFolder:
                     NotifyDriveWithoutGamesFolder();

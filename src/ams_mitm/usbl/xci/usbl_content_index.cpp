@@ -227,10 +227,19 @@ namespace ams::mitm::usbl {
             return content.program_id == program_id && content.content_type == content_type && content.is_patch == is_patch;
         };
 
+        const Result base = FindIndexedContentIf(out, out_xci_path, [&](const IndexedContent &content) { return matches(content, false); });
         if (layer == ContentLayer::Current) {
-            R_SUCCEED_IF(R_SUCCEEDED(FindIndexedContentIf(out, out_xci_path, [&](const IndexedContent &content) { return matches(content, true); })));
+            /* An update is only used from the game's own drive; alone (no base game indexed) it is used as it is. */
+            IndexedContent patch;
+            const char *patch_path;
+            if (R_SUCCEEDED(FindIndexedContentIf(std::addressof(patch), std::addressof(patch_path), [&](const IndexedContent &content) { return matches(content, true); })) &&
+                (R_FAILED(base) || patch.drive == out->drive)) {
+                *out = patch;
+                *out_xci_path = patch_path;
+                R_SUCCEED();
+            }
         }
-        R_RETURN(FindIndexedContentIf(out, out_xci_path, [&](const IndexedContent &content) { return matches(content, false); }));
+        R_RETURN(base);
     }
 
     Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ContentId content_id) {

@@ -42,6 +42,11 @@ namespace ams::mitm::usbl {
      * Must be called without the volume lock. */
     void RememberIndexedContents();
 
+    /* A game's update and add-on contents are only used from the game's own drive. While that drive is plugged in, the
+     * known ones found on no drive at all were deleted and are forgotten (registration has already taken them out of the
+     * SD card ncm database). Volume thread only, without the volume lock. */
+    void ForgetDeletedGameParts();
+
     /* Forgets an application and its update, now installed on the console or SD card (rewrites the SD file if it was known). */
     void ForgetKnownProgram(ncm::ProgramId program_id);
     /* Forgets only the application's update. */

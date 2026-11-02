@@ -165,6 +165,59 @@ namespace ams::mitm::usbl {
 
     namespace {
 
+        ncm::ProgramId GetApplicationOf(const KnownContent &known) {
+            const u64 id = IsAddOnContentTitleId(known.program_id) ? known.program_id.value - 0x1000 : known.program_id.value;
+            return { id & ~TitleIdKindMask };
+        }
+
+        bool IsIndexed(const IndexedContent *indexed, s32 count, ncm::ContentId content_id) {
+            return std::any_of(indexed, indexed + count, [content_id](const IndexedContent &content) { return content.content_id == content_id; });
+        }
+
+        bool IsGameIndexed(const IndexedContent *indexed, s32 count, ncm::ProgramId application_id) {
+            return std::any_of(indexed, indexed + count, [application_id](const IndexedContent &content) {
+                return content.program_id == application_id && content.content_type == NcaContentType::Meta && !content.is_patch;
+            });
+        }
+
+    }
+
+    void ForgetDeletedGameParts() {
+        AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
+
+        IndexedContent *indexed = g_indexed_scratch;
+        s32 indexed_count = 0;
+        {
+            std::scoped_lock lk(GetVolumeLock());
+            for (s32 i = 0; i < GetIndexedContentCount() && indexed_count < static_cast<s32>(MaxKnownContents); ++i) {
+                if (R_SUCCEEDED(GetIndexedContent(indexed + indexed_count, i))) {
+                    ++indexed_count;
+                }
+            }
+        }
+
+        std::scoped_lock lk(g_lock);
+
+        const size_t old_count = g_known_count;
+        g_known_count = static_cast<size_t>(std::remove_if(g_known, g_known + g_known_count, [&](const KnownContent &known) {
+            const bool is_part = known.is_patch || IsAddOnContentTitleId(known.program_id);
+            if (!is_part || IsIndexed(indexed, indexed_count, known.content_id) || !IsGameIndexed(indexed, indexed_count, GetApplicationOf(known))) {
+                return false;
+            }
+            Log("known contents: %016" PRIx64 " %s content deleted from its game's drive, forgotten", known.program_id.value, known.is_patch ? "update" : "add-on");
+            return true;
+        }) - g_known);
+
+        if (g_known_count == old_count) {
+            return;
+        }
+        if (const Result result = SaveLocked(); R_FAILED(result)) {
+            Log("known contents: save failed 2%03d-%04d", result.GetModule(), result.GetDescription());
+        }
+    }
+
+    namespace {
+
         template<typename Predicate>
         void ForgetKnownIf(Predicate predicate) {
             std::scoped_lock lk(g_lock);
