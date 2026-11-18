@@ -42,8 +42,13 @@ namespace ams::mitm::usbl::xci {
     void RefreshApplicationRecords();
 
     /* Manager: registers and pushes one plugged-in game even with auto_register off or hidden in the Manager, so ns can
-     * launch it; ApplyHomeVisibility puts HOME back afterwards. Writes the SD card ncm database and ns records. */
+     * launch it; once the game is closed (pm), its record goes again if the options do not want it on HOME. Writes the
+     * SD card ncm database and ns records. */
     Result ShowGameForLaunch(ncm::ApplicationId application_id);
+
+    /* Starts the thread that takes a game ShowGameForLaunch showed off HOME again once it is closed. */
+    void StartLaunchWatch();
+    void WatchLaunch(ncm::ApplicationId application_id);
 
     /* Manager: hides a USB game from HOME (its ns record goes, persisted in hidden_games.txt) or shows it again.
      * Writes the ns records and the SD card. Must be called without the volume lock. */

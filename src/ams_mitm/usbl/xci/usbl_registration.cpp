@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include <atomic>
 #include "usbl_registration.hpp"
 #include "usbl_content_index.hpp"
 #include "usbl_content_meta.hpp"
@@ -755,6 +756,32 @@ namespace ams::mitm::usbl::xci {
 
     }
 
+    namespace {
+
+        /* Whether the options want this game on HOME right now: shown, not hidden in the Manager, and plugged in or
+         * kept while unplugged. */
+        bool IsWantedOnHome(ncm::ApplicationId application_id) {
+            if (!IsAutoRegisterEnabled() || IsHiddenGame(application_id)) {
+                return false;
+            }
+            std::scoped_lock lk(GetVolumeLock());
+            return IsIndexedProgram({ application_id.value }) || !IsHideWhenRemovedEnabled();
+        }
+
+        /* Takes a game ShowGameForLaunch put on HOME off it again when the options do not want it there. */
+        void RemoveLaunchRecordLocked(ncm::ApplicationId application_id) {
+            if (IsWantedOnHome(application_id)) {
+                return;
+            }
+            if (const Result result = DeleteApplicationRecord(application_id); R_FAILED(result)) {
+                Log("launch %016" PRIx64 ": ns record not removed 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
+            } else {
+                Log("launch %016" PRIx64 ": off HOME again", application_id.value);
+            }
+        }
+
+    }
+
     void ApplyHomeVisibility() {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
         std::scoped_lock lk(g_registration_lock);
@@ -779,11 +806,17 @@ namespace ams::mitm::usbl::xci {
         const s32 count = GetKnownApplications(applications, MaxApplicationCount);
         for (s32 i = 0; i < count; ++i) {
             const ncm::ApplicationId application_id = { applications[i].value };
+            bool is_indexed;
             {
                 std::scoped_lock lk(GetVolumeLock());
-                if (IsIndexedProgram(applications[i])) {
-                    continue;
+                is_indexed = IsIndexedProgram(applications[i]);
+            }
+            if (is_indexed) {
+                /* Registering skips a hidden game but leaves the record a launch from the Manager pushed. */
+                if (IsHiddenGame(application_id)) {
+                    RemoveLaunchRecordLocked(application_id);
                 }
+                continue;
             }
 
             if (hide_unplugged || IsHiddenGame(application_id)) {
@@ -831,6 +864,7 @@ namespace ams::mitm::usbl::xci {
         R_TRY(RegisterApplication(db, meta));
 
         Log("launch %016" PRIx64 ": shown on HOME for a launch from the Manager", application_id.value);
+        WatchLaunch(application_id);
         R_SUCCEED();
     }
 
@@ -944,6 +978,64 @@ namespace ams::mitm::usbl::xci {
             }
         }
         return count;
+    }
+
+    namespace {
+
+        /* The game ShowGameForLaunch put on HOME: watched until it is closed, then taken off HOME again. */
+        constexpr size_t LaunchWatchStackSize = 32_KB;
+        alignas(os::ThreadStackAlignment) constinit u8 g_launch_watch_stack[LaunchWatchStackSize];
+        constinit os::ThreadType g_launch_watch_thread;
+        constinit os::EventType g_launch_event;
+        constinit std::atomic<u64> g_watched_application = 0;
+
+        constexpr TimeSpan LaunchStartTimeout = TimeSpan::FromSeconds(60);
+        constexpr TimeSpan LaunchPollInterval = TimeSpan::FromSeconds(2);
+
+        bool IsApplicationRunning(u64 application_id) {
+            os::ProcessId process_id;
+            ncm::ProgramId program_id;
+            return R_SUCCEEDED(::ams::pm::dmnt::GetApplicationProcessId(std::addressof(process_id))) &&
+                   R_SUCCEEDED(::ams::pm::info::GetProgramId(std::addressof(program_id), process_id)) && program_id.value == application_id;
+        }
+
+        void LaunchWatchThreadFunction(void *) {
+            while (true) {
+                os::WaitEvent(std::addressof(g_launch_event));
+                const u64 application_id = g_watched_application.load();
+
+                /* ns may take a moment to start it; a launch that never starts is undone after the timeout. */
+                const os::Tick deadline = os::GetSystemTick() + os::ConvertToTick(LaunchStartTimeout);
+                while (!IsApplicationRunning(application_id) && os::GetSystemTick() < deadline && g_watched_application.load() == application_id) {
+                    os::SleepThread(LaunchPollInterval);
+                }
+                while (IsApplicationRunning(application_id)) {
+                    os::SleepThread(LaunchPollInterval);
+                }
+                /* A newer launch replaced it: that one is watched now. */
+                if (g_watched_application.load() != application_id) {
+                    continue;
+                }
+
+                Log("launch %016" PRIx64 ": closed", application_id);
+                std::scoped_lock lk(g_registration_lock);
+                RemoveLaunchRecordLocked({ application_id });
+                g_watched_application = 0;
+            }
+        }
+
+    }
+
+    void StartLaunchWatch() {
+        os::InitializeEvent(std::addressof(g_launch_event), false, os::EventClearMode_AutoClear);
+        R_ABORT_UNLESS(os::CreateThread(std::addressof(g_launch_watch_thread), LaunchWatchThreadFunction, nullptr, g_launch_watch_stack, sizeof(g_launch_watch_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(mitm_usbl, IpcServer)));
+        os::SetThreadNamePointer(std::addressof(g_launch_watch_thread), AMS_GET_SYSTEM_THREAD_NAME(mitm_usbl, IpcServer));
+        os::StartThread(std::addressof(g_launch_watch_thread));
+    }
+
+    void WatchLaunch(ncm::ApplicationId application_id) {
+        g_watched_application = application_id.value;
+        os::SignalEvent(std::addressof(g_launch_event));
     }
 
 }

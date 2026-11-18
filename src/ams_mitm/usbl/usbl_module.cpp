@@ -19,6 +19,7 @@
 #include "nca/usbl_nca_crypto.hpp"
 #include "nca/usbl_nca_filesystem.hpp"
 #include "xci/usbl_content_meta.hpp"
+#include "xci/usbl_registration.hpp"
 #include "usbl_log.hpp"
 #include "usbl_module.hpp"
 #include "usbl_config.hpp"
@@ -94,6 +95,7 @@ namespace ams::mitm::usbl {
 
         StartPowerStateMonitor();
         StartUsbVolumeManager();
+        xci::StartLaunchWatch();
 
         R_ABORT_UNLESS(g_server_manager.RegisterObjectForServer(g_service_object.GetShared(), ServiceName, MaxServiceSessions));
         Log("service usbl registered");
