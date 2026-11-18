@@ -35,7 +35,7 @@ The repository has two branches with no history in common.
 Atmosphère's history up to `ATMOSPHERE_VERSION`, plus one commit per hook:
 
 ```text
-1.12.1 ─┬─ libstratosphere(ncm)  serve external content from the SD card storage
+1.12.2 ─┬─ libstratosphere(ncm)  serve external content from the SD card storage
         ├─ ncm                   ask USB Loader NX about USB-served content
         ├─ libstratosphere(fs)   external code filesystem hook
         ├─ loader                mount the code of USB-served programs

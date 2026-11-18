@@ -7,7 +7,7 @@
 Play your Nintendo Switch game dumps straight from a USB drive.<br>
 An Atmosphère fork with a library manager in the spirit of USB Loader GX for the Wii.
 
-![Atmosphère 1.12.1](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.1-2B2D31?labelColor=1E1F22)
+![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)
 ![Tested on firmware 19.0.1](https://img.shields.io/badge/tested%20on-19.0.1-2B2D31?labelColor=1E1F22)
 ![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
 
@@ -43,11 +43,11 @@ What comes next, from compressed dumps to installing to USB, is in [TODO.md](TOD
    > [!WARNING]
    > The zip holds a complete Atmosphère. Merge it with your existing `atmosphere/` folder instead of replacing it, so sys-patch and your other mods stay in place.
 
-2. Enable the module in `atmosphere/config/system_settings.ini`:
+2. Reboot. USB Loader NX is on by default; to turn it off, add this to `atmosphere/config/system_settings.ini`:
 
    ```ini
    [usbloadernx]
-   enable = u8!0x1
+   enable = u8!0x0
    ```
 
 3. Put your dumps in `usbloadernx/games/` on the USB drive and plug it in. Subfolders one level deep are scanned too. Keep each game's update and DLC on the same drive as the game: parts on another drive are not used.
