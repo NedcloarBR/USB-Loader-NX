@@ -37,9 +37,12 @@ namespace ams::mitm::usbl::xci {
      * content metas stay, so showing it again only takes a push). Must be called without the volume lock. */
     void ApplyHomeVisibility();
 
-    /* Pushes every plugged-in application again, even if already pushed since boot, so ns re-reads its icon (badge).
-     * Must be called without the volume lock. */
+    /* After a badge change: every USB game on HOME leaves it until FinishHomeRefresh (the Manager closing, or 5 minutes),
+     * then comes back, so HOME fetches the new icon (it keeps its own copy while the game stays in its grid). Must be
+     * called without the volume lock. */
     void RefreshApplicationRecords();
+    void FinishHomeRefresh();
+    void StartHomeRefreshThread();
 
     /* Manager: registers and pushes one plugged-in game even with auto_register off or hidden in the Manager, so ns can
      * launch it; once the game is closed (pm), its record goes again if the options do not want it on HOME. Writes the

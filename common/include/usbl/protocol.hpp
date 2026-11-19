@@ -44,6 +44,8 @@ namespace usbl::protocol {
         GetGameIcon          = 17,
         /* The game's version as players know it ("1.0.2", from the update when one is on the drive); only while its drive is plugged in. */
         GetGameDisplayVersion = 18,
+        /* The Manager is closing: games taken off HOME by a badge change come back now, so HOME fetches their new icons. */
+        FinishHomeRefresh    = 19,
     };
 
     struct DisplayVersion {

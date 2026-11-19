@@ -96,6 +96,7 @@ namespace ams::mitm::usbl {
         StartPowerStateMonitor();
         StartUsbVolumeManager();
         xci::StartLaunchWatch();
+        xci::StartHomeRefreshThread();
 
         R_ABORT_UNLESS(g_server_manager.RegisterObjectForServer(g_service_object.GetShared(), ServiceName, MaxServiceSessions));
         Log("service usbl registered");

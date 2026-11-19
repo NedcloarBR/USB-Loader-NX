@@ -187,12 +187,17 @@ namespace ams::mitm::usbl::xci {
             R_TRY(::nsGetApplicationManagerInterface(std::addressof(app_manager)));
             ON_SCOPE_EXIT { ::serviceClose(std::addressof(app_manager)); };
 
+            /* The HOME menu keeps icons in ns' control cache; drop it so the icon from fs_mitm (badged or not) is read. Before
+             * the push, because HOME reloads the icon as soon as the record changes; after it too, in case ns cached it
+             * again meanwhile. */
+            const auto invalidate = [&]() {
+                if (const Result result = ::nsamInvalidateApplicationControlCache(std::addressof(app_manager), application_id.value); R_FAILED(result)) {
+                    Log("register %016" PRIx64 ": control cache not invalidated 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
+                }
+            };
+            invalidate();
             R_TRY(::nsamPushApplicationRecord(std::addressof(app_manager), application_id.value, ApplicationRecordInstalled, records, record_count * sizeof(*records)));
-
-            /* The HOME menu keeps icons in ns' control cache; drop it so the badged icon from fs_mitm is read. */
-            if (const Result result = ::nsamInvalidateApplicationControlCache(std::addressof(app_manager), application_id.value); R_FAILED(result)) {
-                Log("register %016" PRIx64 ": control cache not invalidated 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
-            }
+            invalidate();
             RememberPushed(application_id);
             R_SUCCEED();
         }
@@ -840,13 +845,146 @@ namespace ams::mitm::usbl::xci {
         }
     }
 
+    namespace {
+
+        /* Games taken off HOME by RefreshApplicationRecords, waiting to come back once HOME is in front again. */
+        constinit ncm::ApplicationId g_refresh_pending[MaxApplicationCount] = {};
+        constinit s32 g_refresh_pending_count = 0;
+        /* The thread is waiting for the Manager to close (a second badge change must not count as that signal). */
+        constinit bool g_refresh_armed = false;
+
+        constexpr size_t HomeRefreshStackSize = 32_KB;
+        alignas(os::ThreadStackAlignment) constinit u8 g_home_refresh_stack[HomeRefreshStackSize];
+        constinit os::ThreadType g_home_refresh_thread;
+        constinit os::EventType g_home_refresh_event;
+
+        constexpr TimeSpan HomeRefreshFallback = TimeSpan::FromMinutes(5);
+        /* Time for the Manager to close and HOME to come to the front. */
+        constexpr TimeSpan HomeRefreshDelay = TimeSpan::FromMilliSeconds(1500);
+
+        void BringBackRefreshedGames() {
+            std::scoped_lock lk(g_registration_lock);
+            if (g_refresh_pending_count == 0) {
+                g_refresh_armed = false;
+                return;
+            }
+
+            /* Plugged-in games come back through registration. */
+            g_pushed_count = 0;
+            RegisterIndexedApplicationsIfEnabled();
+
+            /* Unplugged games come back from their metas on the SD card. */
+            ncm::ContentMetaDatabase db;
+            const bool has_db = R_SUCCEEDED(OpenSdCardContentMetaDatabase(std::addressof(db)));
+            s32 unplugged = 0;
+            for (s32 i = 0; i < g_refresh_pending_count && has_db; ++i) {
+                {
+                    std::scoped_lock vlk(GetVolumeLock());
+                    if (IsIndexedProgram({ g_refresh_pending[i].value })) {
+                        continue;
+                    }
+                }
+                if (HasApplicationRecord(g_refresh_pending[i])) {
+                    continue;
+                }
+                if (const Result result = PushRecordFromDatabase(db, g_refresh_pending[i]); R_FAILED(result)) {
+                    Log("refresh %016" PRIx64 ": ns record not pushed 2%03d-%04d", g_refresh_pending[i].value, result.GetModule(), result.GetDescription());
+                } else {
+                    ++unplugged;
+                }
+            }
+            Log("refresh: %d games back on HOME, %d of them unplugged", g_refresh_pending_count, unplugged);
+            g_refresh_pending_count = 0;
+            g_refresh_armed = false;
+        }
+
+        /* The Manager runs as homebrew: in the album applet (hbloader in place of it) or in place of a game. */
+        bool IsManagerRunning() {
+            constexpr ncm::ProgramId AlbumAppletId = { 0x010000000000100Dull };
+            os::ProcessId process_id;
+            if (R_SUCCEEDED(::ams::pm::info::GetProcessId(std::addressof(process_id), AlbumAppletId))) {
+                return true;
+            }
+            bool is_hbl = false;
+            return R_SUCCEEDED(::ams::pm::dmnt::GetApplicationProcessId(std::addressof(process_id))) &&
+                   R_SUCCEEDED(::ams::pm::info::IsHblProcessId(std::addressof(is_hbl), process_id)) && is_hbl;
+        }
+
+        void HomeRefreshThreadFunction(void *) {
+            while (true) {
+                os::WaitEvent(std::addressof(g_home_refresh_event));
+
+                /* Back once the Manager says it is closing, or is no longer running (closed with HOME it may not say),
+                 * or after the fallback. */
+                const os::Tick deadline = os::GetSystemTick() + os::ConvertToTick(HomeRefreshFallback);
+                while (true) {
+                    if (os::TimedWaitEvent(std::addressof(g_home_refresh_event), TimeSpan::FromSeconds(1))) {
+                        break;
+                    }
+                    if (!IsManagerRunning()) {
+                        Log("refresh: the Manager is no longer running");
+                        break;
+                    }
+                    if (os::GetSystemTick() >= deadline) {
+                        Log("refresh: the Manager did not close in time, bringing the games back anyway");
+                        break;
+                    }
+                }
+                os::SleepThread(HomeRefreshDelay);
+                BringBackRefreshedGames();
+            }
+        }
+
+    }
+
     void RefreshApplicationRecords() {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
+        std::scoped_lock lk(g_registration_lock);
+
+        /* HOME's grid keeps its own copy of each icon while the game stays in it, and reconciles only when it comes to
+         * the front: taking a game off and back while the Manager is open changes nothing it can see. So the games stay
+         * off HOME until the Manager closes, and come back once HOME is in front. */
+        ncm::ProgramId applications[MaxApplicationCount];
+        const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        for (s32 i = 0; i < count; ++i) {
+            const ncm::ApplicationId application_id = { applications[i].value };
+            if (!HasApplicationRecord(application_id)) {
+                continue;
+            }
+            if (const Result result = DeleteApplicationRecord(application_id); R_FAILED(result)) {
+                Log("refresh %016" PRIx64 ": ns record not removed 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
+                continue;
+            }
+            if (std::find(g_refresh_pending, g_refresh_pending + g_refresh_pending_count, application_id) == g_refresh_pending + g_refresh_pending_count &&
+                g_refresh_pending_count < MaxApplicationCount) {
+                g_refresh_pending[g_refresh_pending_count++] = application_id;
+            }
+        }
+        Log("refresh: %d games off HOME until the Manager closes", g_refresh_pending_count);
+        /* Arms the fallback; FinishHomeRefresh is the second signal. */
+        if (!g_refresh_armed) {
+            g_refresh_armed = true;
+            os::SignalEvent(std::addressof(g_home_refresh_event));
+        }
+    }
+
+    void FinishHomeRefresh() {
+        bool pending;
         {
             std::scoped_lock lk(g_registration_lock);
-            g_pushed_count = 0;
+            pending = g_refresh_armed;
         }
-        RegisterIndexedApplicationsIfEnabled();
+        if (pending) {
+            Log("refresh: the Manager is closing");
+            os::SignalEvent(std::addressof(g_home_refresh_event));
+        }
+    }
+
+    void StartHomeRefreshThread() {
+        os::InitializeEvent(std::addressof(g_home_refresh_event), false, os::EventClearMode_AutoClear);
+        R_ABORT_UNLESS(os::CreateThread(std::addressof(g_home_refresh_thread), HomeRefreshThreadFunction, nullptr, g_home_refresh_stack, sizeof(g_home_refresh_stack), AMS_GET_SYSTEM_THREAD_PRIORITY(mitm_usbl, IpcServer)));
+        os::SetThreadNamePointer(std::addressof(g_home_refresh_thread), AMS_GET_SYSTEM_THREAD_NAME(mitm_usbl, IpcServer));
+        os::StartThread(std::addressof(g_home_refresh_thread));
     }
 
     Result ShowGameForLaunch(ncm::ApplicationId application_id) {

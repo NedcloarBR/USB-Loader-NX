@@ -68,7 +68,8 @@ namespace ams::mitm::usbl {
     AMS_SF_METHOD_INFO(C, H, 15, Result, ShowGameForLaunch,      (ncm::ApplicationId application_id),                                                                       (application_id)) \
     AMS_SF_METHOD_INFO(C, H, 16, Result, ApplyHomeVisibility,    (),                                                                                                        ())               \
     AMS_SF_METHOD_INFO(C, H, 17, Result, GetGameIcon,            (sf::Out<u32> out_size, const sf::OutBuffer &out, ncm::ApplicationId application_id),                      (out_size, out, application_id)) \
-    AMS_SF_METHOD_INFO(C, H, 18, Result, GetGameDisplayVersion,  (sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id),                       (out, application_id))
+    AMS_SF_METHOD_INFO(C, H, 18, Result, GetGameDisplayVersion,  (sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id),                       (out, application_id)) \
+    AMS_SF_METHOD_INFO(C, H, 19, Result, FinishHomeRefresh,      (),                                                                                                        ())
 
 AMS_SF_DEFINE_INTERFACE(ams::mitm::usbl::impl, IService, AMS_USBL_I_SERVICE_INTERFACE_INFO, 0x00000000)
 
@@ -89,6 +90,7 @@ namespace ams::mitm::usbl {
             Result ListGames(sf::Out<s32> out_count, const sf::OutArray<xci::GameStatus> &out);
             Result SetGameHidden(const ::usbl::protocol::SetGameHiddenInput &input);
             Result ShowGameForLaunch(ncm::ApplicationId application_id);
+            Result FinishHomeRefresh();
             Result ApplyHomeVisibility();
             Result GetGameIcon(sf::Out<u32> out_size, const sf::OutBuffer &out, ncm::ApplicationId application_id);
             Result GetGameDisplayVersion(sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id);
