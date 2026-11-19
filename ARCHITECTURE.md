@@ -20,7 +20,7 @@ The repository has two branches with no history in common.
 │   └── ncm/                 usbl client inside ncm
 ├── common/include/usbl/     usbl service wire format, shared by the module and the Manager
 ├── usbl.mk                  adds src/ to the Atmosphère modules
-├── manager/                 the Manager .nro
+├── manager/                 the Manager .nro (README.md: features, settings, files, code)
 │   ├── themes/              example theme and the theme format
 │   └── lib/Plutonium/       → submodule (UI library)
 ├── config_templates/        usbloadernx.ini, shipped in atmosphere/config_templates/
