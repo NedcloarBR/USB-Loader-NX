@@ -1,0 +1,138 @@
+{
+	"App": {
+		"Title": "USB Loader NX",
+		"ServiceUnavailable": "O USB Loader NX não está ativo. Confira se o Atmosphère deste pacote foi instalado e o console reiniciado, e se atmosphere/config/system_settings.ini não tem enable = u8!0x0 na seção [usbloadernx]."
+	},
+	"Library": {
+		"NoGames": "Nenhum jogo encontrado. Conecte um dispositivo USB com a pasta usbloadernx/games.",
+		"NoDrives": "Nenhum dispositivo USB conectado",
+		"FreeOf": "{{FREE}} livres de {{TOTAL}}",
+		"Search": "Buscar",
+		"SearchHeader": "Buscar pelo nome do jogo",
+		"NoMatch": "Nenhum jogo com “{{QUERY}}”. Aperte B para limpar a busca.",
+		"GameOf": "Jogo {{INDEX}} de {{COUNT}}",
+		"DrivesFree": "{{DRIVES}}, {{FREE}} livres"
+	},
+	"Count": {
+		"GameOne": "{{COUNT}} jogo",
+		"GameMany": "{{COUNT}} jogos",
+		"UpdateOne": "{{COUNT}} atualização",
+		"UpdateMany": "{{COUNT}} atualizações",
+		"AddOnOne": "{{COUNT}} DLC",
+		"AddOnMany": "{{COUNT}} DLCs",
+		"DriveOne": "{{COUNT}} dispositivo USB",
+		"DriveMany": "{{COUNT}} dispositivos USB"
+	},
+	"Game": {
+		"OnDrive": "Em {{DRIVE}}",
+		"Disconnected": "Dispositivo desconectado",
+		"Hidden": "Oculto no menu HOME",
+		"PlugInDrive": "Conecte o dispositivo para jogar",
+		"SourceXci": "XCI (cartucho)",
+		"SourceNsp": "NSP (eShop)",
+		"SourceInstalled": "Instalado",
+		"Version": "Versão {{VERSION}}",
+		"Contiguous": "Arquivo sem fragmentação",
+		"FragmentedParts": "Fragmentado em {{PIECES}} partes",
+		"HeavilyFragmented": "Fragmentação excessiva",
+		"PartsElsewhere": "Atualização ou DLC em outro dispositivo: mova para junto do jogo",
+		"Launch": "Iniciar",
+		"HideFromHome": "Ocultar do menu HOME",
+		"ShowOnHome": "Mostrar no menu HOME",
+		"PlayTimeHours": "{{HOURS}} h jogadas",
+		"PlayTimeMinutes": "{{MINUTES}} min jogados",
+		"NeverPlayed": "Nunca jogado",
+		"LastPlayed": "Jogado por último em {{DATE}}",
+		"RowVersion": "Versão",
+		"RowUpdate": "Atualização",
+		"RowAddOns": "DLCs",
+		"RowSize": "Tamanho",
+		"RowFile": "Arquivo",
+		"RowPlayTime": "Tempo de jogo",
+		"RowLastPlayed": "Última vez",
+		"UpdateNone": "Nenhuma",
+		"UpdateInstalled": "Instalada",
+		"UpdateMissing": "Falta a atualização que este jogo já usou",
+		"UpdateMissingHelp": "Este jogo já foi aberto numa versão mais nova, e o console não o abre mais sem essa atualização. Coloque a atualização de volta no mesmo pendrive do jogo. Se o menu HOME oferecer para baixar, escolha Cancelar.",
+		"UpdateMissingRow": "Faltando",
+		"UpdateMissingBadge": "Sem a atualização",
+		"Details": "Detalhes",
+		"UpdateElsewhereRow": "Em outro dispositivo (não usada)",
+		"PartsElsewhereBadge": "Update em outro pendrive",
+		"PartsElsewhereHelp": "A atualização ou DLC deste jogo está em outro dispositivo e por isso não é usada: o jogo abre sem ela. Mova os arquivos para o mesmo pendrive do jogo e conecte de novo."
+	},
+	"Drives": {
+		"Title": "Dispositivos USB",
+		"NoGamesFolder": "Pasta usbloadernx/games não encontrada.",
+		"Unreadable": "Não foi possível ler. Use exFAT ou FAT32.",
+		"AlmostFull": "Quase cheio. Libere espaço antes de copiar mais jogos.",
+		"Total": "Total: {{FREE}} livres de {{TOTAL}}, {{GAMES}}"
+	},
+	"Settings": {
+		"Title": "Configurações",
+		"SectionHome": "Menu HOME",
+		"SectionManager": "Manager",
+		"SectionAbout": "Sobre",
+		"AutoRegister": "Mostrar os jogos do USB no menu HOME",
+		"AutoRegisterHelp": "Registra cada jogo encontrado, com atualizações e DLCs.",
+		"HideWhenRemoved": "Ocultar jogos de dispositivos desconectados",
+		"HideWhenRemovedHelp": "Os ícones voltam quando o dispositivo é reconectado.",
+		"Badge": "Selo USB nos ícones",
+		"BadgeHelp": "Mostra no menu HOME quais jogos vêm do USB e em que formato.",
+		"Notifications": "Notificações (Ultrahand)",
+		"NotificationsHelp": "Avisa quando um dispositivo USB é conectado ou removido.",
+		"NeedsAutoRegister": "Só vale com os jogos do USB visíveis no menu HOME.",
+		"Sounds": "Efeitos sonoros",
+		"SoundsHelp": "Sons ao navegar, abrir e escolher no Manager.",
+		"Theme": "Tema",
+		"ThemeHelp": "Cores, sons e visual. Os temas ficam em config/usbloadernx-manager/themes no SD.",
+		"ThemeDefault": "Padrão",
+		"Music": "Música do tema",
+		"MusicHelp": "Toca a música de fundo do tema, abaixo dos efeitos sonoros.",
+		"MusicUnavailable": "O tema escolhido não tem música.",
+		"SectionHomeHelp": "Como os jogos do pendrive aparecem no console.",
+		"SectionManagerHelp": "Sons, música e aparência do Manager.",
+		"ThemeInUse": "Em uso",
+		"MusicVolume": "Volume da música",
+		"MusicVolumeHelp": "Esquerda e Direita ajustam; os efeitos sonoros continuam iguais."
+	},
+	"About": {
+		"Version": "Versão {{VERSION}}",
+		"Summary": "Jogue seus dumps de Nintendo Switch direto de um pendrive ou HD externo.",
+		"License": "Software livre sob a licença GNU GPL v2. Baseado no Atmosphère."
+	},
+	"Hints": {
+		"Toggle": "Ativar/desativar",
+		"Select": "Selecionar",
+		"Back": "Voltar",
+		"Drives": "Dispositivos",
+		"Settings": "Configurações",
+		"Grid": "Grade",
+		"Carousel": "Carrossel",
+		"Exit": "Sair",
+		"Favorite": "Favoritar",
+		"Unfavorite": "Tirar dos favoritos",
+		"SwitchGame": "Jogo anterior ou próximo",
+		"ClearSearch": "Limpar busca",
+		"Apply": "Usar"
+	},
+	"Common": {
+		"Back": "Voltar",
+		"Ok": "OK"
+	},
+	"Errors": {
+		"LaunchFailed": "Não foi possível iniciar o jogo ({{CODE}}).",
+		"UpdateRequired": "Este jogo já foi aberto numa versão mais nova, e o console não o abre mais sem essa atualização. Coloque a atualização de volta no mesmo pendrive do jogo. Se o menu HOME oferecer para baixar, escolha Cancelar.",
+		"ActionFailed": "Não foi possível concluir a ação ({{CODE}})."
+	},
+	"Sort": {
+		"Name": "Nome",
+		"RecentlyPlayed": "Jogados recentemente",
+		"MostPlayed": "Mais jogados",
+		"Size": "Tamanho"
+	},
+	"Format": {
+		"DecimalSeparator": ",",
+		"Date": "{{DAY}}/{{MONTH}}/{{YEAR}}"
+	}
+}

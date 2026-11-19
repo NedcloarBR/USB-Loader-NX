@@ -1,0 +1,114 @@
+/*
+ * Copyright (c) 2026 NedcloarBR
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include <usbl_client.hpp>
+#include <algorithm>
+#include <cstring>
+
+namespace usbl {
+
+    namespace {
+
+        constexpr size_t MaxDrives = 8;
+        constexpr size_t MaxGames  = 64;
+
+        Service g_service;
+
+        constexpr u32 ToCommand(protocol::CommandId id) {
+            return static_cast<u32>(id);
+        }
+
+        template<typename T>
+        Result List(std::vector<T> *out, protocol::CommandId command_id, size_t max_count) {
+            out->resize(max_count);
+
+            s32 count = 0;
+            const Result rc = serviceDispatchOut(&g_service, ToCommand(command_id), count,
+                .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
+                .buffers = { { out->data(), out->size() * sizeof(T) } },
+            );
+            out->resize(R_SUCCEEDED(rc) ? static_cast<size_t>(count) : 0);
+            return rc;
+        }
+
+    }
+
+    Result Initialize() {
+        return smGetService(&g_service, protocol::ServiceName);
+    }
+
+    void Exit() {
+        serviceClose(&g_service);
+    }
+
+    Result GetConfigValue(ConfigValue *out, ConfigKey key) {
+        const u8 in = static_cast<u8>(key);
+        return serviceDispatchInOut(&g_service, ToCommand(protocol::CommandId::GetConfigValue), in, *out);
+    }
+
+    Result SetConfigValue(ConfigKey key, bool enabled) {
+        const protocol::SetConfigValueInput in = { key, enabled };
+        return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::SetConfigValue), in);
+    }
+
+    Result ListDrives(std::vector<DriveStatus> *out) {
+        return List(out, protocol::CommandId::ListDrives, MaxDrives);
+    }
+
+    Result ListGames(std::vector<GameStatus> *out) {
+        return List(out, protocol::CommandId::ListGames, MaxGames);
+    }
+
+    Result SetGameHidden(u64 application_id, bool hidden) {
+        const protocol::SetGameHiddenInput in = { application_id, hidden, {} };
+        return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::SetGameHidden), in);
+    }
+
+    Result ShowGameForLaunch(u64 application_id) {
+        return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::ShowGameForLaunch), application_id);
+    }
+
+    Result FinishHomeRefresh() {
+        if (!serviceIsActive(&g_service)) {
+            return 0;
+        }
+        return serviceDispatch(&g_service, ToCommand(protocol::CommandId::FinishHomeRefresh));
+    }
+
+    Result ApplyHomeVisibility() {
+        return serviceDispatch(&g_service, ToCommand(protocol::CommandId::ApplyHomeVisibility));
+    }
+
+    Result GetGameDisplayVersion(u64 application_id, std::string *out) {
+        protocol::DisplayVersion version = {};
+        const Result rc = serviceDispatchInOut(&g_service, ToCommand(protocol::CommandId::GetGameDisplayVersion), application_id, version);
+        if (R_SUCCEEDED(rc)) {
+            out->assign(version.text, strnlen(version.text, sizeof(version.text)));
+        }
+        return rc;
+    }
+
+    Result GetGameIcon(u64 application_id, std::vector<u8> *out) {
+        out->resize(protocol::MaxIconSize);
+        u32 size = 0;
+        const Result rc = serviceDispatchInOut(&g_service, ToCommand(protocol::CommandId::GetGameIcon), application_id, size,
+            .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
+            .buffers = { { out->data(), out->size() } },
+        );
+        out->resize(R_SUCCEEDED(rc) ? std::min<size_t>(size, out->size()) : 0);
+        return rc;
+    }
+
+}

@@ -28,7 +28,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 | **Several drives** | At once, and they survive sleep without notifications or a HOME refresh |
 | **Hiding** | Hide games while their drive is unplugged, or single games from the Manager |
 | **Notifications** | Ultrahand notifications when a drive is connected or removed, in English and Brazilian Portuguese |
-| **Manager** | `USBLoaderNX-Manager.nro`: library, launch, show or hide on HOME, drive usage and settings |
+| **Manager** | `USBLoaderNX-Manager.nro`: games as a shelf or a grid, launch, details, play time, favorites, search and sorting, show or hide on HOME, drive usage, settings and [themes](manager/themes/README.md) |
 | **Safety** | The USB drive is mounted read-only |
 
 What comes next, from compressed dumps to installing to USB, is in [TODO.md](TODO.md).

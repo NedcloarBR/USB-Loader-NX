@@ -21,10 +21,11 @@ The repository has two branches with no history in common.
 ├── common/include/usbl/     usbl service wire format, shared by the module and the Manager
 ├── usbl.mk                  adds src/ to the Atmosphère modules
 ├── manager/                 the Manager .nro
+│   ├── themes/              example theme and the theme format
 │   └── lib/Plutonium/       → submodule (UI library)
 ├── config_templates/        usbloadernx.ini, shipped in atmosphere/config_templates/
 ├── assets/                  project icon
-├── tools/assets/            generators for the notification icons and the badge
+├── tools/assets/            generators for the notification icons, the badge, the Manager icon, sounds and the example theme
 ├── docker/                  build image: Atmosphère's Dockerfile plus a newer libnx
 ├── scripts/                 build-image.sh · build.sh · package.sh · update-atmosphere.sh
 └── ATMOSPHERE_VERSION       upstream release the fork is based on

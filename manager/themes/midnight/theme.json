@@ -1,0 +1,36 @@
+{
+	"Theme": {
+		"Name": "Midnight",
+		"Author": "NedcloarBR",
+		"Version": "1.0"
+	},
+	"Colors": {
+		"Ground": "#0F1424",
+		"Panel": "#182036",
+		"Raised": "#222C48",
+		"Track": "#2E3A5C",
+		"Text": "#EEF1FA",
+		"TextSoft": "#D3D9EC",
+		"Muted": "#98A2C4",
+		"MutedSoft": "#AEB7D6",
+		"Faint": "#6F7AA0",
+		"Primary": "#7C8CFF",
+		"Info": "#4FC3F7",
+		"OnPrimary": "#0F1424",
+		"Focus": "#7C8CFF",
+		"FocusAlt": "#4FC3F7",
+		"Overlay": "#070A14D1"
+	},
+	"Images": {
+		"Background": "background.jpg",
+		"BackgroundDim": "0"
+	},
+	"Sounds": {
+		"Music": "music.wav"
+	},
+	"Animations": {
+		"Speed": "0.8",
+		"Particles": "off",
+		"FocusPulse": "2.2"
+	}
+}

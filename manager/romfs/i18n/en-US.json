@@ -1,0 +1,138 @@
+{
+	"App": {
+		"Title": "USB Loader NX",
+		"ServiceUnavailable": "USB Loader NX is not running. Make sure the Atmosphère from this package is installed and the console was restarted, and that atmosphere/config/system_settings.ini does not have enable = u8!0x0 under [usbloadernx]."
+	},
+	"Library": {
+		"NoGames": "No games found. Plug in a USB drive with a usbloadernx/games folder.",
+		"NoDrives": "No USB drive connected",
+		"FreeOf": "{{FREE}} free of {{TOTAL}}",
+		"Search": "Search",
+		"SearchHeader": "Search by game name",
+		"NoMatch": "No game matches “{{QUERY}}”. Press B to clear the search.",
+		"GameOf": "Game {{INDEX}} of {{COUNT}}",
+		"DrivesFree": "{{DRIVES}}, {{FREE}} free"
+	},
+	"Count": {
+		"GameOne": "{{COUNT}} game",
+		"GameMany": "{{COUNT}} games",
+		"UpdateOne": "{{COUNT}} update",
+		"UpdateMany": "{{COUNT}} updates",
+		"AddOnOne": "{{COUNT}} DLC",
+		"AddOnMany": "{{COUNT}} DLCs",
+		"DriveOne": "{{COUNT}} USB drive",
+		"DriveMany": "{{COUNT}} USB drives"
+	},
+	"Game": {
+		"OnDrive": "On {{DRIVE}}",
+		"Disconnected": "Drive unplugged",
+		"Hidden": "Hidden on the HOME Menu",
+		"PlugInDrive": "Plug in its drive to play",
+		"SourceXci": "XCI (cartridge)",
+		"SourceNsp": "NSP (eShop)",
+		"SourceInstalled": "Installed",
+		"Version": "Version {{VERSION}}",
+		"Contiguous": "Not fragmented",
+		"FragmentedParts": "Fragmented in {{PIECES}} pieces",
+		"HeavilyFragmented": "Too fragmented",
+		"PartsElsewhere": "Update or DLC on another drive: move it next to the game",
+		"Launch": "Launch",
+		"HideFromHome": "Hide from the HOME Menu",
+		"ShowOnHome": "Show on the HOME Menu",
+		"PlayTimeHours": "{{HOURS}} h played",
+		"PlayTimeMinutes": "{{MINUTES}} min played",
+		"NeverPlayed": "Never played",
+		"LastPlayed": "Last played on {{DATE}}",
+		"RowVersion": "Version",
+		"RowUpdate": "Update",
+		"RowAddOns": "DLCs",
+		"RowSize": "Size",
+		"RowFile": "File",
+		"RowPlayTime": "Play time",
+		"RowLastPlayed": "Last played",
+		"UpdateNone": "None",
+		"UpdateInstalled": "Installed",
+		"UpdateMissing": "Missing the update this game was played with",
+		"UpdateMissingHelp": "This game was played on a newer version, and the console will not start it without that update. Put the update back on the same drive as the game. If HOME offers to download it, choose Cancel.",
+		"UpdateMissingRow": "Missing",
+		"UpdateMissingBadge": "Update missing",
+		"Details": "Details",
+		"UpdateElsewhereRow": "On another drive (not used)",
+		"PartsElsewhereBadge": "Update on another drive",
+		"PartsElsewhereHelp": "Its update or DLC is on another drive, so it is not used: the game runs without it. Move the files to the same drive as the game and plug it in again."
+	},
+	"Drives": {
+		"Title": "USB drives",
+		"NoGamesFolder": "No usbloadernx/games folder found.",
+		"Unreadable": "Cannot be read. Use exFAT or FAT32.",
+		"AlmostFull": "Almost full. Free some space before copying more games.",
+		"Total": "Total: {{FREE}} free of {{TOTAL}}, {{GAMES}}"
+	},
+	"Settings": {
+		"Title": "Settings",
+		"SectionHome": "HOME Menu",
+		"SectionManager": "Manager",
+		"SectionAbout": "About",
+		"AutoRegister": "Show USB games on the HOME Menu",
+		"AutoRegisterHelp": "Registers each game found, with its updates and DLCs.",
+		"HideWhenRemoved": "Hide games while their drive is unplugged",
+		"HideWhenRemovedHelp": "Their icons come back when the drive is plugged in again.",
+		"Badge": "USB badge on icons",
+		"BadgeHelp": "Shows on the HOME Menu where each game is loaded from.",
+		"Notifications": "Notifications (Ultrahand)",
+		"NotificationsHelp": "Tells when a drive is plugged in or removed.",
+		"NeedsAutoRegister": "Only applies while USB games are shown on the HOME Menu.",
+		"Sounds": "Sound effects",
+		"SoundsHelp": "Sounds when moving, opening and choosing in the Manager.",
+		"Theme": "Theme",
+		"ThemeHelp": "Colors, sounds and look. Themes go in config/usbloadernx-manager/themes on the SD card.",
+		"ThemeDefault": "Default",
+		"Music": "Theme music",
+		"MusicHelp": "Plays the theme's background music, under the sound effects.",
+		"MusicUnavailable": "The chosen theme has no music.",
+		"SectionHomeHelp": "How the drive's games show up on the console.",
+		"SectionManagerHelp": "The Manager's sounds, music and look.",
+		"ThemeInUse": "In use",
+		"MusicVolume": "Music volume",
+		"MusicVolumeHelp": "Left and Right set it; the sound effects keep their volume."
+	},
+	"About": {
+		"Version": "Version {{VERSION}}",
+		"Summary": "Play your Nintendo Switch dumps straight from a USB drive.",
+		"License": "Free software under the GNU GPL v2. Based on Atmosphère."
+	},
+	"Hints": {
+		"Toggle": "Turn on/off",
+		"Select": "Select",
+		"Back": "Back",
+		"Drives": "USB drives",
+		"Settings": "Settings",
+		"Grid": "Grid",
+		"Carousel": "Carousel",
+		"Exit": "Exit",
+		"Favorite": "Add to favorites",
+		"Unfavorite": "Remove from favorites",
+		"SwitchGame": "Previous or next game",
+		"ClearSearch": "Clear search",
+		"Apply": "Use"
+	},
+	"Common": {
+		"Back": "Back",
+		"Ok": "OK"
+	},
+	"Errors": {
+		"LaunchFailed": "The game could not be launched ({{CODE}}).",
+		"UpdateRequired": "This game was played on a newer version, and the console will not start it without that update. Put the update back on the same drive as the game. If HOME offers to download it, choose Cancel.",
+		"ActionFailed": "The action could not be completed ({{CODE}})."
+	},
+	"Sort": {
+		"Name": "Name",
+		"RecentlyPlayed": "Recently played",
+		"MostPlayed": "Most played",
+		"Size": "Size"
+	},
+	"Format": {
+		"DecimalSeparator": ".",
+		"Date": "{{MONTH}}/{{DAY}}/{{YEAR}}"
+	}
+}

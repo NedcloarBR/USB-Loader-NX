@@ -1,0 +1,50 @@
+/*
+ * Copyright (c) 2026 NedcloarBR
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#pragma once
+#include <switch.h>
+#include <string>
+#include <vector>
+#include <usbl/protocol.hpp>
+
+/* Client of the "usbl" service that USB Loader NX registers inside ams.mitm (see common/include/usbl/protocol.hpp). */
+namespace usbl {
+
+    using protocol::ConfigKey;
+    using protocol::ConfigValue;
+    using protocol::DriveState;
+    using protocol::DriveStatus;
+    using protocol::GameSource;
+    using protocol::GameStatus;
+
+    /* Fails when USB Loader NX is disabled ([usbloadernx] enable) or this is not the USB Loader NX build of Atmosphère. */
+    Result Initialize();
+    void Exit();
+
+    Result GetConfigValue(ConfigValue *out, ConfigKey key);
+    Result SetConfigValue(ConfigKey key, bool enabled);
+    Result ListDrives(std::vector<DriveStatus> *out);
+    Result ListGames(std::vector<GameStatus> *out);
+    Result SetGameHidden(u64 application_id, bool hidden);
+    Result ShowGameForLaunch(u64 application_id);
+    Result ApplyHomeVisibility();
+    /* Lets games taken off HOME by a badge change come back, now that the Manager is closing. */
+    Result FinishHomeRefresh();
+    /* The game's own icon (no badge), while its drive is plugged in. */
+    Result GetGameIcon(u64 application_id, std::vector<u8> *out);
+    /* "1.0.2", read from the game on the drive (the update's when there is one), while it is plugged in. */
+    Result GetGameDisplayVersion(u64 application_id, std::string *out);
+
+}
