@@ -1,7 +1,8 @@
 name: Release
 
-# A v* tag pushed by scripts/release.sh. When the script already published the release from the PC (`--publish`), there
-# is nothing left to do; with `--publish-ci` it only pushed the tag, and this builds and publishes the same release.
+# A v* tag pushed by scripts/release.sh. With `--publish-ci` this builds and publishes the release; with `--publish` the
+# release was already published from the PC and the build is skipped. Either way CHANGELOG.md on master is brought up
+# to date afterwards.
 on:
   push:
     tags: ['v*']
@@ -64,3 +65,38 @@ jobs:
         run: |
           prerelease=$([[ "$TAG" == v0.* || "$TAG" == *-* ]] && echo --prerelease || true)
           gh release create "$TAG" dist/*.zip --title "USB Loader NX $TAG" --notes-file dist/notes.md --verify-tag $prerelease
+
+  changelog:
+    needs: [check, release]
+    if: always() && (needs.release.result == 'success' || needs.check.outputs.exists == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      # Generated at the tag, so commits pushed to master since then stay out of this release.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Generate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/release-notes.sh "${{ github.ref_name }}" "usb-loader-nx-${{ github.ref_name }}.zip" "$RUNNER_TEMP/notes"
+
+      - name: Commit to master
+        run: |
+          git fetch -q origin master
+          git checkout -q -B master origin/master
+          cp "$RUNNER_TEMP/notes/CHANGELOG.md" CHANGELOG.md
+          if git diff --quiet -- CHANGELOG.md && git ls-files --error-unmatch CHANGELOG.md >/dev/null 2>&1; then
+            echo "CHANGELOG.md is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(release): ${{ github.ref_name }}"
+          git push origin master

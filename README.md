@@ -94,9 +94,11 @@ Releases are made with `scripts/release.sh` on `master`, from the [Conventional 
 
 ```sh
 scripts/release.sh 0.1.0                # simulation: dist/release-v0.1.0/ with the zip, notes.md and CHANGELOG.md
-scripts/release.sh 0.1.0 --publish      # builds on the PC, commits CHANGELOG.md, tags, pushes and publishes
-scripts/release.sh 0.1.0 --publish-ci   # commits CHANGELOG.md, tags and pushes; the Release workflow builds and publishes
+scripts/release.sh 0.1.0 --publish      # builds on the PC, tags and publishes from here
+scripts/release.sh 0.1.0 --publish-ci   # tags and pushes the tag; the Release workflow builds and publishes
 ```
+
+Either way the Release workflow then commits the updated `CHANGELOG.md` to `master`; pull before the next change.
 
 Versions `0.x` and versions with a `-` (`v0.2.0-beta.1`) are pre-releases. The notes and [CHANGELOG.md](CHANGELOG.md) come from [git-cliff](https://git-cliff.org) (`cliff.toml`) through `scripts/release-notes.sh`: commits grouped by type, each with its hash, pull request and author, the README's header on top, and the Atmosphère version and tested firmware in the notes. `git-cliff --unreleased` previews what the next release holds. Publishing needs `git-cliff` and `gh`; every push and pull request is also built by the Build workflow.
 

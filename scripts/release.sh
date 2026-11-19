@@ -2,10 +2,11 @@
 # Makes a release: scripts/release.sh <version> [--publish | --publish-ci] [--skip-build]
 #   <version>      0.1.0, v0.1.0 or v0.2.0-beta.1; 0.x and versions with a "-" are pre-releases
 #   (default)      simulation: builds, packages and writes dist/release-<tag>/ (zip, notes.md, CHANGELOG.md) and prints
-#                  what --publish would do; no commit, tag or upload
-#   --publish      builds on the PC, commits CHANGELOG.md, tags, pushes master and the tag, and creates the GitHub release
-#                  (no GitHub Actions minutes needed; the Release workflow then sees the release and stops)
-#   --publish-ci   commits CHANGELOG.md, tags and pushes; the Release workflow builds and publishes
+#                  what --publish would do; no tag or upload
+#   --publish      builds on the PC, tags, and publishes the GitHub release from here; the Release workflow skips the
+#                  build and only updates CHANGELOG.md
+#   --publish-ci   tags and pushes the tag; the Release workflow builds, publishes and updates CHANGELOG.md
+# CHANGELOG.md on master is always committed by the Release workflow, never by this script.
 #   --skip-build   packages the last build instead of building again
 # Needs Docker, git-cliff (cliff.toml) and, to publish, gh (also lends git-cliff its token for authors and pull requests).
 set -euo pipefail
@@ -87,31 +88,25 @@ if ! $PUBLISH; then
     echo "Simulated release $TAG ($($PRERELEASE && echo pre-release || echo release)) in ${OUT#"$ROOT/"}:"
     echo "  $(basename "$ZIP") ($(du -h "$ZIP" | cut -f1))"
     echo "  notes.md       the release notes"
-    echo "  CHANGELOG.md   the CHANGELOG.md --publish would commit"
+    echo "  CHANGELOG.md   what the Release workflow will commit to master"
     echo
     echo "--publish would then run:"
-    echo "  cp $OUT/CHANGELOG.md CHANGELOG.md"
-    echo "  git commit -m 'chore(release): $TAG' CHANGELOG.md"
     echo "  git tag -a $TAG -m '$TITLE'"
-    echo "  git push origin master"
     echo "  gh release create $TAG $(basename "$ZIP") --draft ${GH_FLAGS[*]}"
     echo "  git push origin $TAG"
     echo "  gh release edit $TAG --draft=false"
     exit 0
 fi
 
-cp "$OUT/CHANGELOG.md" CHANGELOG.md
-git add CHANGELOG.md
-git commit -q -m "chore(release): $TAG"
 git tag -a "$TAG" -m "$TITLE"
 if $PUBLISH_CI; then
-    git push -q origin master "$TAG"
-    echo "Pushed $TAG: the Release workflow builds and publishes it."
+    git push -q origin "$TAG"
+    echo "Pushed $TAG: the Release workflow builds, publishes and updates CHANGELOG.md."
     exit 0
 fi
-# A draft release first, then the tag: the Release workflow finds the release already there and stops. The draft goes
-# public once its tag is on GitHub.
-git push -q origin master
+# A draft release first, then the tag: the Release workflow finds the release already there, skips the build and only
+# updates CHANGELOG.md. The draft goes public once its tag is on GitHub.
 gh release create "$TAG" "$ZIP" --draft "${GH_FLAGS[@]}"
 git push -q origin "$TAG"
 gh release edit "$TAG" --draft=false
+echo "Published $TAG. The Release workflow commits CHANGELOG.md to master: pull before the next change."
