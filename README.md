@@ -11,7 +11,7 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 ![Tested on firmware 19.0.1](https://img.shields.io/badge/tested%20on-19.0.1-2B2D31?labelColor=1E1F22)
 ![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
 
-[Features](#features) · [Install](#install) · [Configuration](#configuration) · [Building](#building) · [Architecture](ARCHITECTURE.md) · [TODO](TODO.md) · [License](#license) · [Credits](#credits)
+[Features](#features) · [Install](#install) · [Configuration](#configuration) · [Building](#building) · [Architecture](ARCHITECTURE.md) · [Changelog](CHANGELOG.md) · [TODO](TODO.md) · [License](#license) · [Credits](#credits)
 
 </div>
 
@@ -90,7 +90,15 @@ A conflict stops the rebase inside `atmosphere/`, on the hook that no longer app
 
 ## Releases
 
-Push a `v*` tag on `master`, for example `v0.1.0`. A tag with a `-`, like `v0.2.0-beta.1`, makes a pre-release. The Release workflow builds everything and publishes `usb-loader-nx-<tag>.zip`, noting the Atmosphère version it is based on. Every push and pull request is built by the Build workflow.
+Releases are made with `scripts/release.sh` on `master`, from the [Conventional Commits](https://www.conventionalcommits.org) history:
+
+```sh
+scripts/release.sh 0.1.0                # simulation: dist/release-v0.1.0/ with the zip, notes.md and CHANGELOG.md
+scripts/release.sh 0.1.0 --publish      # builds on the PC, commits CHANGELOG.md, tags, pushes and publishes
+scripts/release.sh 0.1.0 --publish-ci   # commits CHANGELOG.md, tags and pushes; the Release workflow builds and publishes
+```
+
+Versions `0.x` and versions with a `-` (`v0.2.0-beta.1`) are pre-releases. The notes and [CHANGELOG.md](CHANGELOG.md) come from [git-cliff](https://git-cliff.org) (`cliff.toml`) through `scripts/release-notes.sh`: commits grouped by type, each with its hash, pull request and author, the README's header on top, and the Atmosphère version and tested firmware in the notes. `git-cliff --unreleased` previews what the next release holds. Publishing needs `git-cliff` and `gh`; every push and pull request is also built by the Build workflow.
 
 ## License
 

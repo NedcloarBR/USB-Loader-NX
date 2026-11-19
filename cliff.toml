@@ -1,0 +1,61 @@
+# git-cliff: CHANGELOG.md and the release notes, from the Conventional Commits on master.
+# scripts/release.sh and the Release workflow use it; `git-cliff --unreleased` previews what the next release holds.
+
+[changelog]
+header = """
+Every release of USB Loader NX, newest first.
+"""
+body = """
+{% set repo = "https://github.com/" ~ remote.github.owner ~ "/" ~ remote.github.repo %}\
+{% if version %}\
+## {{ version }} — {{ timestamp | date(format="%Y-%m-%d", timezone="America/Sao_Paulo") }}
+{% else %}\
+## Unreleased
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+
+{% for commit in commits %}\
+- {% if commit.breaking %}⚠️ **Breaking:** {% endif %}\
+{% if commit.scope and commit.scope != "atmosphere" %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }} \
+([`{{ commit.id | truncate(length=7, end="") }}`]({{ repo }}/commit/{{ commit.id }})\
+{% if commit.remote.pr_number %}, [#{{ commit.remote.pr_number }}]({{ repo }}/pull/{{ commit.remote.pr_number }}){% endif %}\
+{% if commit.remote.username %} by @{{ commit.remote.username }}{% else %} by {{ commit.author.name }}{% endif %})
+{% endfor %}\
+{% endfor %}
+{% if version and previous.version %}\
+**Full changelog:** [{{ previous.version }}...{{ version }}]({{ repo }}/compare/{{ previous.version }}...{{ version }})
+
+{% elif version %}\
+**Full changelog:** [{{ version }}]({{ repo }}/commits/{{ version }})
+
+{% elif previous.version %}\
+**Full changelog:** [{{ previous.version }}...master]({{ repo }}/compare/{{ previous.version }}...master)
+
+{% endif %}\
+"""
+footer = ""
+trim = false
+
+[remote.github]
+owner = "NedcloarBR"
+repo = "USB-Loader-NX"
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+tag_pattern = "v[0-9]*"
+sort_commits = "oldest"
+commit_parsers = [
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^feat", group = "<!-- 0 -->✨ Features" },
+    { message = "^fix", group = "<!-- 1 -->🐛 Fixes" },
+    { message = "^perf", group = "<!-- 2 -->⚡ Performance" },
+    { message = "^chore\\(atmosphere\\)", group = "<!-- 3 -->🧩 Atmosphère" },
+    { message = "^refactor", group = "<!-- 4 -->♻️ Refactoring" },
+    { message = "^docs", group = "<!-- 5 -->📝 Documentation" },
+    { message = "^(build|ci)", group = "<!-- 6 -->🏗️ Build and CI" },
+    { message = "^(chore|style|test)", group = "<!-- 7 -->🔧 Other" },
+]

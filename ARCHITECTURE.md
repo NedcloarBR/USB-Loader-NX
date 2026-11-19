@@ -28,7 +28,8 @@ The repository has two branches with no history in common.
 ├── tools/assets/            generators for the notification icons, the badge, the Manager icon, sounds and the example theme
 ├── docker/                  build image: Atmosphère's Dockerfile plus a newer libnx
 ├── packaging/               README.md and the games folder note inside the release zip
-├── scripts/                 build-image.sh · build.sh · package.sh · update-atmosphere.sh
+├── scripts/                 build-image.sh · build.sh · package.sh · release.sh · release-notes.sh · update-atmosphere.sh
+├── cliff.toml               git-cliff: CHANGELOG.md and the release notes from the commit history
 └── ATMOSPHERE_VERSION       upstream release the fork is based on
 ```
 

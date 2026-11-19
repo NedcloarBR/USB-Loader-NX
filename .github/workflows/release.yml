@@ -1,5 +1,7 @@
 name: Release
 
+# A v* tag pushed by scripts/release.sh. When the script already published the release from the PC (`--publish`), there
+# is nothing left to do; with `--publish-ci` it only pushed the tag, and this builds and publishes the same release.
 on:
   push:
     tags: ['v*']
@@ -8,7 +10,25 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.release.outputs.exists }}
+    steps:
+      - id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ github.ref_name }}" -R "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ github.ref_name }} was already published from the PC; nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.exists == 'false'
     uses: ./.github/workflows/build.yml
     with:
       version: ${{ github.ref_name }}
@@ -18,22 +38,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           name: usb-loader-nx
           path: dist
 
-      - name: Atmosphère base version
-        id: base
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "atmosphere=$(cat ATMOSPHERE_VERSION)" >> "$GITHUB_OUTPUT"
-          echo "fork=$(git ls-tree HEAD atmosphere | awk '{print substr($3, 1, 9)}')" >> "$GITHUB_OUTPUT"
+          zip="$(basename dist/*.zip)"
+          scripts/release-notes.sh "${{ github.ref_name }}" "$zip" dist
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          prerelease=$([[ "$TAG" == *-* ]] && echo --prerelease || true)
-          gh release create "$TAG" dist/*.zip --title "USB Loader NX $TAG" --generate-notes $prerelease \
-            --notes "Atmosphère ${{ steps.base.outputs.atmosphere }} (fork ${{ steps.base.outputs.fork }})."
+          prerelease=$([[ "$TAG" == v0.* || "$TAG" == *-* ]] && echo --prerelease || true)
+          gh release create "$TAG" dist/*.zip --title "USB Loader NX $TAG" --notes-file dist/notes.md --verify-tag $prerelease
