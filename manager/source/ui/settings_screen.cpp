@@ -239,7 +239,7 @@ namespace ui {
         }
 
         AddText(*this, ContentX + 4, Top + CardHeight + 28, strings::Get(Id::AboutLicense), 17, color::Muted, Align::Left, ContentW - 8);
-        AddText(*this, ContentX + 4, Top + CardHeight + 56, "github.com/NedcloarBR", 17, color::Info);
+        AddText(*this, ContentX + 4, Top + CardHeight + 56, "github.com/NedcloarBR/USB-Loader-NX", 17, color::Info);
     }
 
     void SettingsScreen::OpenThemePicker() {
