@@ -27,6 +27,7 @@ The repository has two branches with no history in common.
 ├── assets/                  project icon
 ├── tools/assets/            generators for the notification icons, the badge, the Manager icon, sounds and the example theme
 ├── docker/                  build image: Atmosphère's Dockerfile plus a newer libnx
+├── packaging/               README.md and the games folder note inside the release zip
 ├── scripts/                 build-image.sh · build.sh · package.sh · update-atmosphere.sh
 └── ATMOSPHERE_VERSION       upstream release the fork is based on
 ```

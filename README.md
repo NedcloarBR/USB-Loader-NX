@@ -69,7 +69,7 @@ Requires Docker.
 git clone --recurse-submodules <repository>
 scripts/build-image.sh     # once: builds the atms-build-libnx image
 scripts/build.sh           # Atmosphère with USB Loader NX, and the Manager
-scripts/package.sh         # dist/usb-loader-nx-<version>.zip, ready for the SD card
+scripts/package.sh         # dist/usb-loader-nx-<version>.zip: SD/ and USB/ folders and a README.md
 ```
 
 The version comes from the closest `v*` tag (`git describe`), or `USBL_VERSION` when set.
