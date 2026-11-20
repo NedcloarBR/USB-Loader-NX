@@ -36,7 +36,7 @@ namespace ams::mitm::usbl::perf {
     /* Wraps a storage handed to a client so its reads are counted as Layer::Game. */
     std::shared_ptr<ams::fs::IStorage> MeasureGameReads(std::shared_ptr<ams::fs::IStorage> &&storage);
 
-    /* Times a step (indexing, registration) and logs it as "<what>: <ms> ms". */
+    /* Times a step (indexing, registration) and logs "drive <n>: <what> in <ms> ms", without the drive when it is negative. */
     class ScopedStep {
         NON_COPYABLE(ScopedStep);
         NON_MOVEABLE(ScopedStep);

@@ -161,7 +161,12 @@ namespace ams::mitm::usbl::perf {
     }
 
     ScopedStep::~ScopedStep() {
-        Log("drive %d: %s in %" PRId64 " ms", m_drive, m_what, (os::GetSystemTick() - m_start).ToTimeSpan().GetMilliSeconds());
+        const s64 ms = (os::GetSystemTick() - m_start).ToTimeSpan().GetMilliSeconds();
+        if (m_drive < 0) {
+            Log("%s in %" PRId64 " ms", m_what, ms);
+        } else {
+            Log("drive %d: %s in %" PRId64 " ms", m_drive, m_what, ms);
+        }
     }
 
 }

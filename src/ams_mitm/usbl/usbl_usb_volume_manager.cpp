@@ -403,12 +403,16 @@ namespace ams::mitm::usbl {
 
             Log("usb: host ready");
 
-            /* Titles installed since their drive was last plugged in. */
-            xci::ExcludeInstalledApplications();
-
-            /* Drives already plugged in at boot take a moment to enumerate; only hide what is still missing after that. */
+            /* Drives already plugged in at boot take a moment to enumerate; only hide what is still missing after that.
+             * Counted from now, so it runs alongside the wait for the SD card ncm database below instead of after it. */
             const os::Tick boot_hide_tick = os::GetSystemTick() + os::ConvertToTick(BootDriveGracePeriod);
             bool boot_hide_pending = true;
+
+            /* Titles installed since their drive was last plugged in. */
+            {
+                perf::ScopedStep step("boot: installed titles checked", -1);
+                xci::ExcludeInstalledApplications();
+            }
 
             while (true) {
                 DetachRemovedDrives();
