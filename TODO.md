@@ -80,17 +80,17 @@ Play games from a PC or NAS on the local network, like Open PS2 Loader does over
 - [x] Romfs mods and translations (`atmosphere/contents/<id>/romfs`) on USB games, through Atmosphère's LayeredFS; holding the override button turns them off as for installed games
 - [ ] Serve the `ForBatchRead` data storage commands (firmware 23.0.0 and later)
 - [ ] Replace the `ncm` hooks with an `ncm` mitm inside `ams.mitm` (fewer upstream changes, no IPC hop)
-- [ ] Hide unplugged games sooner after boot (today it can take more than a minute)
 
 ## Performance
 
 Measured before and after each change: the same game from USB and installed on the SD card (time to the title screen, loading a level).
 
-- [ ] Measure: read throughput (MB/s) and latency, indexing and registration time, in the debug log
-- [ ] Larger USB transfers: 1 to 4 MB per command instead of 64 KB, read straight into aligned buffers
-- [ ] One lock per drive (and one for the index) instead of a single lock for everything, so HOME, the Manager and a second drive do not wait on a game's reads
-- [ ] Read-ahead cache for sequential reads, if the larger transfers are not enough
-- [ ] Faster indexing when a drive is plugged in, and hiding unplugged games sooner after boot
+- [x] Measure: read throughput (MB/s) and latency, indexing and registration time, in the debug log
+- [x] Larger USB transfers: contiguous clusters read straight from the drive in 256 KB commands instead of one cluster (32 KB) at a time; 12 → 16 MB/s on a SanDisk Cruzer Blade, now the drive's own limit
+- [ ] One lock per drive (and one for the index) instead of a single lock for everything; measured at 0 ms of waiting with one drive, so only worth it once two drives are read at the same time
+- [ ] Read-ahead cache for sequential reads; not needed while the drive is the limit, to measure again with a faster drive
+- [x] Faster indexing: a fragmented file's cluster map is built once per mount (2.7 s → 1.0 s)
+- [x] Hide unplugged games sooner after boot: the grace period for drives plugged in at boot runs alongside the wait for the SD card database (HOME in line at ~52 s instead of ~58 s; the rest is ns finishing its own boot work)
 - [ ] Manager: open faster with many games (icons and statuses loaded as needed)
 
 ## Known issues
