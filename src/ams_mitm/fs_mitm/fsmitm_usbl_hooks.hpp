@@ -34,10 +34,12 @@ namespace ams::mitm::fs::usbl_hooks {
     /* OpenContentStorageFileSystem: the SD card content folder, overlaid with the USB-served NCAs. */
     Result OpenContentStorageFileSystem(FileSystemOut &out, Service *fwd, u32 content_storage_id);
 
-    /* OpenDataStorageByCurrentProcess/ByProgramId/WithProgramIndex: the program's RomFS (with its update laid over). */
-    Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id);
-    /* OpenDataStorageByDataId: add-on content. */
-    Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id);
+    /* OpenDataStorageByCurrentProcess/ByProgramId/WithProgramIndex: the program's RomFS (with its update laid over).
+     * With `allow_mods` (the client's override status, as Atmosphère decides it for installed games), romfs mods in
+     * sd:/atmosphere/contents/<id>/ are laid over it with Atmosphère's LayeredFS. */
+    Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods);
+    /* OpenDataStorageByDataId: add-on content, with its romfs mods likewise. */
+    Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id, bool allow_mods);
     /* OpenDataStorageByPath. */
     Result OpenDataStorageByPath(StorageOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type);
 

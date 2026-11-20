@@ -20,6 +20,8 @@
 #include "fsmitm_usbl_hooks.hpp"
 #include "fsmitm_usbl_content.hpp"
 #include "fsmitm_usbl_content_storage_fs.hpp"
+#include "fsmitm_layered_romfs_storage.hpp"
+#include "../amsmitm_fs_utils.hpp"
 #include "../usbl/nca/usbl_external_keys.hpp"
 #include "../usbl/usbl_log.hpp"
 
@@ -109,7 +111,39 @@ namespace ams::mitm::fs::usbl_hooks {
         R_SUCCEED();
     }
 
-    Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id) {
+    namespace {
+
+        /* Hands a shared storage to LayeredFS, which owns its base storage. */
+        class SharedStorageAdapter final : public IStorage, public ams::fs::impl::Newable {
+            private:
+                std::shared_ptr<IStorage> m_base;
+            public:
+                explicit SharedStorageAdapter(std::shared_ptr<IStorage> base) : m_base(std::move(base)) { /* ... */ }
+
+                virtual Result Read(s64 offset, void *buffer, size_t size) override { R_RETURN(m_base->Read(offset, buffer, size)); }
+                virtual Result Write(s64 offset, const void *buffer, size_t size) override { R_RETURN(m_base->Write(offset, buffer, size)); }
+                virtual Result Flush() override { R_RETURN(m_base->Flush()); }
+                virtual Result SetSize(s64 size) override { R_RETURN(m_base->SetSize(size)); }
+                virtual Result GetSize(s64 *out) override { R_RETURN(m_base->GetSize(out)); }
+
+                virtual Result OperateRange(void *dst, size_t dst_size, OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
+                    R_RETURN(m_base->OperateRange(dst, dst_size, op_id, offset, size, src, src_size));
+                }
+        };
+
+        /* Romfs mods (sd:/atmosphere/contents/<id>/romfs or romfs.bin) over a USB-served RomFS, as Atmosphère does for
+         * installed games. */
+        std::shared_ptr<IStorage> WithRomfsMods(std::shared_ptr<IStorage> &&storage, ncm::ProgramId id, bool allow_mods, bool is_process_romfs) {
+            if (!allow_mods || !::ams::mitm::fs::HasSdRomfsContent(id)) {
+                return std::move(storage);
+            }
+            usbl::Log("fs.mitm: romfs mods of %016" PRIx64 " laid over its USB RomFS", id.value);
+            return ::ams::mitm::fs::GetLayeredRomfsStorage(id, std::make_unique<SharedStorageAdapter>(std::move(storage)), is_process_romfs);
+        }
+
+    }
+
+    Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods) {
         constexpr auto FileSystemTypeRom = static_cast<FsFileSystemType>(1);
 
         R_UNLESS(IsUsblProgram(program_id), sm::mitm::ResultShouldForwardToSession());
@@ -119,10 +153,10 @@ namespace ams::mitm::fs::usbl_hooks {
             usbl::Log("fs.mitm: cannot open RomFS of %016" PRIx64 ": 2%03d-%04d", program_id.value, result.GetModule(), result.GetDescription());
             R_THROW(result);
         }
-        R_RETURN(ReturnStorage(out, fwd, std::move(romfs_storage)));
+        R_RETURN(ReturnStorage(out, fwd, WithRomfsMods(std::move(romfs_storage), program_id, allow_mods, true)));
     }
 
-    Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id) {
+    Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id, bool allow_mods) {
         R_UNLESS(IsUsblAddOnContent(data_id), sm::mitm::ResultShouldForwardToSession());
 
         std::shared_ptr<IStorage> romfs_storage;
@@ -130,7 +164,7 @@ namespace ams::mitm::fs::usbl_hooks {
             usbl::Log("fs.mitm: cannot open add-on content %016" PRIx64 ": 2%03d-%04d", data_id.value, result.GetModule(), result.GetDescription());
             R_THROW(result);
         }
-        R_RETURN(ReturnStorage(out, fwd, std::move(romfs_storage)));
+        R_RETURN(ReturnStorage(out, fwd, WithRomfsMods(std::move(romfs_storage), { data_id.value }, allow_mods, false)));
     }
 
     Result OpenDataStorageByPath(StorageOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type) {

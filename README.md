@@ -26,6 +26,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 | **eShop content** | Titlekeys come from the console's own `es` service, no `prod.keys` needed |
 | **Newer games** | The firmware a game asks for is dropped on registration, like DBI does |
 | **Several drives** | At once, and they survive sleep without notifications or a HOME refresh |
+| **Mods** | Romfs mods and translations in `atmosphere/contents/<id>/` apply to USB games too, as to installed ones |
 | **Hiding** | Hide games while their drive is unplugged, or single games from the Manager |
 | **Notifications** | Ultrahand notifications when a drive is connected or removed, in English and Brazilian Portuguese |
 | **Manager** | [`USBLoaderNX-Manager.nro`](manager/README.md): games as a shelf or a grid, launch, details, play time, favorites, search and sorting, show or hide on HOME, drive usage, settings and [themes](manager/themes/README.md) |
