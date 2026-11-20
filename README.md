@@ -101,7 +101,7 @@ scripts/release.sh 0.1.0 --publish-ci   # tags and pushes the tag; the Release w
 
 Either way the Release workflow then commits the updated `CHANGELOG.md` to `master`; pull before the next change.
 
-Versions `0.x` and versions with a `-` (`v0.2.0-beta.1`) are pre-releases. The notes and [CHANGELOG.md](CHANGELOG.md) come from [git-cliff](https://git-cliff.org) (`cliff.toml`) through `scripts/release-notes.sh`: commits grouped by type, each with its hash, pull request and author, the README's header on top, and the Atmosphère version and tested firmware in the notes. `git-cliff --unreleased` previews what the next release holds. Publishing needs `git-cliff` and `gh`; every push and pull request is also built by the Build workflow.
+Versions `0.x` and versions with a `-` (`v0.2.0-beta.1`) are pre-releases. The notes and [CHANGELOG.md](CHANGELOG.md) come from [git-cliff](https://git-cliff.org) (`cliff.toml`) through `scripts/release-notes.sh`: commits grouped by type, each with its hash, pull request and author, the README's header on top, and the Atmosphère version and tested firmware in the notes. `git-cliff --unreleased` previews what the next release holds. Publishing needs `git-cliff` and `gh`; pushes and pull requests that change the code or the build are also built by the Build workflow.
 
 ## License
 
