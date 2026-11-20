@@ -1,0 +1,53 @@
+name: Improvement
+description: Suggest a new feature or a change to an existing one
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [TODO](https://github.com/NedcloarBR/USB-Loader-NX/blob/master/TODO.md) and the [open issues](https://github.com/NedcloarBR/USB-Loader-NX/issues) first: it may already be planned.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - HOME menu
+        - Manager
+        - Themes
+        - Installation and packaging
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to do
+      description: The situation or the problem, not the solution yet.
+      placeholder: I keep my updates on a second drive and...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How it could work
+      description: What you would see or do. A sketch or a screenshot of another app helps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today
+      description: Workarounds or other tools you use for this.
+
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I can help test it on my console
+        - label: I would like to send a pull request for it

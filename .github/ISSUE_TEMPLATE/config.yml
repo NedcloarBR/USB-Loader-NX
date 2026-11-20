@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Installation guide
+    url: https://github.com/NedcloarBR/USB-Loader-NX#install
+    about: How to install, and the files on the SD card

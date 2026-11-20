@@ -1,0 +1,123 @@
+name: Problem
+description: Something does not work, crashes or behaves differently than described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please search the [open issues](https://github.com/NedcloarBR/USB-Loader-NX/issues) first, and fill in as much as you can: most problems depend on the firmware, the console and the drive.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and the error code if the console showed one (for example `2002-4518`).
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Plug in the drive with the game
+        2. Open the game from HOME
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Launching or playing a game
+        - HOME menu (icons, badge, games showing or hiding)
+        - USB drive (detection, sleep, unplugging)
+        - Update or DLC
+        - Mods or translations
+        - Manager
+        - Theme
+        - Installation or boot
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: USB Loader NX version
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware
+      placeholder: "19.0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: console
+    attributes:
+      label: Console
+      options:
+        - Switch (original, Erista)
+        - Switch (Mariko)
+        - Switch Lite
+        - Switch OLED
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mmc
+    attributes:
+      label: Running on
+      options:
+        - emuMMC
+        - sysMMC
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: Bootloader or pack
+      description: Hekate, fusee, a CFW pack (which one), and other sysmodules you run.
+      placeholder: Hekate 6.x, sys-patch, Ultrahand
+
+  - type: input
+    id: drive
+    attributes:
+      label: USB drive
+      description: Kind and size, file system, and how it is connected.
+      placeholder: 256 GB flash drive, exFAT, dock USB-A port
+
+  - type: input
+    id: game
+    attributes:
+      label: Game
+      description: Name, title id and format (XCI or NSP), with its update and DLC if any.
+      placeholder: Bayonetta 2, 01007960049A0000, XCI + update 1.2
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        Attach `atmosphere/config/usbloadernx/usbloadernx.log` from the SD card (drag the file here). For a crash, also the newest file in `atmosphere/crash_reports/` or `atmosphere/fatal_reports/`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, whether it works with the game installed on the SD card, what changed since it last worked.
