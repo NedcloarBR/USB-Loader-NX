@@ -82,6 +82,17 @@ Play games from a PC or NAS on the local network, like Open PS2 Loader does over
 - [ ] Replace the `ncm` hooks with an `ncm` mitm inside `ams.mitm` (fewer upstream changes, no IPC hop)
 - [ ] Hide unplugged games sooner after boot (today it can take more than a minute)
 
+## Performance
+
+Measured before and after each change: the same game from USB and installed on the SD card (time to the title screen, loading a level).
+
+- [ ] Measure: read throughput (MB/s) and latency, indexing and registration time, in the debug log
+- [ ] Larger USB transfers: 1 to 4 MB per command instead of 64 KB, read straight into aligned buffers
+- [ ] One lock per drive (and one for the index) instead of a single lock for everything, so HOME, the Manager and a second drive do not wait on a game's reads
+- [ ] Read-ahead cache for sequential reads, if the larger transfers are not enough
+- [ ] Faster indexing when a drive is plugged in, and hiding unplugged games sooner after boot
+- [ ] Manager: open faster with many games (icons and statuses loaded as needed)
+
 ## Known issues
 
 - [x] An update on the drive is served only once the console has it registered (SD card ncm database), so with `auto_register` off a copied update does not change the game behind the console's back
