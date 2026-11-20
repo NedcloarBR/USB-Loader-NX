@@ -17,6 +17,26 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 
 Every release of USB Loader NX, newest first.
 
+## v0.3.0 — 2026-11-20
+
+### ✨ Features
+
+- **usbl:** Log read statistics with usbloadernx!debug ([`76441d2`](https://github.com/NedcloarBR/USB-Loader-NX/commit/76441d2ed83d2419d01f40953b3fed13c6e6e0bd) by @NedcloarBR)
+
+### ⚡ Performance
+
+- **usbl:** Read contiguous clusters in 256 KB transfers ([`3d53c52`](https://github.com/NedcloarBR/USB-Loader-NX/commit/3d53c52fc1b9937337333fffe8820c825e8ecf63) by @NedcloarBR)
+- **usbl:** Build a fragmented file's cluster map once per mount ([`f7268fd`](https://github.com/NedcloarBR/USB-Loader-NX/commit/f7268fdbdcb5947766f6fd0d4864dc08391f159d) by @NedcloarBR)
+- **usbl:** Count the boot grace period from the USB host start ([`7fe9d30`](https://github.com/NedcloarBR/USB-Loader-NX/commit/7fe9d309e1bd2da917f876b257174d06b5271361) by @NedcloarBR)
+
+### 📝 Documentation
+
+- **todo:** Plan the performance work for 1.0.0 ([`473f1e8`](https://github.com/NedcloarBR/USB-Loader-NX/commit/473f1e88fe8985dd7de547f5854c92adf470ad94) by @NedcloarBR)
+- **readme:** Say when the Build workflow runs ([`0f78c53`](https://github.com/NedcloarBR/USB-Loader-NX/commit/0f78c5353b861a3d81572b98234a16f95f4f9b93) by @NedcloarBR)
+- **todo:** Mark the measured performance work ([`d85a706`](https://github.com/NedcloarBR/USB-Loader-NX/commit/d85a7068335574a95e426e0491fb465aa71ce6ec) by @NedcloarBR)
+
+**Full changelog:** [v0.2.0...v0.3.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v0.2.0...v0.3.0)
+
 ## v0.2.0 — 2026-11-20
 
 ### ✨ Features
