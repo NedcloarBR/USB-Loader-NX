@@ -18,6 +18,7 @@
 #include "usbl_volume.hpp"
 #include "../usbl_results.hpp"
 #include "../usbl_perf.hpp"
+#include "../usbl_disk_io.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -34,14 +35,70 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
+    namespace {
+
+        Result ReadWithFatFs(FIL *file, u64 offset, void *dst, size_t size) {
+            R_TRY(ConvertFatFsResult(f_lseek(file, static_cast<FSIZE_t>(offset))));
+
+            UINT read = 0;
+            R_TRY(ConvertFatFsResult(f_read(file, dst, static_cast<UINT>(size), std::addressof(read))));
+            R_UNLESS(read == size, usbl::ResultShortTransfer());
+            R_SUCCEED();
+        }
+
+        /* The sector holding a byte of a file with a link map, and how many bytes stay contiguous on the drive from there. */
+        bool MapFileOffset(const FIL *file, u64 offset, u64 *out_sector, u64 *out_run) {
+            const FATFS *fs = file->obj.fs;
+            const u64 cluster_size = static_cast<u64>(fs->csize) * fs->ssize;
+            const u64 within = offset % cluster_size;
+            u64 cluster = offset / cluster_size;
+
+            /* After the used length: one (cluster count, first cluster) pair per fragment, then 0. */
+            for (const DWORD *entry = file->cltbl + 1; entry[0] != 0; entry += 2) {
+                if (cluster < entry[0]) {
+                    *out_sector = fs->database + static_cast<u64>(fs->csize) * (entry[1] + cluster - 2) + within / fs->ssize;
+                    *out_run    = (entry[0] - cluster) * cluster_size - within;
+                    return true;
+                }
+                cluster -= entry[0];
+            }
+            return false;
+        }
+
+    }
+
     Result ReadFileAt(FIL *file, s64 offset, void *dst, size_t size) {
         AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
 
-        R_TRY(ConvertFatFsResult(f_lseek(file, static_cast<FSIZE_t>(offset))));
+        /* FatFs reads at most a cluster per device command: with a link map, whole sectors are read a fragment at a time. */
+        if (file->cltbl == nullptr || static_cast<u64>(offset) + size > file->obj.objsize) {
+            R_RETURN(ReadWithFatFs(file, offset, dst, size));
+        }
 
-        UINT read = 0;
-        R_TRY(ConvertFatFsResult(f_read(file, dst, static_cast<UINT>(size), std::addressof(read))));
-        R_UNLESS(read == size, usbl::ResultShortTransfer());
+        const u32 sector_size = file->obj.fs->ssize;
+        u8 *cur = static_cast<u8 *>(dst);
+        u64 pos = offset;
+        size_t remaining = size;
+
+        if (const size_t misalignment = pos % sector_size; misalignment != 0) {
+            const size_t head = std::min<size_t>(remaining, sector_size - misalignment);
+            R_TRY(ReadWithFatFs(file, pos, cur, head));
+            cur += head; pos += head; remaining -= head;
+        }
+
+        while (remaining >= sector_size) {
+            u64 sector, run;
+            if (!MapFileOffset(file, pos, std::addressof(sector), std::addressof(run))) {
+                break;
+            }
+            const size_t chunk = std::min<u64>(run, remaining) / sector_size * sector_size;
+            R_TRY(ReadDiskSectors(file->obj.fs->pdrv, cur, sector, static_cast<u32>(chunk / sector_size)));
+            cur += chunk; pos += chunk; remaining -= chunk;
+        }
+
+        if (remaining > 0) {
+            R_TRY(ReadWithFatFs(file, pos, cur, remaining));
+        }
         R_SUCCEED();
     }
 

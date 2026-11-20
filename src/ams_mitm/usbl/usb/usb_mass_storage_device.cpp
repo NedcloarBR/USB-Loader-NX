@@ -16,6 +16,7 @@
 #include <stratosphere.hpp>
 #include "usb_mass_storage_device.hpp"
 #include "../usbl_results.hpp"
+#include "../usbl_log.hpp"
 
 namespace ams::mitm::usbl::usb {
 
@@ -116,6 +117,7 @@ namespace ams::mitm::usbl::usb {
 
         R_TRY(::usbHsAcquireUsbIf(std::addressof(m_interface_session), intf));
         m_is_open = true;
+        m_max_transfer_size = TransferBufferSize;
         auto close_guard = SCOPE_GUARD { this->Close(); };
 
         R_TRY(this->OpenEndpoints());
@@ -227,11 +229,10 @@ namespace ams::mitm::usbl::usb {
     Result MassStorageDevice::Read(void *dst, u64 lba, u32 block_count) {
         R_UNLESS(lba + block_count <= m_block_count && lba + block_count >= lba, usbl::ResultOutOfRange());
 
-        const u32 max_blocks_per_command = TransferBufferSize / m_block_size;
         u8 *cur = static_cast<u8 *>(dst);
 
         while (block_count > 0) {
-            const u32 cur_blocks = std::min(block_count, max_blocks_per_command);
+            const u32 cur_blocks = std::min(block_count, m_max_transfer_size / m_block_size);
             const u32 cur_size   = cur_blocks * m_block_size;
 
             Command cmd = { .cdb = {}, .cdb_length = 0, .direction = Direction::In, .data_length = cur_size };
@@ -248,8 +249,15 @@ namespace ams::mitm::usbl::usb {
             }
 
             u32 transferred = 0;
-            R_TRY(this->Execute(cmd, cur, std::addressof(transferred)));
-            R_UNLESS(transferred == cur_size, usbl::ResultShortTransfer());
+            if (const Result result = this->Execute(cmd, cur, std::addressof(transferred)); R_FAILED(result) || transferred != cur_size) {
+                if (cur_size <= SafeTransferSize) {
+                    R_TRY(result);
+                    R_THROW(usbl::ResultShortTransfer());
+                }
+                Log("usb: %u KB reads failed (2%03d-%04d), using %zu KB", cur_size / 1024, result.GetModule(), result.GetDescription(), SafeTransferSize / 1024);
+                m_max_transfer_size = SafeTransferSize;
+                continue;
+            }
 
             cur         += cur_size;
             lba         += cur_blocks;

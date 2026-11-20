@@ -16,6 +16,7 @@
 #include <stratosphere.hpp>
 #include "usbl_disk_io.hpp"
 #include "usbl_perf.hpp"
+#include "usbl_results.hpp"
 
 extern "C" {
 #include "fatfs/ff.h"
@@ -44,6 +45,16 @@ namespace ams::mitm::usbl {
         return pdrv < MaxDrives ? g_devices[pdrv] : nullptr;
     }
 
+    Result ReadDiskSectors(s32 drive, void *dst, u64 sector, u32 count) {
+        auto *device = 0 <= drive && drive < MaxDrives ? g_devices[drive] : nullptr;
+        R_UNLESS(device != nullptr, usbl::ResultDriveDetached());
+
+        const os::Tick start = os::GetSystemTick();
+        R_TRY(device->Read(dst, sector, count));
+        perf::Record(perf::Layer::Disk, static_cast<size_t>(count) * device->GetBlockSize(), (os::GetSystemTick() - start).ToTimeSpan());
+        R_SUCCEED();
+    }
+
 }
 
 using ams::mitm::usbl::GetDiskDevice;
@@ -62,13 +73,7 @@ extern "C" {
         if (disk_status(pdrv) != 0) {
             return RES_NOTRDY;
         }
-        auto *device = GetDiskDevice(pdrv);
-        const ams::os::Tick start = ams::os::GetSystemTick();
-        if (R_FAILED(device->Read(buff, sector, count))) {
-            return RES_ERROR;
-        }
-        ams::mitm::usbl::perf::Record(ams::mitm::usbl::perf::Layer::Disk, static_cast<size_t>(count) * device->GetBlockSize(), (ams::os::GetSystemTick() - start).ToTimeSpan());
-        return RES_OK;
+        return R_SUCCEEDED(ams::mitm::usbl::ReadDiskSectors(pdrv, buff, sector, count)) ? RES_OK : RES_ERROR;
     }
 
     DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buff) {

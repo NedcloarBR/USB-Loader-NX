@@ -25,4 +25,7 @@ namespace ams::mitm::usbl {
     void BindDiskDevice(s32 drive, usb::MassStorageDevice *device);
     void UnbindDiskDevice(s32 drive);
 
+    /* Sectors straight from a drive's device, as FatFs's disk_read does (counted in the read statistics). */
+    Result ReadDiskSectors(s32 drive, void *dst, u64 sector, u32 count);
+
 }
