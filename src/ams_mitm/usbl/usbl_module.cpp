@@ -21,6 +21,7 @@
 #include "xci/usbl_content_meta.hpp"
 #include "xci/usbl_registration.hpp"
 #include "usbl_log.hpp"
+#include "usbl_perf.hpp"
 #include "usbl_module.hpp"
 #include "usbl_config.hpp"
 #include "usbl_notifications.hpp"
@@ -80,6 +81,7 @@ namespace ams::mitm::usbl {
         }
 
         InitializeLog();
+        perf::Initialize();
         Log("usbloadernx starting (build " __DATE__ " " __TIME__ ")");
 
         nca::InitializeCrypto();

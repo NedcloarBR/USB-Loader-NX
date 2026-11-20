@@ -24,6 +24,7 @@
 #include "../amsmitm_fs_utils.hpp"
 #include "../usbl/nca/usbl_external_keys.hpp"
 #include "../usbl/usbl_log.hpp"
+#include "../usbl/usbl_perf.hpp"
 
 namespace ams::mitm::fs::usbl_hooks {
 
@@ -69,6 +70,7 @@ namespace ams::mitm::fs::usbl_hooks {
         }
 
         Result ReturnStorage(StorageOut &out, Service *fwd, std::shared_ptr<IStorage> &&storage) {
+            storage = usbl::perf::MeasureGameReads(std::move(storage));
             FsFileSystem owner;
             R_TRY(BorrowObjectId(std::addressof(owner), fwd));
             const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(std::addressof(owner.s))};

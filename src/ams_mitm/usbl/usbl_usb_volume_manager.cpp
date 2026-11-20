@@ -26,6 +26,7 @@
 #include "usbl_config.hpp"
 #include "usbl_disk_io.hpp"
 #include "usbl_log.hpp"
+#include "usbl_perf.hpp"
 #include "usbl_notifications.hpp"
 #include "usbl_power_state.hpp"
 
@@ -281,7 +282,11 @@ namespace ams::mitm::usbl {
 
             LogDriveInfo(drive);
             GameFileCount game_files = {};
-            const DriveState state = MountAndIndex(drive, std::addressof(game_files));
+            DriveState state;
+            {
+                perf::ScopedStep step("mounted and indexed", drive);
+                state = MountAndIndex(drive, std::addressof(game_files));
+            }
             slot.mounted = state != DriveState::Unreadable;
             {
                 std::scoped_lock lk(GetVolumeLock());
@@ -305,7 +310,10 @@ namespace ams::mitm::usbl {
                         xci::LogIndexedContentMetas();
                     }
                     RememberIndexedContents();
-                    xci::RegisterIndexedApplicationsIfEnabled();
+                    {
+                        perf::ScopedStep step("registered", drive);
+                        xci::RegisterIndexedApplicationsIfEnabled();
+                    }
                     if (IsConfigEnabled(ConfigKey::AutoRegister)) {
                         ForgetDeletedGameParts();
                     }

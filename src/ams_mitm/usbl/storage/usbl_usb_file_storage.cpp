@@ -17,6 +17,7 @@
 #include "usbl_usb_file_storage.hpp"
 #include "usbl_volume.hpp"
 #include "../usbl_results.hpp"
+#include "../usbl_perf.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -113,10 +114,14 @@ namespace ams::mitm::usbl {
         R_UNLESS(buffer != nullptr, fs::ResultNullptrArgument());
         R_TRY(IStorage::CheckAccessRange(offset, size, m_size));
 
+        const os::Tick start = os::GetSystemTick();
         std::scoped_lock lk(GetVolumeLock());
+        const os::Tick locked = os::GetSystemTick();
         R_UNLESS(this->IsHandleValid(), usbl::ResultDriveDetached());
 
-        R_RETURN(ReadFileAt(std::addressof(m_file), m_offset + offset, buffer, size));
+        R_TRY(ReadFileAt(std::addressof(m_file), m_offset + offset, buffer, size));
+        perf::Record(perf::Layer::File, size, (os::GetSystemTick() - start).ToTimeSpan(), (locked - start).ToTimeSpan());
+        R_SUCCEED();
     }
 
     Result UsbFileStorage::GetSize(s64 *out) {

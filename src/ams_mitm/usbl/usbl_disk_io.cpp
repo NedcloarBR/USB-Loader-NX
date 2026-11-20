@@ -15,6 +15,7 @@
  */
 #include <stratosphere.hpp>
 #include "usbl_disk_io.hpp"
+#include "usbl_perf.hpp"
 
 extern "C" {
 #include "fatfs/ff.h"
@@ -61,7 +62,13 @@ extern "C" {
         if (disk_status(pdrv) != 0) {
             return RES_NOTRDY;
         }
-        return R_SUCCEEDED(GetDiskDevice(pdrv)->Read(buff, sector, count)) ? RES_OK : RES_ERROR;
+        auto *device = GetDiskDevice(pdrv);
+        const ams::os::Tick start = ams::os::GetSystemTick();
+        if (R_FAILED(device->Read(buff, sector, count))) {
+            return RES_ERROR;
+        }
+        ams::mitm::usbl::perf::Record(ams::mitm::usbl::perf::Layer::Disk, static_cast<size_t>(count) * device->GetBlockSize(), (ams::os::GetSystemTick() - start).ToTimeSpan());
+        return RES_OK;
     }
 
     DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buff) {
