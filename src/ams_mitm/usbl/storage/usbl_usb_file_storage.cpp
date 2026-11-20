@@ -102,31 +102,82 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
+    namespace {
+
+        /* A fragmented file's map costs a walk of its FAT chain, sector by sector: the same file is opened once per
+         * content it holds, so each map is kept for the mount it was built in. */
+        struct CachedLinkMap {
+            s32 drive;
+            u32 generation;
+            DWORD first_cluster;
+            FSIZE_t size;
+            std::unique_ptr<DWORD[]> table;
+        };
+
+        constexpr size_t MaxCachedLinkMaps = 32;
+        constinit CachedLinkMap g_link_maps[MaxCachedLinkMaps] = {};
+        constinit size_t g_next_link_map = 0;
+
+        bool IsSameFile(const CachedLinkMap &cached, const FIL *file) {
+            const s32 drive = file->obj.fs->pdrv;
+            return cached.table != nullptr && cached.drive == drive && cached.generation == GetVolumeGeneration(drive) &&
+                   cached.first_cluster == file->obj.sclust && cached.size == file->obj.objsize;
+        }
+
+        std::unique_ptr<DWORD[]> CopyLinkMap(const DWORD *table) {
+            const size_t used = table[0];
+            auto copy = std::unique_ptr<DWORD[]>(new (std::nothrow) DWORD[used]);
+            if (copy != nullptr) {
+                std::memcpy(copy.get(), table, used * sizeof(DWORD));
+            }
+            return copy;
+        }
+
+        std::unique_ptr<DWORD[]> BuildLinkMap(FIL *file) {
+            /* Without it, every backward seek in a fragmented file walks the cluster chain from the start. */
+            size_t entries = InitialLinkMapEntries;
+            while (entries <= MaxLinkMapEntries) {
+                auto link_map = std::unique_ptr<DWORD[]>(new (std::nothrow) DWORD[entries]);
+                if (link_map == nullptr) {
+                    return nullptr;
+                }
+
+                link_map[0] = static_cast<DWORD>(entries);
+                file->cltbl = link_map.get();
+                const FRESULT res = f_lseek(file, CREATE_LINKMAP);
+                if (res == FR_OK) {
+                    return link_map;
+                }
+
+                file->cltbl = nullptr;
+                if (res != FR_NOT_ENOUGH_CORE) {
+                    return nullptr;
+                }
+                entries = link_map[0];
+            }
+            return nullptr;
+        }
+
+    }
+
     std::unique_ptr<DWORD[]> CreateLinkMap(FIL *file) {
         AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
 
-        /* Without it, every backward seek in a fragmented file walks the cluster chain from the start. */
-        size_t entries = InitialLinkMapEntries;
-        while (entries <= MaxLinkMapEntries) {
-            auto link_map = std::unique_ptr<DWORD[]>(new (std::nothrow) DWORD[entries]);
-            if (link_map == nullptr) {
-                return nullptr;
+        for (const auto &cached : g_link_maps) {
+            if (IsSameFile(cached, file)) {
+                auto copy = CopyLinkMap(cached.table.get());
+                file->cltbl = copy.get();
+                return copy;
             }
-
-            link_map[0] = static_cast<DWORD>(entries);
-            file->cltbl = link_map.get();
-            const FRESULT res = f_lseek(file, CREATE_LINKMAP);
-            if (res == FR_OK) {
-                return link_map;
-            }
-
-            file->cltbl = nullptr;
-            if (res != FR_NOT_ENOUGH_CORE) {
-                return nullptr;
-            }
-            entries = link_map[0];
         }
-        return nullptr;
+
+        auto link_map = BuildLinkMap(file);
+        if (link_map != nullptr) {
+            CachedLinkMap &slot = g_link_maps[g_next_link_map];
+            g_next_link_map = (g_next_link_map + 1) % MaxCachedLinkMaps;
+            slot = { file->obj.fs->pdrv, GetVolumeGeneration(file->obj.fs->pdrv), file->obj.sclust, file->obj.objsize, CopyLinkMap(link_map.get()) };
+        }
+        return link_map;
     }
 
     s32 CountFileFragments(FIL *file) {
