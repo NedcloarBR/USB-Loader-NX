@@ -23,26 +23,10 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build image (Atmosphère's Dockerfile)
-        uses: docker/build-push-action@v6
-        with:
-          context: atmosphere
-          tags: atms-build
-          load: true
-          cache-from: type=gha,scope=atms-build
-          cache-to: type=gha,mode=max,scope=atms-build
-
-      - name: Build image (+ libnx from git)
-        uses: docker/build-push-action@v6
-        with:
-          context: docker
-          build-args: BASE_IMAGE=atms-build
-          tags: atms-build-libnx
-          load: true
-          cache-from: type=gha,scope=atms-build-libnx
-          cache-to: type=gha,mode=max,scope=atms-build-libnx
+      # Plain docker build, as on the PC: the second image starts FROM the first, which buildx's isolated builder
+      # would look for on Docker Hub instead.
+      - name: Build images (Atmosphère's Dockerfile, + libnx from git)
+        run: scripts/build-image.sh
 
       - name: Build
         env:
