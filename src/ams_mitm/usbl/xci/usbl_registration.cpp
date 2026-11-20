@@ -700,6 +700,12 @@ namespace ams::mitm::usbl::xci {
 
     }
 
+    namespace {
+
+        bool IsApplicationRunning(u64 application_id);
+
+    }
+
     void HideUnpluggedApplications(const ncm::ProgramId *applications, s32 count) {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
         std::scoped_lock lk(g_registration_lock);
@@ -717,6 +723,13 @@ namespace ams::mitm::usbl::xci {
                 }
             }
             if (!IsKnownProgram(applications[i])) {
+                continue;
+            }
+
+            /* ns must not lose the record of the running game: it goes once the game closes (with the error its reads get). */
+            if (IsApplicationRunning(applications[i].value)) {
+                Log("hide %016" PRIx64 ": running, hidden once it closes", applications[i].value);
+                WatchLaunch({ applications[i].value });
                 continue;
             }
 
