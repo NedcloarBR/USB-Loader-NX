@@ -84,7 +84,7 @@ Play games from a PC or NAS on the local network, like Open PS2 Loader does over
 
 ## Known issues
 
-- [ ] With `auto_register` off, an indexed update is served without being registered
+- [x] An update on the drive is served only once the console has it registered (SD card ncm database), so with `auto_register` off a copied update does not change the game behind the console's back
 
 ## Testing
 

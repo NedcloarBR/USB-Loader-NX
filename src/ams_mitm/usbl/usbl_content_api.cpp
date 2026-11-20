@@ -50,14 +50,37 @@ namespace ams::mitm::usbl {
 
         /* With the game plugged in, the index knows whether its update is usable (on the game's drive, see
          * FindIndexedContent); unplugged, the known contents decide as before. */
-        ContentLayer GetServedLayer(ncm::ProgramId program_id) {
-            std::scoped_lock lk(GetVolumeLock());
-            IndexedContent content;
-            const char *path;
-            if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Base))) {
-                return ContentLayer::Current;
+        /* Whether the console has this update registered (the SD card ncm database), as for an installed game. When the
+         * database cannot be read the indexed update is trusted, as before. */
+        bool IsRegisteredPatchProgram(ncm::ProgramId program_id, const ncm::ContentId &content_id) {
+            ncm::ContentMetaDatabase db;
+            if (R_FAILED(ncm::OpenContentMetaDatabase(std::addressof(db), ncm::StorageId::SdCard))) {
+                return true;
             }
-            return R_SUCCEEDED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Current)) && content.is_patch ? ContentLayer::Current : ContentLayer::Base;
+
+            ncm::ContentMetaKey key;
+            ncm::ContentId registered;
+            return R_SUCCEEDED(db.GetLatest(std::addressof(key), GetPatchId(program_id).value)) && key.type == ncm::ContentMetaType::Patch &&
+                   R_SUCCEEDED(db.GetContentIdByType(std::addressof(registered), key, ncm::ContentType::Program)) && registered == content_id;
+        }
+
+        /* The update on the game's drive is served only once it is registered: with auto_register off, one copied to the
+         * drive does not change the game behind the console's back. ncm is asked without the volume lock. */
+        ContentLayer GetServedLayer(ncm::ProgramId program_id) {
+            ncm::ContentId patch_content_id;
+            {
+                std::scoped_lock lk(GetVolumeLock());
+                IndexedContent content;
+                const char *path;
+                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Base))) {
+                    return ContentLayer::Current;
+                }
+                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(path), program_id, NcaContentType::Program, ContentLayer::Current)) || !content.is_patch) {
+                    return ContentLayer::Base;
+                }
+                patch_content_id = content.content_id;
+            }
+            return IsRegisteredPatchProgram(program_id, patch_content_id) ? ContentLayer::Current : ContentLayer::Base;
         }
 
     }
@@ -86,7 +109,7 @@ namespace ams::mitm::usbl {
     }
 
     Result OpenServedProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type) {
-        R_RETURN(ToServedResult(OpenIndexedContentStorage(out, program_id, content_type, ContentLayer::Current), IsKnownProgram(program_id)));
+        R_RETURN(ToServedResult(OpenIndexedContentStorage(out, program_id, content_type, GetServedLayer(program_id)), IsKnownProgram(program_id)));
     }
 
     Result OpenServedBaseProgramContentStorage(std::shared_ptr<ams::fs::IStorage> *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type) {
