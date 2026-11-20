@@ -493,7 +493,8 @@ namespace ams::mitm::fs {
                 const size_t cur_read_size = std::min(size - read_so_far, static_cast<size_t>(cur_source.size - offset_within_source));
                 switch (cur_source.source_type) {
                     case romfs::DataSourceType::Storage:
-                        R_ABORT_UNLESS(m_storage_romfs->Read(cur_source.storage_source_info.offset + offset_within_source, cur_dst, cur_read_size));
+                        /* A USB Loader NX base fails once its drive is unplugged: the game gets the error instead of ams.mitm aborting. */
+                        R_TRY(m_storage_romfs->Read(cur_source.storage_source_info.offset + offset_within_source, cur_dst, cur_read_size));
                         break;
                     case romfs::DataSourceType::File:
                         R_ABORT_UNLESS(m_file_romfs->Read(cur_source.file_source_info.offset + offset_within_source, cur_dst, cur_read_size));
