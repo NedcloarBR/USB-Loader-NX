@@ -50,6 +50,8 @@ namespace ams::mitm::fs {
     };
 
     std::shared_ptr<ams::fs::IStorage> GetLayeredRomfsStorage(ncm::ProgramId program_id, ::FsStorage &data_storage, bool is_process_romfs);
+    /* Same, over a base storage that does not come from FS (USB Loader NX's USB-served content). */
+    std::shared_ptr<ams::fs::IStorage> GetLayeredRomfsStorage(ncm::ProgramId program_id, std::unique_ptr<ams::fs::IStorage> base_storage, bool is_process_romfs);
     std::shared_ptr<ams::fs::IStorageForBatchRead> GetLayeredRomfsStorageForBatchRead(ncm::ProgramId program_id, ::FsStorageForBatchRead &data_storage, bool is_process_romfs);
     void FinalizeLayeredRomfsStorage(ncm::ProgramId program_id);
 

@@ -308,6 +308,58 @@ namespace ams::mitm::fs {
         return std::make_shared<LayeredRomfsStorage>(impl);
     }
     
+    std::shared_ptr<ams::fs::IStorage> GetLayeredRomfsStorage(ncm::ProgramId program_id, std::unique_ptr<ams::fs::IStorage> base_storage, bool is_process_romfs) {
+        /* Prepare to find or create a new storage. */
+        LayeredRomfsStorageImpl *impl = nullptr;
+        {
+            std::scoped_lock lk(g_storage_set_mutex);
+
+            /* An externally served base (a USB drive) can change between launches: an existing storage is only reused while in use. */
+            if (auto it = g_storage_set.find_key(program_id.value); it != g_storage_set.end()) {
+                if (it->GetReferenceCount() > 0) {
+                    return std::make_shared<LayeredRomfsStorage>(it->GetImpl());
+                }
+                auto *holder = std::addressof(*it);
+                g_storage_set.erase(it);
+                delete holder;
+            }
+
+            /* If we're creating process romfs, free any unreferenced process romfs. */
+            if (is_process_romfs) {
+                auto it = g_storage_set.begin();
+                while (it != g_storage_set.end()) {
+                    if (it->GetReferenceCount() > 0 || !it->IsProcessRomfs()) {
+                        ++it;
+                    } else {
+                        auto *holder = std::addressof(*it);
+                        it = g_storage_set.erase(it);
+                        delete holder;
+                    }
+                }
+            }
+
+            /* Create a new storage over the given base. */
+            {
+                ::FsFile data_file;
+                if (R_SUCCEEDED(OpenAtmosphereSdFile(std::addressof(data_file), program_id, "romfs.bin", OpenMode_Read))) {
+                    impl = new LayeredRomfsStorageImpl(std::move(base_storage), std::make_unique<ReadOnlyStorageAdapter>(new FileStorage(new RemoteFile(data_file))), program_id);
+                } else {
+                    impl = new LayeredRomfsStorageImpl(std::move(base_storage), nullptr, program_id);
+                }
+            }
+
+            /* Insert holder. Reference count will now be one. */
+            g_storage_set.insert(*(new LayeredRomfsStorageHolder(impl, is_process_romfs)));
+        }
+
+        /* Begin initialization. When this finishes, a decref will occur. */
+        AMS_ABORT_UNLESS(impl != nullptr);
+        impl->BeginInitialize();
+
+        /* Return a new shared storage for the impl. */
+        return std::make_shared<LayeredRomfsStorage>(impl);
+    }
+
     std::shared_ptr<ams::fs::IStorageForBatchRead> GetLayeredRomfsStorageForBatchRead(ncm::ProgramId program_id, ::FsStorageForBatchRead &data_storage, bool is_process_romfs) {
         /*Prepare to find or create a new storage. */
         LayeredRomfsStorageImpl *impl = nullptr;

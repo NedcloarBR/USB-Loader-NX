@@ -338,7 +338,7 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageByCurrentProcess(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out) {
-        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id); usbl_hooks::IsHandled(usbl_result)) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
@@ -359,7 +359,7 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageByProgramId(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, ncm::ProgramId program_id) {
-        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), program_id); usbl_hooks::IsHandled(usbl_result)) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), program_id, m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
@@ -380,7 +380,7 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageByDataId(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, ncm::DataId data_id, u8 storage_id) {
-        if (const Result usbl_result = usbl_hooks::OpenAddOnContentDataStorage(out, m_forward_service.get(), data_id); usbl_hooks::IsHandled(usbl_result)) {
+        if (const Result usbl_result = usbl_hooks::OpenAddOnContentDataStorage(out, m_forward_service.get(), data_id, m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
@@ -405,7 +405,7 @@ namespace ams::mitm::fs {
 
     Result FsMitmService::OpenDataStorageWithProgramIndex(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, u8 program_index) {
         /* USB Loader NX only serves single-program applications: index 0 is the client itself. */
-        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
+        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
