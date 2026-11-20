@@ -17,6 +17,27 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 
 Every release of USB Loader NX, newest first.
 
+## v0.2.0 — 2026-11-20
+
+### ✨ Features
+
+- **usbl:** Apply romfs mods and translations to USB games ([`3375cac`](https://github.com/NedcloarBR/USB-Loader-NX/commit/3375cac723ebb802de3e7a2856535ce994d08c52) by @NedcloarBR)
+
+### 🐛 Fixes
+
+- **usbl:** Serve an update only once the console has it registered ([`ef03f71`](https://github.com/NedcloarBR/USB-Loader-NX/commit/ef03f7179e864d01feeb2d91390c48a8477f77b0) by @NedcloarBR)
+- **usbl:** Keep a running game's record when its drive is removed ([`fcdb78b`](https://github.com/NedcloarBR/USB-Loader-NX/commit/fcdb78ba164215bde80535a459df138b4e5223b4) by @NedcloarBR)
+
+### 🏗️ Build and CI
+
+- **build:** Run only when the build inputs change ([`20b9aeb`](https://github.com/NedcloarBR/USB-Loader-NX/commit/20b9aebc8eb97bf684bb95d742875593fcf1006c) by @NedcloarBR)
+
+### 🔧 Other
+
+- **github:** Add issue and pull request templates ([`b22da33`](https://github.com/NedcloarBR/USB-Loader-NX/commit/b22da33f2c3e8582df54b266e703ab5297161851) by @NedcloarBR)
+
+**Full changelog:** [v0.1.0...v0.2.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v0.1.0...v0.2.0)
+
 ## v0.1.0 — 2026-11-20
 
 ### ✨ Features
