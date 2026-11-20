@@ -1,9 +1,42 @@
 name: Build
 
+# Only when something that goes into the build or the zip changed; the Release workflow always builds (workflow_call).
 on:
   push:
     branches: [master]
+    paths:
+      - 'src/**'
+      - 'common/**'
+      - 'manager/**'
+      - 'atmosphere'
+      - 'config_templates/**'
+      - 'docker/**'
+      - 'tools/**'
+      - 'usbl.mk'
+      - 'ATMOSPHERE_VERSION'
+      - 'scripts/build.sh'
+      - 'scripts/build-image.sh'
+      - 'scripts/package.sh'
+      - '.github/workflows/build.yml'
+      - '!**/*.md'
+      - 'packaging/**'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'common/**'
+      - 'manager/**'
+      - 'atmosphere'
+      - 'config_templates/**'
+      - 'docker/**'
+      - 'tools/**'
+      - 'usbl.mk'
+      - 'ATMOSPHERE_VERSION'
+      - 'scripts/build.sh'
+      - 'scripts/build-image.sh'
+      - 'scripts/package.sh'
+      - '.github/workflows/build.yml'
+      - '!**/*.md'
+      - 'packaging/**'
   workflow_call:
     inputs:
       version:
