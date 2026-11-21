@@ -33,6 +33,38 @@ namespace ui {
         constexpr strings::Id SortNames[] = { strings::Id::SortName, strings::Id::SortRecentlyPlayed, strings::Id::SortMostPlayed, strings::Id::SortSize };
         static_assert(std::size(SortNames) == static_cast<size_t>(library::SortMode::Count));
 
+        /* Holding a direction repeats it, like on HOME: once after RepeatDelayNs, then every RepeatIntervalNs. */
+        constexpr u64 Directions       = HidNpadButton_AnyLeft | HidNpadButton_AnyRight | HidNpadButton_AnyUp | HidNpadButton_AnyDown;
+        constexpr u64 RepeatDelayNs    = 400'000'000;
+        constexpr u64 RepeatIntervalNs = 90'000'000;
+
+        class DirectionRepeat {
+            private:
+                u64 held = 0;
+                u64 next_tick = 0;
+            public:
+                /* `keys_down` plus the held direction whenever it is due again. */
+                u64 Apply(u64 keys_down, u64 keys_held) {
+                    const u64 now = armGetSystemTick();
+                    if (const u64 pressed = keys_down & Directions; pressed != 0) {
+                        this->held = pressed;
+                        this->next_tick = now + armNsToTicks(RepeatDelayNs);
+                        return keys_down;
+                    }
+                    if (this->held == 0 || (keys_held & this->held) != this->held) {
+                        this->held = 0;
+                        return keys_down;
+                    }
+                    if (now < this->next_tick) {
+                        return keys_down;
+                    }
+                    this->next_tick = now + armNsToTicks(RepeatIntervalNs);
+                    return keys_down | this->held;
+                }
+        };
+
+        DirectionRepeat g_direction_repeat;
+
         /* Drives and games come and go while the Manager is open; a few seconds is how long the module takes to index a drive. */
         constexpr u64 PollIntervalNs = 1'500'000'000;
 
@@ -95,7 +127,8 @@ namespace ui {
         this->ShowSystemNotice();
 
         this->AddRenderCallback([this]() { this->PollLibrary(); });
-        this->SetOnInput([this](const u64 keys_down, const u64, const u64, const pu::ui::TouchPoint) {
+        this->SetOnInput([this](const u64 pressed, const u64, const u64 keys_held, const pu::ui::TouchPoint) {
+            const u64 keys_down = g_direction_repeat.Apply(pressed, keys_held);
             if (this->screen == Screen::Library) {
                 this->library_screen->OnInput(keys_down);
             } else {
