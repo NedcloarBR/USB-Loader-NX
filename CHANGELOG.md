@@ -8,7 +8,7 @@ Play your Nintendo Switch game dumps straight from a USB drive.<br>
 An Atmosphère fork with a library manager in the spirit of USB Loader GX for the Wii.
 
 ![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)
-![Tested on firmware 19.0.1](https://img.shields.io/badge/tested%20on-19.0.1-2B2D31?labelColor=1E1F22)
+![Tested on firmware 19.0.1 and 23.5.0](https://img.shields.io/badge/tested%20on-19.0.1%20%7C%2023.5.0-2B2D31?labelColor=1E1F22)
 ![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
 
 [Features](README.md#features) · [Install](README.md#install) · [Configuration](README.md#configuration) · [Building](README.md#building) · [Architecture](ARCHITECTURE.md) · [README](README.md) · [TODO](TODO.md) · [License](README.md#license) · [Credits](README.md#credits)
@@ -16,6 +16,19 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 </div>
 
 Every release of USB Loader NX, newest first.
+
+## v0.4.0 — 2026-11-21
+
+### ✨ Features
+
+- **fs_mitm:** Serve the ForBatchRead data storages of firmware 23 ([`94c93e8`](https://github.com/NedcloarBR/USB-Loader-NX/commit/94c93e82ea425a116a080cf00ca59f505a52f709) by @NedcloarBR)
+
+### 📝 Documentation
+
+- Point to the log in atmosphere/logs ([`4b51d83`](https://github.com/NedcloarBR/USB-Loader-NX/commit/4b51d838548937d17010cb9a6b846057e2b7023d) by @NedcloarBR)
+- Mark firmware 23.5.0 as tested ([`2f3938a`](https://github.com/NedcloarBR/USB-Loader-NX/commit/2f3938ab5e3ccfb62294052c409f6e5b61613241) by @NedcloarBR)
+
+**Full changelog:** [v0.3.0...v0.4.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v0.3.0...v0.4.0)
 
 ## v0.3.0 — 2026-11-20
 
