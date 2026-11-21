@@ -22,7 +22,7 @@ namespace usbl {
     namespace {
 
         constexpr size_t MaxDrives = 8;
-        constexpr size_t MaxGames  = 64;
+        constexpr size_t MaxGames  = 4096;
 
         Service g_service;
         bool g_overwrite_newer_config = false;
@@ -31,17 +31,31 @@ namespace usbl {
             return static_cast<u32>(id);
         }
 
+        /* The library is polled every 1.5 s: the buffer starts small and grows only while the list fills it, instead of
+         * mapping room for every possible game on each call. */
+        constexpr size_t InitialListCount = 64;
+
         template<typename T>
         Result List(std::vector<T> *out, protocol::CommandId command_id, size_t max_count) {
-            out->resize(max_count);
+            size_t capacity = std::min(InitialListCount, max_count);
+            while (true) {
+                out->resize(capacity);
 
-            s32 count = 0;
-            const Result rc = serviceDispatchOut(&g_service, ToCommand(command_id), count,
-                .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
-                .buffers = { { out->data(), out->size() * sizeof(T) } },
-            );
-            out->resize(R_SUCCEEDED(rc) ? static_cast<size_t>(count) : 0);
-            return rc;
+                s32 count = 0;
+                const Result rc = serviceDispatchOut(&g_service, ToCommand(command_id), count,
+                    .buffer_attrs = { SfBufferAttr_HipcMapAlias | SfBufferAttr_Out },
+                    .buffers = { { out->data(), out->size() * sizeof(T) } },
+                );
+                if (R_FAILED(rc)) {
+                    out->clear();
+                    return rc;
+                }
+                if (static_cast<size_t>(count) < capacity || capacity == max_count) {
+                    out->resize(static_cast<size_t>(count));
+                    return rc;
+                }
+                capacity = std::min(capacity * 4, max_count);
+            }
         }
 
     }

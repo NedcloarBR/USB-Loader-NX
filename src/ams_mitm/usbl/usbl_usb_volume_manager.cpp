@@ -38,12 +38,12 @@ namespace ams::mitm::usbl {
 
     namespace {
 
-        /* Only this folder (and one level of subfolders) of each drive is scanned, so other files cost nothing. */
+        /* Only this folder (and two levels of subfolders) of each drive is scanned, so other files cost nothing. */
         constexpr const char GamesFolderPath[] = "/usbloadernx/games";
         constexpr size_t VolumePathLength = 4;
-        constexpr int MaxFolderDepth = 1;
+        constexpr int MaxFolderDepth = 2;
 
-        constexpr size_t MaxListedEntries = 256;
+        constexpr size_t MaxListedEntries = 4096;
         constexpr size_t MaxPathLength    = 0x300;
         constexpr s32 MaxQueriedInterfaces = 8;
 
@@ -160,7 +160,7 @@ namespace ams::mitm::usbl {
                     if (depth < MaxFolderDepth) {
                         IndexGameFolder(drive, path, depth + 1, count);
                     } else {
-                        Log("left out %s: only one level of folders inside games is read", path);
+                        Log("left out %s: only two levels of folders inside games are read", path);
                         ++count->left_out;
                     }
                 } else if (HasExtension(info.fname, "xci")) {
@@ -197,7 +197,7 @@ namespace ams::mitm::usbl {
             R_DISCARD(TakeIndexFullCount());
             IndexGameFolder(drive, folder, 0, std::addressof(count));
             if (const s32 full = TakeIndexFullCount(); full > 0) {
-                Log("left out %d files: the index is full (64 files, 512 contents)", full);
+                Log("left out %d files: no memory left for the index", full);
                 count.left_out += full;
             }
             Log("drive %d: %zu games, %zu updates, %zu add-ons, %d contents indexed in total", drive, count.games, count.updates, count.add_ons, GetIndexedContentCount());
@@ -341,6 +341,7 @@ namespace ams::mitm::usbl {
                         xci::LogIndexedContentMetas();
                     }
                     RememberIndexedContents();
+                    perf::LogHeap("after indexing");
                     {
                         perf::ScopedStep step("registered", drive);
                         xci::RegisterIndexedApplicationsIfEnabled();

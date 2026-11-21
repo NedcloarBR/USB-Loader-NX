@@ -104,6 +104,7 @@ namespace ams::mitm::usbl {
 
         R_ABORT_UNLESS(g_server_manager.RegisterObjectForServer(g_service_object.GetShared(), ServiceName, MaxServiceSessions));
         Log("service usbl registered");
+        perf::LogHeap("at start");
 
         for (size_t i = 0; i < ExtraServerThreadCount; ++i) {
             R_ABORT_UNLESS(os::CreateThread(g_server_threads + i, ServerThreadFunction, nullptr, g_server_thread_stacks[i], ServerThreadStackSize, AMS_GET_SYSTEM_THREAD_PRIORITY(mitm_usbl, IpcServer)));

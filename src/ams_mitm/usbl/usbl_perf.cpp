@@ -151,6 +151,8 @@ namespace ams::mitm::usbl::perf {
         for (size_t i = 0; i < static_cast<size_t>(Layer::Count); ++i) {
             LogLayer(static_cast<Layer>(i), snapshot[i]);
         }
+        /* While a game reads (LayeredFS built, buffers in use): the heap the index has to share. */
+        LogHeap("now");
     }
 
     std::shared_ptr<ams::fs::IStorage> MeasureGameReads(std::shared_ptr<ams::fs::IStorage> &&storage) {
@@ -166,6 +168,15 @@ namespace ams::mitm::usbl::perf {
             Log("%s in %" PRId64 " ms", m_what, ms);
         } else {
             Log("drive %d: %s in %" PRId64 " ms", m_drive, m_what, ms);
+        }
+    }
+
+    void LogHeap(const char *when) {
+        if (!IsEnabled()) {
+            return;
+        }
+        if (const auto *allocator = ams::init::GetAllocator(); allocator != nullptr) {
+            Log("heap %s: %zu KB free, largest block %zu KB", when, allocator->GetTotalFreeSize() / 1_KB, allocator->GetAllocatableSize() / 1_KB);
         }
     }
 

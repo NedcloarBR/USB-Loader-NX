@@ -18,20 +18,18 @@
 #include "usbl_hidden_games.hpp"
 #include "../usbl_log.hpp"
 #include "../usbl_results.hpp"
+#include "../usbl_growable_array.hpp"
 
 namespace ams::mitm::usbl {
 
     namespace {
 
-        constexpr s32 MaxHiddenGames = 64;
         constexpr char HiddenSection[] = "hidden";
         /* "0100000000000000 = 1\n" */
         constexpr size_t LineLength = 2 * sizeof(u64) + 5;
-        constexpr size_t MaxFileSize = 0x40 + MaxHiddenGames * LineLength * 2;
 
         constinit os::SdkMutex g_hidden_lock;
-        constinit ncm::ApplicationId g_hidden[MaxHiddenGames] = {};
-        constinit s32 g_hidden_count = 0;
+        constinit GrowableArray<ncm::ApplicationId> g_hidden;
         constinit int g_file_version = ::usbl::formats::HiddenGames;
 
         void FormatHiddenGamesPath(char *dst, size_t dst_size) {
@@ -39,14 +37,13 @@ namespace ams::mitm::usbl {
         }
 
         ncm::ApplicationId *FindLocked(ncm::ApplicationId application_id) {
-            ncm::ApplicationId *end = g_hidden + g_hidden_count;
-            ncm::ApplicationId *it = std::find(g_hidden, end, application_id);
-            return it != end ? it : nullptr;
+            ncm::ApplicationId *it = std::find(g_hidden.begin(), g_hidden.end(), application_id);
+            return it != g_hidden.end() ? it : nullptr;
         }
 
         void AddLocked(u64 id) {
-            if (id != 0 && g_hidden_count < MaxHiddenGames && FindLocked({ id }) == nullptr) {
-                g_hidden[g_hidden_count++] = { id };
+            if (id != 0 && FindLocked({ id }) == nullptr) {
+                g_hidden.PushBack({ id });
             }
         }
 
@@ -62,12 +59,13 @@ namespace ams::mitm::usbl {
         }
 
         Result SaveLocked() {
-            char text[MaxFileSize];
-            size_t len = util::SNPrintf(text, sizeof(text), "[%s]\n%s = %d\n\n[%s]\n", ::usbl::formats::FormatSection, ::usbl::formats::VersionKey, ::usbl::formats::HiddenGames, HiddenSection);
-            for (s32 i = 0; i < g_hidden_count && len < sizeof(text); ++i) {
-                len += util::SNPrintf(text + len, sizeof(text) - len, "%016" PRIx64 " = 1\n", g_hidden[i].value);
+            TemporaryArray<char> text(0x40 + g_hidden.size() * LineLength);
+            R_UNLESS(text.Size() > 0, fs::ResultAllocationMemoryFailedNew());
+            size_t len = util::SNPrintf(text.Get(), text.Size(), "[%s]\n%s = %d\n\n[%s]\n", ::usbl::formats::FormatSection, ::usbl::formats::VersionKey, ::usbl::formats::HiddenGames, HiddenSection);
+            for (const auto &id : g_hidden) {
+                len += util::SNPrintf(text.Get() + len, text.Size() - len, "%016" PRIx64 " = 1\n", id.value);
             }
-            R_UNLESS(len < sizeof(text), ams::fs::ResultInvalidSize());
+            R_UNLESS(len < text.Size(), ams::fs::ResultInvalidSize());
 
             char directory[ams::fs::EntryNameLengthMax + 1];
             for (const char *dir : { ::usbl::paths::Root, ::usbl::paths::DataDir }) {
@@ -83,14 +81,14 @@ namespace ams::mitm::usbl {
             ams::fs::FileHandle file;
             R_TRY(ams::fs::OpenFile(std::addressof(file), path, ams::fs::OpenMode_Write));
             ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
-            R_RETURN(ams::fs::WriteFile(file, 0, text, len, ams::fs::WriteOption::Flush));
+            R_RETURN(ams::fs::WriteFile(file, 0, text.Get(), len, ams::fs::WriteOption::Flush));
         }
 
     }
 
     void LoadHiddenGames() {
         std::scoped_lock lk(g_hidden_lock);
-        g_hidden_count = 0;
+        g_hidden.Clear();
         g_file_version = ::usbl::formats::HiddenGames;
 
         char path[ams::fs::EntryNameLengthMax + 1];
@@ -103,7 +101,7 @@ namespace ams::mitm::usbl {
         ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
 
         util::ini::ParseFile(file, nullptr, HiddenGamesIniHandler);
-        Log("hidden games: %d", g_hidden_count);
+        Log("hidden games: %zu", g_hidden.size());
         if (g_file_version > ::usbl::formats::HiddenGames) {
             Log("hidden games: hidden_games.ini is from a newer version (format %d), read only", g_file_version);
         }
@@ -126,11 +124,10 @@ namespace ams::mitm::usbl {
         ncm::ApplicationId *existing = FindLocked(application_id);
         if (hidden) {
             R_SUCCEED_IF(existing != nullptr);
-            R_UNLESS(g_hidden_count < MaxHiddenGames, ams::fs::ResultInvalidSize());
-            g_hidden[g_hidden_count++] = application_id;
+            R_UNLESS(g_hidden.PushBack(application_id), fs::ResultAllocationMemoryFailedNew());
         } else {
             R_SUCCEED_IF(existing == nullptr);
-            *existing = g_hidden[--g_hidden_count];
+            g_hidden.RemoveIf([application_id](const ncm::ApplicationId &id) { return id == application_id; });
         }
         R_RETURN(SaveLocked());
     }

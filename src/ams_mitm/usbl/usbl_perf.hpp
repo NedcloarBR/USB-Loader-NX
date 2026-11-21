@@ -33,6 +33,9 @@ namespace ams::mitm::usbl::perf {
 
     void Record(Layer layer, size_t size, TimeSpan elapsed, TimeSpan lock_wait = 0);
 
+    /* Logs how much of ams.mitm's heap is free ("heap <when>: ..."), to see what the index and LayeredFS leave. */
+    void LogHeap(const char *when);
+
     /* Wraps a storage handed to a client so its reads are counted as Layer::Game. */
     std::shared_ptr<ams::fs::IStorage> MeasureGameReads(std::shared_ptr<ams::fs::IStorage> &&storage);
 

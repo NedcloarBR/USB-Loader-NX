@@ -18,29 +18,26 @@
 #include "../storage/usbl_usb_file_storage.hpp"
 #include "../storage/usbl_volume.hpp"
 #include "../usbl_results.hpp"
+#include "../usbl_growable_array.hpp"
 
 namespace ams::mitm::usbl {
 
     namespace {
 
-        constexpr s32 MaxXciCount     = 64;
-        constexpr s32 MaxContentCount = 512;
-        /* "/usbloadernx/games/<folder>/<file>": two long names plus the fixed prefix. */
-        constexpr size_t MaxPathLength = 0x300;
-
+        /* One per XCI or NSP indexed; a slot freed by an unplugged drive is reused, so indexes held by contents stay valid. */
         struct Container {
-            char path[MaxPathLength];
-            s32 drive;
-            bool used;
-            bool has_ticket;
-            ContainerTicket ticket;
-            s32 fragments;
+            /* Allocated to the path's length; stays at the same address while the list grows. */
+            std::unique_ptr<char[]> path;
+            s32 drive = 0;
+            bool used = false;
+            bool has_ticket = false;
+            ContainerTicket ticket = {};
+            s32 fragments = 1;
         };
 
-        constinit Container g_containers[MaxXciCount] = {};
-
-        constinit IndexedContent g_contents[MaxContentCount] = {};
-        constinit s32 g_content_count = 0;
+        /* As many as the drives hold (and the heap allows): no fixed limit. */
+        constinit GrowableArray<Container> g_containers;
+        constinit GrowableArray<IndexedContent> g_contents;
 
         /* Files left (wholly or partly) out of the index because it was full, since TakeIndexFullCount. */
         constinit s32 g_index_full_files = 0;
@@ -50,14 +47,18 @@ namespace ams::mitm::usbl {
             AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
         }
 
+        bool IsValidContainer(s32 xci_index) {
+            return 0 <= xci_index && static_cast<size_t>(xci_index) < g_containers.size() && g_containers[xci_index].used;
+        }
+
         template<typename Predicate>
         Result FindIndexedContentIf(IndexedContent *out, const char **out_xci_path, Predicate predicate) {
             AssertLocked();
 
-            for (s32 i = 0; i < g_content_count; ++i) {
-                if (predicate(g_contents[i])) {
-                    *out          = g_contents[i];
-                    *out_xci_path = g_containers[g_contents[i].xci_index].path;
+            for (const auto &content : g_contents) {
+                if (predicate(content)) {
+                    *out          = content;
+                    *out_xci_path = g_containers[content.xci_index].path.get();
                     R_SUCCEED();
                 }
             }
@@ -79,63 +80,83 @@ namespace ams::mitm::usbl {
     void ClearContentIndex(s32 drive) {
         AssertLocked();
 
-        g_content_count = static_cast<s32>(std::remove_if(g_contents, g_contents + g_content_count, [drive](const IndexedContent &content) { return content.drive == drive; }) - g_contents);
+        g_contents.RemoveIf([drive](const IndexedContent &content) { return content.drive == drive; });
 
+        bool any_used = false;
         for (auto &container : g_containers) {
             if (container.used && container.drive == drive) {
                 container.used = false;
+                container.path.reset();
             }
+            any_used = any_used || container.used;
+        }
+
+        /* No drive left: the memory goes back to the heap. */
+        if (!any_used) {
+            g_containers.Release();
+            g_contents.Release();
         }
     }
 
     Result AddIndexedXci(s32 *out_index, s32 drive, const char *path) {
         AssertLocked();
 
-        for (s32 i = 0; i < MaxXciCount; ++i) {
+        const size_t path_size = std::strlen(path) + 1;
+        std::unique_ptr<char[]> path_copy(HasHeapRoomFor(path_size) ? new (std::nothrow) char[path_size] : nullptr);
+        if (path_copy == nullptr) {
+            ++g_index_full_files;
+            R_THROW(usbl::ResultIndexFull());
+        }
+        std::memcpy(path_copy.get(), path, path_size);
+
+        s32 index = -1;
+        for (size_t i = 0; i < g_containers.size(); ++i) {
             if (!g_containers[i].used) {
-                util::Strlcpy(g_containers[i].path, path, static_cast<int>(MaxPathLength));
-                g_containers[i].drive      = drive;
-                g_containers[i].used       = true;
-                g_containers[i].has_ticket = false;
-                g_containers[i].fragments  = 1;
-                *out_index = i;
-                R_SUCCEED();
+                index = static_cast<s32>(i);
+                break;
             }
         }
+        if (index < 0) {
+            if (!g_containers.PushBack({})) {
+                ++g_index_full_files;
+                R_THROW(usbl::ResultIndexFull());
+            }
+            index = static_cast<s32>(g_containers.size() - 1);
+        }
 
-        ++g_index_full_files;
-        R_THROW(usbl::ResultIndexFull());
+        Container &container = g_containers[index];
+        container = { .path = std::move(path_copy), .drive = drive, .used = true, .has_ticket = false, .ticket = {}, .fragments = 1 };
+        *out_index = index;
+        R_SUCCEED();
     }
 
     Result AddIndexedContent(const IndexedContent &content) {
         AssertLocked();
-        AMS_ASSERT(0 <= content.xci_index && content.xci_index < MaxXciCount);
-        AMS_ASSERT(g_containers[content.xci_index].used && g_containers[content.xci_index].drive == content.drive);
-        if (g_content_count >= MaxContentCount) {
+        AMS_ASSERT(IsValidContainer(content.xci_index));
+        AMS_ASSERT(g_containers[content.xci_index].drive == content.drive);
+        if (!g_contents.PushBack(content)) {
             if (g_last_full_container != content.xci_index) {
                 g_last_full_container = content.xci_index;
                 ++g_index_full_files;
             }
             R_THROW(usbl::ResultIndexFull());
         }
-
-        g_contents[g_content_count++] = content;
         R_SUCCEED();
     }
 
     void MarkIndexedPatchContent(ncm::ContentId content_id) {
         AssertLocked();
 
-        for (s32 i = 0; i < g_content_count; ++i) {
-            if (g_contents[i].content_id == content_id) {
-                g_contents[i].is_patch = true;
+        for (auto &content : g_contents) {
+            if (content.content_id == content_id) {
+                content.is_patch = true;
             }
         }
     }
 
     Result SetContainerTicket(s32 xci_index, const ContainerTicket &ticket) {
         AssertLocked();
-        R_UNLESS(0 <= xci_index && xci_index < MaxXciCount && g_containers[xci_index].used, usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
 
         g_containers[xci_index].ticket     = ticket;
         g_containers[xci_index].has_ticket = true;
@@ -144,7 +165,7 @@ namespace ams::mitm::usbl {
 
     Result SetContainerFragments(s32 xci_index, s32 fragments) {
         AssertLocked();
-        R_UNLESS(0 <= xci_index && xci_index < MaxXciCount && g_containers[xci_index].used, usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
 
         g_containers[xci_index].fragments = fragments;
         R_SUCCEED();
@@ -152,9 +173,9 @@ namespace ams::mitm::usbl {
 
     Result GetContainerInfo(ContainerInfo *out, s32 xci_index) {
         AssertLocked();
-        R_UNLESS(0 <= xci_index && xci_index < MaxXciCount && g_containers[xci_index].used, usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
 
-        *out = { .path = g_containers[xci_index].path, .fragments = g_containers[xci_index].fragments };
+        *out = { .path = g_containers[xci_index].path.get(), .fragments = g_containers[xci_index].fragments };
         R_SUCCEED();
     }
 
@@ -185,26 +206,28 @@ namespace ams::mitm::usbl {
         AssertLocked();
 
         const ncm::ProgramId patch_id = GetPatchId(program_id);
-        g_content_count = static_cast<s32>(std::remove_if(g_contents, g_contents + g_content_count, [program_id, patch_id](const IndexedContent &content) {
+        g_contents.RemoveIf([program_id, patch_id](const IndexedContent &content) {
             return content.program_id == program_id || content.program_id == patch_id;
-        }) - g_contents);
+        });
     }
 
     void RemoveIndexedPatch(ncm::ProgramId program_id) {
         AssertLocked();
 
         const ncm::ProgramId patch_id = GetPatchId(program_id);
-        g_content_count = static_cast<s32>(std::remove_if(g_contents, g_contents + g_content_count, [program_id, patch_id](const IndexedContent &content) {
+        g_contents.RemoveIf([program_id, patch_id](const IndexedContent &content) {
             return content.is_patch && (content.program_id == program_id || content.program_id == patch_id);
-        }) - g_contents);
+        });
     }
 
     s32 GetIndexedApplications(ncm::ProgramId *out, s32 max_count, s32 drive) {
         AssertLocked();
 
         s32 count = 0;
-        for (s32 i = 0; i < g_content_count && count < max_count; ++i) {
-            const IndexedContent &content = g_contents[i];
+        for (const auto &content : g_contents) {
+            if (count >= max_count) {
+                break;
+            }
             if (content.content_type != NcaContentType::Program || (drive >= 0 && content.drive != drive) || std::find(out, out + count, content.program_id) != out + count) {
                 continue;
             }
@@ -223,12 +246,12 @@ namespace ams::mitm::usbl {
 
     s32 GetIndexedContentCount() {
         AssertLocked();
-        return g_content_count;
+        return static_cast<s32>(g_contents.size());
     }
 
     Result GetIndexedContent(IndexedContent *out, s32 index) {
         AssertLocked();
-        R_UNLESS(0 <= index && index < g_content_count, usbl::ResultOutOfRange());
+        R_UNLESS(0 <= index && static_cast<size_t>(index) < g_contents.size(), usbl::ResultOutOfRange());
 
         *out = g_contents[index];
         R_SUCCEED();
@@ -236,7 +259,7 @@ namespace ams::mitm::usbl {
 
     bool IsIndexedProgram(ncm::ProgramId program_id) {
         AssertLocked();
-        return std::any_of(g_contents, g_contents + g_content_count, [program_id](const IndexedContent &content) {
+        return std::any_of(g_contents.begin(), g_contents.end(), [program_id](const IndexedContent &content) {
             return content.program_id == program_id;
         });
     }

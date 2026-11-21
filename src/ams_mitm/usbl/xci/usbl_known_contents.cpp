@@ -20,6 +20,7 @@
 #include "../storage/usbl_volume.hpp"
 #include "../usbl_log.hpp"
 #include "../usbl_results.hpp"
+#include "../usbl_growable_array.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -27,7 +28,6 @@ namespace ams::mitm::usbl {
 
         constexpr u32 FileMagic   = util::FourCC<'U','S','L','K'>::Code;
         constexpr u32 FileVersion = ::usbl::formats::KnownContents;
-        constexpr size_t MaxKnownContents = 512;
 
         struct FileHeader {
             u32 magic;
@@ -38,22 +38,51 @@ namespace ams::mitm::usbl {
         static_assert(sizeof(FileHeader) == 0x10);
 
         constinit os::SdkMutex g_lock;
-        constinit KnownContent g_known[MaxKnownContents] = {};
-        constinit size_t g_known_count = 0;
+        /* Every content of every game indexed so far: no fixed limit (FORMATS.md). */
+        constinit GrowableArray<KnownContent> g_known;
         /* A newer version's file: its entries may not be laid out like ours, so it is neither read nor rewritten. */
         constinit bool g_file_is_newer = false;
 
-        /* Only the USB volume thread remembers contents; too large for its stack. */
-        constinit IndexedContent g_indexed_scratch[MaxKnownContents] = {};
+        /* A copy of the index taken under the volume lock, so it is not held while the known list is changed and saved. */
+        class IndexSnapshot {
+            private:
+                std::unique_ptr<IndexedContent[]> m_items;
+                s32 m_count = 0;
+            public:
+                /* False when there was no memory for the copy. */
+                bool Take() {
+                    std::scoped_lock lk(GetVolumeLock());
+                    const s32 total = GetIndexedContentCount();
+                    if (total == 0) {
+                        return true;
+                    }
+                    if (!HasHeapRoomFor(total * sizeof(IndexedContent))) {
+                        return false;
+                    }
+                    m_items.reset(new (std::nothrow) IndexedContent[total]);
+                    if (m_items == nullptr) {
+                        return false;
+                    }
+                    for (s32 i = 0; i < total; ++i) {
+                        if (R_SUCCEEDED(GetIndexedContent(m_items.get() + m_count, i))) {
+                            ++m_count;
+                        }
+                    }
+                    return true;
+                }
+
+                const IndexedContent *Get() const { return m_items.get(); }
+                s32 Count() const { return m_count; }
+        };
 
         void FormatFilePath(char *dst, size_t dst_size) {
             util::SNPrintf(dst, dst_size, "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::KnownContents);
         }
 
         KnownContent *FindLocked(ncm::ContentId content_id) {
-            for (size_t i = 0; i < g_known_count; ++i) {
-                if (g_known[i].content_id == content_id) {
-                    return g_known + i;
+            for (auto &known : g_known) {
+                if (known.content_id == content_id) {
+                    return &known;
                 }
             }
             return nullptr;
@@ -71,8 +100,8 @@ namespace ams::mitm::usbl {
             char path[ams::fs::EntryNameLengthMax + 1];
             FormatFilePath(path, sizeof(path));
 
-            const FileHeader header = { .magic = FileMagic, .version = FileVersion, .count = static_cast<u32>(g_known_count), .reserved = 0 };
-            const size_t size = sizeof(header) + g_known_count * sizeof(KnownContent);
+            const FileHeader header = { .magic = FileMagic, .version = FileVersion, .count = static_cast<u32>(g_known.size()), .reserved = 0 };
+            const size_t size = sizeof(header) + g_known.size() * sizeof(KnownContent);
 
             R_DISCARD(ams::fs::DeleteFile(path));
             R_TRY(ams::fs::CreateFile(path, size));
@@ -82,7 +111,7 @@ namespace ams::mitm::usbl {
             ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
 
             R_TRY(ams::fs::WriteFile(file, 0, std::addressof(header), sizeof(header), ams::fs::WriteOption::None));
-            R_RETURN(ams::fs::WriteFile(file, sizeof(header), g_known, g_known_count * sizeof(KnownContent), ams::fs::WriteOption::Flush));
+            R_RETURN(ams::fs::WriteFile(file, sizeof(header), g_known.begin(), g_known.size() * sizeof(KnownContent), ams::fs::WriteOption::Flush));
         }
 
         KnownContent MakeKnownContent(const IndexedContent &content) {
@@ -103,7 +132,7 @@ namespace ams::mitm::usbl {
 
     void LoadKnownContents() {
         std::scoped_lock lk(g_lock);
-        g_known_count = 0;
+        g_known.Clear();
         g_file_is_newer = false;
 
         char path[ams::fs::EntryNameLengthMax + 1];
@@ -122,18 +151,22 @@ namespace ams::mitm::usbl {
             g_file_is_newer = true;
             return;
         }
-        if (header.magic != FileMagic || header.version != FileVersion || header.count > MaxKnownContents) {
+        if (header.magic != FileMagic || header.version != FileVersion) {
             Log("known contents: file invalid, ignored");
             return;
         }
 
-        if (R_FAILED(ams::fs::ReadFile(file, sizeof(header), g_known, header.count * sizeof(KnownContent)))) {
-            Log("known contents: file truncated, ignored");
+        if (!g_known.Reserve(header.count)) {
+            Log("known contents: no memory for %u contents, ignored", header.count);
             return;
         }
-
-        g_known_count = header.count;
-        Log("known contents: %zu loaded", g_known_count);
+        g_known.SetCount(header.count);
+        if (header.count > 0 && R_FAILED(ams::fs::ReadFile(file, sizeof(header), g_known.begin(), header.count * sizeof(KnownContent)))) {
+            Log("known contents: file truncated, ignored");
+            g_known.Clear();
+            return;
+        }
+        Log("known contents: %zu loaded", g_known.size());
     }
 
     bool IsKnownContentsFromNewerVersion() {
@@ -144,16 +177,13 @@ namespace ams::mitm::usbl {
     void RememberIndexedContents() {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
 
-        IndexedContent *indexed = g_indexed_scratch;
-        s32 indexed_count = 0;
-        {
-            std::scoped_lock lk(GetVolumeLock());
-            for (s32 i = 0; i < GetIndexedContentCount() && indexed_count < static_cast<s32>(MaxKnownContents); ++i) {
-                if (R_SUCCEEDED(GetIndexedContent(indexed + indexed_count, i))) {
-                    ++indexed_count;
-                }
-            }
+        IndexSnapshot snapshot;
+        if (!snapshot.Take()) {
+            Log("known contents: no memory to remember the indexed contents");
+            return;
         }
+        const IndexedContent *indexed = snapshot.Get();
+        const s32 indexed_count = snapshot.Count();
 
         std::scoped_lock lk(g_lock);
 
@@ -165,9 +195,10 @@ namespace ams::mitm::usbl {
                     *existing = known;
                     changed = true;
                 }
-            } else if (g_known_count < MaxKnownContents) {
-                g_known[g_known_count++] = known;
+            } else if (g_known.PushBack(known)) {
                 changed = true;
+            } else {
+                Log("known contents: no memory left, %s not remembered", ncm::GetContentIdString(known.content_id).data);
             }
         }
 
@@ -180,7 +211,7 @@ namespace ams::mitm::usbl {
         } else if (R_FAILED(result)) {
             Log("known contents: save failed 2%03d-%04d", result.GetModule(), result.GetDescription());
         } else {
-            Log("known contents: %zu saved", g_known_count);
+            Log("known contents: %zu saved", g_known.size());
         }
     }
 
@@ -206,30 +237,26 @@ namespace ams::mitm::usbl {
     void ForgetDeletedGameParts() {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
 
-        IndexedContent *indexed = g_indexed_scratch;
-        s32 indexed_count = 0;
-        {
-            std::scoped_lock lk(GetVolumeLock());
-            for (s32 i = 0; i < GetIndexedContentCount() && indexed_count < static_cast<s32>(MaxKnownContents); ++i) {
-                if (R_SUCCEEDED(GetIndexedContent(indexed + indexed_count, i))) {
-                    ++indexed_count;
-                }
-            }
+        IndexSnapshot snapshot;
+        if (!snapshot.Take()) {
+            return;
         }
+        const IndexedContent *indexed = snapshot.Get();
+        const s32 indexed_count = snapshot.Count();
 
         std::scoped_lock lk(g_lock);
 
-        const size_t old_count = g_known_count;
-        g_known_count = static_cast<size_t>(std::remove_if(g_known, g_known + g_known_count, [&](const KnownContent &known) {
+        const size_t old_count = g_known.size();
+        g_known.RemoveIf([&](const KnownContent &known) {
             const bool is_part = known.is_patch || IsAddOnContentTitleId(known.program_id);
             if (!is_part || IsIndexed(indexed, indexed_count, known.content_id) || !IsGameIndexed(indexed, indexed_count, GetApplicationOf(known))) {
                 return false;
             }
             Log("known contents: %016" PRIx64 " %s content deleted from its game's drive, forgotten", known.program_id.value, known.is_patch ? "update" : "add-on");
             return true;
-        }) - g_known);
+        });
 
-        if (g_known_count == old_count) {
+        if (g_known.size() == old_count) {
             return;
         }
         if (const Result result = SaveLocked(); usbl::ResultNewerFormat::Includes(result)) {
@@ -245,9 +272,9 @@ namespace ams::mitm::usbl {
         void ForgetKnownIf(Predicate predicate) {
             std::scoped_lock lk(g_lock);
 
-            const size_t old_count = g_known_count;
-            g_known_count = static_cast<size_t>(std::remove_if(g_known, g_known + g_known_count, predicate) - g_known);
-            if (g_known_count == old_count) {
+            const size_t old_count = g_known.size();
+            g_known.RemoveIf(predicate);
+            if (g_known.size() == old_count) {
                 return;
             }
 
@@ -271,12 +298,10 @@ namespace ams::mitm::usbl {
     bool ForgetKnownContent(ncm::ContentId content_id) {
         std::scoped_lock lk(g_lock);
 
-        const KnownContent *known = FindLocked(content_id);
-        if (known == nullptr) {
+        if (FindLocked(content_id) == nullptr) {
             return false;
         }
-        std::copy(known + 1, static_cast<const KnownContent *>(g_known + g_known_count), g_known + (known - g_known));
-        --g_known_count;
+        g_known.RemoveIf([content_id](const KnownContent &known) { return known.content_id == content_id; });
 
         if (const Result result = SaveLocked(); usbl::ResultNewerFormat::Includes(result)) {
             /* Logged once at load. */
@@ -290,7 +315,7 @@ namespace ams::mitm::usbl {
         std::scoped_lock lk(g_lock);
 
         s32 count = 0;
-        for (size_t i = 0; i < g_known_count && count < max_count; ++i) {
+        for (size_t i = 0; i < g_known.size() && count < max_count; ++i) {
             if (g_known[i].content_type == static_cast<u8>(NcaContentType::Meta) && IsApplicationTitleId(g_known[i].program_id)) {
                 out[count++] = g_known[i].program_id;
             }
@@ -313,7 +338,7 @@ namespace ams::mitm::usbl {
         std::scoped_lock lk(g_lock);
 
         const auto find = [&](bool is_patch) {
-            for (size_t i = 0; i < g_known_count; ++i) {
+            for (size_t i = 0; i < g_known.size(); ++i) {
                 if (g_known[i].program_id == program_id && g_known[i].content_type == content_type && g_known[i].is_patch == is_patch) {
                     *out = g_known[i];
                     return true;
@@ -332,7 +357,7 @@ namespace ams::mitm::usbl {
         constexpr u64 AddOnContentIndexMask  = 0xFFF;
         const u64 add_on_base = application_id.value + AddOnContentBaseOffset;
         s64 size = 0;
-        for (size_t i = 0; i < g_known_count; ++i) {
+        for (size_t i = 0; i < g_known.size(); ++i) {
             const u64 id = g_known[i].program_id.value;
             if (id == application_id.value || id == GetPatchId(application_id).value || (id & ~AddOnContentIndexMask) == add_on_base) {
                 size += g_known[i].size;
@@ -343,14 +368,14 @@ namespace ams::mitm::usbl {
 
     bool IsKnownPatchedProgram(ncm::ProgramId program_id) {
         std::scoped_lock lk(g_lock);
-        return std::any_of(g_known, g_known + g_known_count, [program_id](const KnownContent &known) {
+        return std::any_of(g_known.begin(), g_known.end(), [program_id](const KnownContent &known) {
             return known.program_id == program_id && known.is_patch && known.content_type == static_cast<u8>(NcaContentType::Program);
         });
     }
 
     bool IsKnownProgram(ncm::ProgramId program_id) {
         std::scoped_lock lk(g_lock);
-        return std::any_of(g_known, g_known + g_known_count, [program_id](const KnownContent &known) { return known.program_id == program_id; });
+        return std::any_of(g_known.begin(), g_known.end(), [program_id](const KnownContent &known) { return known.program_id == program_id; });
     }
 
 }

@@ -19,6 +19,7 @@
 #include "usbl_content_index.hpp"
 #include "usbl_content_meta.hpp"
 #include "usbl_known_contents.hpp"
+#include "../usbl_growable_array.hpp"
 #include "usbl_es_shim.h"
 #include "usbl_ns_shim.h"
 #include "../storage/usbl_volume.hpp"
@@ -31,7 +32,8 @@ namespace ams::mitm::usbl::xci {
 
     namespace {
 
-        constexpr s32 MaxApplicationCount = 32;
+        /* Games and the add-on contents of one game handled in one pass; the lists themselves live on the heap. */
+        constexpr s32 MaxApplicationCount = 4096;
 
         /* With the drive already attached at boot, indexing finishes before ns activates the SD card storage. */
         constexpr s32 DatabaseOpenAttempts = 60;
@@ -90,6 +92,11 @@ namespace ams::mitm::usbl::xci {
 
         bool IsAutoRegisterEnabled() {
             return IsConfigEnabled(ConfigKey::AutoRegister);
+        }
+
+        s32 GetIndexedContentCountLocked() {
+            std::scoped_lock lk(GetVolumeLock());
+            return GetIndexedContentCount();
         }
 
         template<typename Predicate>
@@ -156,21 +163,20 @@ namespace ams::mitm::usbl::xci {
         }
 
         /* Applications whose record was pushed since boot; ns keeps them "present" across later detach/attach cycles. */
-        constinit ncm::ApplicationId g_pushed_applications[MaxApplicationCount] = {};
-        constinit s32 g_pushed_count = 0;
+        constinit GrowableArray<ncm::ApplicationId> g_pushed_applications;
 
         bool WasPushedSinceBoot(ncm::ApplicationId application_id) {
-            return std::find(g_pushed_applications, g_pushed_applications + g_pushed_count, application_id) != g_pushed_applications + g_pushed_count;
+            return std::find(g_pushed_applications.begin(), g_pushed_applications.end(), application_id) != g_pushed_applications.end();
         }
 
         void RememberPushed(ncm::ApplicationId application_id) {
-            if (!WasPushedSinceBoot(application_id) && g_pushed_count < MaxApplicationCount) {
-                g_pushed_applications[g_pushed_count++] = application_id;
+            if (!WasPushedSinceBoot(application_id)) {
+                g_pushed_applications.PushBack(application_id);
             }
         }
 
         void ForgetPushed(ncm::ApplicationId application_id) {
-            g_pushed_count = static_cast<s32>(std::remove(g_pushed_applications, g_pushed_applications + g_pushed_count, application_id) - g_pushed_applications);
+            g_pushed_applications.RemoveIf([application_id](const ncm::ApplicationId &id) { return id == application_id; });
         }
 
         Result PushApplicationRecord(ncm::ApplicationId application_id, const ContentStorageRecord *records, s32 record_count) {
@@ -369,12 +375,13 @@ namespace ams::mitm::usbl::xci {
             R_SUCCEED();
         }
 
-        constexpr s32 MaxAddOnContentCount = 32;
+        constexpr s32 MaxAddOnContentCount = 512;
 
         /* Each add-on content's meta names its application; those with every content and their ticket go into the application's record. */
         void RegisterAddOnContents(ContentStorageRecord *records, s32 *record_count, s32 max_records, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id, s32 drive) {
-            IndexedContent metas[MaxAddOnContentCount];
-            const s32 meta_count = CollectMetaContents(metas, MaxAddOnContentCount, IsAddOnContentTitleId);
+            /* Every add-on content on the drives; the ones of this application are picked below. */
+            TemporaryArray<IndexedContent> metas(GetIndexedContentCountLocked());
+            const s32 meta_count = CollectMetaContents(metas.Get(), metas.Count(), IsAddOnContentTitleId);
 
             for (s32 i = 0; i < meta_count && *record_count < max_records; ++i) {
                 ncm::AutoBuffer meta;
@@ -435,9 +442,9 @@ namespace ams::mitm::usbl::xci {
             if (R_SUCCEEDED(db.GetLatest(std::addressof(key), GetPatchId(application_id).value))) {
                 add_if_ours(key, ncm::ContentType::Program);
             }
-            ncm::ContentMetaKey add_ons[MaxAddOnContentCount];
-            const auto listed = db.ListContentMeta(add_ons, MaxAddOnContentCount, ncm::ContentMetaType::AddOnContent, ncm::ApplicationId{ application_id.value });
-            for (s32 i = 0; i < std::min<s32>(listed.written, MaxAddOnContentCount); ++i) {
+            TemporaryArray<ncm::ContentMetaKey> add_ons(MaxAddOnContentCount);
+            const auto listed = db.ListContentMeta(add_ons.Get(), add_ons.Count(), ncm::ContentMetaType::AddOnContent, ncm::ApplicationId{ application_id.value });
+            for (s32 i = 0; i < std::min<s32>(listed.written, add_ons.Count()); ++i) {
                 add_if_ours(add_ons[i], ncm::ContentType::Data);
             }
         }
@@ -493,12 +500,14 @@ namespace ams::mitm::usbl::xci {
             R_TRY(EnsureContentMeta(std::addressof(meta_written), db, reader, meta_content));
             R_DISCARD(EnsureProgramTicket(meta_content.program_id, ContentLayer::Base));
 
-            ContentStorageRecord records[2 + MaxAddOnContentCount] = { MakeSdCardRecord(key) };
+            TemporaryArray<ContentStorageRecord> records(2 + MaxAddOnContentCount);
+            TemporaryArray<OwnedParts> owned(1);
+            R_UNLESS(records.Size() > 0 && owned.Size() > 0, fs::ResultAllocationMemoryFailedNew());
+            records[0] = MakeSdCardRecord(key);
             s32 record_count = 1;
             u32 version = key.version;
 
-            OwnedParts owned;
-            CollectOwnedParts(std::addressof(owned), db, meta_content.program_id);
+            CollectOwnedParts(owned.Get(), db, meta_content.program_id);
 
             util::optional<ncm::ContentMetaKey> patch_key;
             bool patch_written = false;
@@ -513,8 +522,8 @@ namespace ams::mitm::usbl::xci {
 
             bool add_on_content_written = false;
             const s32 application_record_count = record_count;
-            RegisterAddOnContents(records, std::addressof(record_count), util::size(records), std::addressof(add_on_content_written), db, meta_content.program_id, meta_content.drive);
-            add_on_content_written |= RemoveUnusedParts(db, owned, records, record_count);
+            RegisterAddOnContents(records.Get(), std::addressof(record_count), records.Count(), std::addressof(add_on_content_written), db, meta_content.program_id, meta_content.drive);
+            add_on_content_written |= RemoveUnusedParts(db, *owned.Get(), records.Get(), record_count);
 
             /* Every push makes HOME reload its whole grid; once per boot is enough unless a meta changed. */
             if (!meta_written && !patch_written && !add_on_content_written && WasPushedSinceBoot({ key.id })) {
@@ -529,7 +538,7 @@ namespace ams::mitm::usbl::xci {
                 R_SUCCEED();
             }
 
-            R_TRY(PushApplicationRecord({ key.id }, records, record_count));
+            R_TRY(PushApplicationRecord({ key.id }, records.Get(), record_count));
             Log("register %016" PRIx64 ": ns application record ok (Installed, v%u%s, %d add-on contents)", key.id, version, patch_key.has_value() ? " with update" : "", record_count - application_record_count);
             R_SUCCEED();
         }
@@ -552,8 +561,8 @@ namespace ams::mitm::usbl::xci {
             return;
         }
 
-        IndexedContent metas[MaxApplicationCount];
-        const s32 count = CollectMetaContents(metas, MaxApplicationCount, IsApplicationTitleId);
+        TemporaryArray<IndexedContent> metas(GetIndexedContentCountLocked());
+        const s32 count = CollectMetaContents(metas.Get(), metas.Count(), IsApplicationTitleId);
 
         ncm::ContentMetaDatabase db;
         if (const Result result = OpenSdCardContentMetaDatabase(std::addressof(db)); R_FAILED(result)) {
@@ -610,15 +619,15 @@ namespace ams::mitm::usbl::xci {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
 
         /* Known titles too: one installed while its drive was unplugged must not be claimed by loader. */
-        ncm::ProgramId applications[MaxApplicationCount * 2];
-        s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        TemporaryArray<ncm::ProgramId> applications(MaxApplicationCount * 2);
+        s32 count = GetKnownApplications(applications.Get(), std::min(MaxApplicationCount, applications.Count()));
         {
             /* Program NCAs, not metas: an update alone on the drive also carries the application's program id. */
             std::scoped_lock lk(GetVolumeLock());
-            for (s32 i = 0; i < GetIndexedContentCount() && count < MaxApplicationCount * 2; ++i) {
+            for (s32 i = 0; i < GetIndexedContentCount() && count < applications.Count(); ++i) {
                 IndexedContent content;
                 if (R_SUCCEEDED(GetIndexedContent(std::addressof(content), i)) && content.content_type == NcaContentType::Program &&
-                    std::find(applications, applications + count, content.program_id) == applications + count) {
+                    std::find(applications.Get(), applications.Get() + count, content.program_id) == applications.Get() + count) {
                     applications[count++] = content.program_id;
                 }
             }
@@ -688,8 +697,8 @@ namespace ams::mitm::usbl::xci {
 
         /* auto_register off: no USB game stays on HOME, plugged in or not. */
         void HideKnownApplicationsLocked() {
-            ncm::ProgramId applications[MaxApplicationCount];
-            const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+            TemporaryArray<ncm::ProgramId> applications(MaxApplicationCount);
+            const s32 count = GetKnownApplications(applications.Get(), applications.Count());
             for (s32 i = 0; i < count; ++i) {
                 if (const Result result = DeleteApplicationRecord({ applications[i].value }); R_FAILED(result)) {
                     Log("hide %016" PRIx64 ": ns record not removed 2%03d-%04d", applications[i].value, result.GetModule(), result.GetDescription());
@@ -753,7 +762,9 @@ namespace ams::mitm::usbl::xci {
 
         /* The record an unplugged game had while its drive was in, rebuilt from the metas left in the SD card ncm database. */
         Result PushRecordFromDatabase(ncm::ContentMetaDatabase &db, ncm::ApplicationId application_id) {
-            ContentStorageRecord records[2 + MaxAddOnContentCount];
+            TemporaryArray<ContentStorageRecord> records(2 + MaxAddOnContentCount);
+            TemporaryArray<ncm::ContentMetaKey> add_ons(MaxAddOnContentCount);
+            R_UNLESS(records.Size() > 0 && add_ons.Size() > 0, fs::ResultAllocationMemoryFailedNew());
             s32 record_count = 0;
 
             ncm::ContentMetaKey key;
@@ -763,13 +774,12 @@ namespace ams::mitm::usbl::xci {
                 records[record_count++] = MakeSdCardRecord(key);
             }
 
-            ncm::ContentMetaKey add_ons[MaxAddOnContentCount];
-            const auto listed = db.ListContentMeta(add_ons, MaxAddOnContentCount, ncm::ContentMetaType::AddOnContent, application_id);
-            for (s32 i = 0; i < std::min<s32>(listed.written, MaxAddOnContentCount); ++i) {
+            const auto listed = db.ListContentMeta(add_ons.Get(), add_ons.Count(), ncm::ContentMetaType::AddOnContent, application_id);
+            for (s32 i = 0; i < std::min<s32>(listed.written, add_ons.Count()); ++i) {
                 records[record_count++] = MakeSdCardRecord(add_ons[i]);
             }
 
-            R_RETURN(PushApplicationRecord(application_id, records, record_count));
+            R_RETURN(PushApplicationRecord(application_id, records.Get(), record_count));
         }
 
     }
@@ -820,8 +830,8 @@ namespace ams::mitm::usbl::xci {
             return;
         }
 
-        ncm::ProgramId applications[MaxApplicationCount];
-        const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        TemporaryArray<ncm::ProgramId> applications(MaxApplicationCount);
+        const s32 count = GetKnownApplications(applications.Get(), applications.Count());
         for (s32 i = 0; i < count; ++i) {
             const ncm::ApplicationId application_id = { applications[i].value };
             bool is_indexed;
@@ -861,8 +871,7 @@ namespace ams::mitm::usbl::xci {
     namespace {
 
         /* Games taken off HOME by RefreshApplicationRecords, waiting to come back once HOME is in front again. */
-        constinit ncm::ApplicationId g_refresh_pending[MaxApplicationCount] = {};
-        constinit s32 g_refresh_pending_count = 0;
+        constinit GrowableArray<ncm::ApplicationId> g_refresh_pending;
         /* The thread is waiting for the Manager to close (a second badge change must not count as that signal). */
         constinit bool g_refresh_armed = false;
 
@@ -877,20 +886,20 @@ namespace ams::mitm::usbl::xci {
 
         void BringBackRefreshedGames() {
             std::scoped_lock lk(g_registration_lock);
-            if (g_refresh_pending_count == 0) {
+            if (static_cast<s32>(g_refresh_pending.size()) == 0) {
                 g_refresh_armed = false;
                 return;
             }
 
             /* Plugged-in games come back through registration. */
-            g_pushed_count = 0;
+            g_pushed_applications.Clear();
             RegisterIndexedApplicationsIfEnabled();
 
             /* Unplugged games come back from their metas on the SD card. */
             ncm::ContentMetaDatabase db;
             const bool has_db = R_SUCCEEDED(OpenSdCardContentMetaDatabase(std::addressof(db)));
             s32 unplugged = 0;
-            for (s32 i = 0; i < g_refresh_pending_count && has_db; ++i) {
+            for (s32 i = 0; i < static_cast<s32>(g_refresh_pending.size()) && has_db; ++i) {
                 {
                     std::scoped_lock vlk(GetVolumeLock());
                     if (IsIndexedProgram({ g_refresh_pending[i].value })) {
@@ -906,8 +915,8 @@ namespace ams::mitm::usbl::xci {
                     ++unplugged;
                 }
             }
-            Log("refresh: %d games back on HOME, %d of them unplugged", g_refresh_pending_count, unplugged);
-            g_refresh_pending_count = 0;
+            Log("refresh: %d games back on HOME, %d of them unplugged", static_cast<s32>(g_refresh_pending.size()), unplugged);
+            g_refresh_pending.Clear();
             g_refresh_armed = false;
         }
 
@@ -957,8 +966,8 @@ namespace ams::mitm::usbl::xci {
         /* HOME's grid keeps its own copy of each icon while the game stays in it, and reconciles only when it comes to
          * the front: taking a game off and back while the Manager is open changes nothing it can see. So the games stay
          * off HOME until the Manager closes, and come back once HOME is in front. */
-        ncm::ProgramId applications[MaxApplicationCount];
-        const s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        TemporaryArray<ncm::ProgramId> applications(MaxApplicationCount);
+        const s32 count = GetKnownApplications(applications.Get(), applications.Count());
         for (s32 i = 0; i < count; ++i) {
             const ncm::ApplicationId application_id = { applications[i].value };
             if (!HasApplicationRecord(application_id)) {
@@ -968,12 +977,11 @@ namespace ams::mitm::usbl::xci {
                 Log("refresh %016" PRIx64 ": ns record not removed 2%03d-%04d", application_id.value, result.GetModule(), result.GetDescription());
                 continue;
             }
-            if (std::find(g_refresh_pending, g_refresh_pending + g_refresh_pending_count, application_id) == g_refresh_pending + g_refresh_pending_count &&
-                g_refresh_pending_count < MaxApplicationCount) {
-                g_refresh_pending[g_refresh_pending_count++] = application_id;
+            if (std::find(g_refresh_pending.begin(), g_refresh_pending.end(), application_id) == g_refresh_pending.end()) {
+                g_refresh_pending.PushBack(application_id);
             }
         }
-        Log("refresh: %d games off HOME until the Manager closes", g_refresh_pending_count);
+        Log("refresh: %d games off HOME until the Manager closes", static_cast<s32>(g_refresh_pending.size()));
         /* Arms the fallback; FinishHomeRefresh is the second signal. */
         if (!g_refresh_armed) {
             g_refresh_armed = true;
@@ -1096,9 +1104,8 @@ namespace ams::mitm::usbl::xci {
                 out->update_version = key.version;
             }
 
-            constexpr size_t MaxAddOnContents = 64;
-            ncm::ContentMetaKey add_ons[MaxAddOnContents];
-            const auto listed = db.ListContentMeta(add_ons, MaxAddOnContents, ncm::ContentMetaType::AddOnContent, { out->application_id });
+            TemporaryArray<ncm::ContentMetaKey> add_ons(MaxAddOnContentCount);
+            const auto listed = db.ListContentMeta(add_ons.Get(), add_ons.Count(), ncm::ContentMetaType::AddOnContent, { out->application_id });
             out->add_on_count = static_cast<u8>(std::min<s32>(listed.written, std::numeric_limits<u8>::max()));
         }
 
@@ -1107,20 +1114,20 @@ namespace ams::mitm::usbl::xci {
     s32 GetGameStatuses(GameStatus *out, s32 max_count) {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
 
-        ncm::ProgramId applications[MaxApplicationCount];
-        s32 count = GetKnownApplications(applications, MaxApplicationCount);
+        TemporaryArray<ncm::ProgramId> applications(MaxApplicationCount);
+        s32 count = GetKnownApplications(applications.Get(), applications.Count());
 
         /* A game on a plugged-in drive is listed even when it is not known (any more): ns deletes at boot the contents of
          * games without an ns record, hidden ones included, and that makes them forgotten until the drive is plugged again. */
         {
-            ncm::ProgramId indexed[MaxApplicationCount];
+            TemporaryArray<ncm::ProgramId> indexed(MaxApplicationCount);
             s32 indexed_count;
             {
                 std::scoped_lock lk(GetVolumeLock());
-                indexed_count = GetIndexedApplications(indexed, MaxApplicationCount, -1);
+                indexed_count = GetIndexedApplications(indexed.Get(), indexed.Count(), -1);
             }
-            for (s32 i = 0; i < indexed_count && count < MaxApplicationCount; ++i) {
-                if (std::find(applications, applications + count, indexed[i]) == applications + count) {
+            for (s32 i = 0; i < indexed_count && count < applications.Count(); ++i) {
+                if (std::find(applications.Get(), applications.Get() + count, indexed[i]) == applications.Get() + count) {
                     applications[count++] = indexed[i];
                 }
             }
