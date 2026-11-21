@@ -106,10 +106,6 @@ namespace ams::mitm::usbl::usb {
             return block_size == 512 || block_size == 1024 || block_size == 2048 || block_size == 4096;
         }
 
-        Result PostBuffer(::UsbHsClientEpSession *ep, void *buffer, u32 size, u32 *out_transferred) {
-            R_RETURN(::usbHsEpPostBuffer(ep, buffer, size, out_transferred));
-        }
-
     }
 
     Result MassStorageDevice::Open(::UsbHsInterface *intf) {
@@ -117,6 +113,7 @@ namespace ams::mitm::usbl::usb {
 
         R_TRY(::usbHsAcquireUsbIf(std::addressof(m_interface_session), intf));
         m_is_open = true;
+        m_is_unresponsive = false;
         m_max_transfer_size = TransferBufferSize;
         auto close_guard = SCOPE_GUARD { this->Close(); };
 
@@ -250,7 +247,7 @@ namespace ams::mitm::usbl::usb {
 
             u32 transferred = 0;
             if (const Result result = this->Execute(cmd, cur, std::addressof(transferred)); R_FAILED(result) || transferred != cur_size) {
-                if (cur_size <= SafeTransferSize) {
+                if (cur_size <= SafeTransferSize || usbl::ResultTransferTimedOut::Includes(result)) {
                     R_TRY(result);
                     R_THROW(usbl::ResultShortTransfer());
                 }
@@ -273,6 +270,11 @@ namespace ams::mitm::usbl::usb {
 
         if (usbl::ResultCommandFailed::Includes(result)) {
             R_DISCARD(this->RequestSense());
+            R_THROW(result);
+        }
+
+        /* Recovery talks to the drive too; one that stopped answering has already been reset. */
+        if (usbl::ResultTransferTimedOut::Includes(result)) {
             R_THROW(result);
         }
 
@@ -302,7 +304,7 @@ namespace ams::mitm::usbl::usb {
         std::memcpy(m_command_buffer + 15, cmd.cdb, cmd.cdb_length);
 
         u32 sent = 0;
-        R_TRY(PostBuffer(std::addressof(m_out_endpoint), m_command_buffer, CommandBlockWrapperSize, std::addressof(sent)));
+        R_TRY(this->PostBuffer(std::addressof(m_out_endpoint), m_command_buffer, CommandBlockWrapperSize, std::addressof(sent)));
         R_UNLESS(sent == CommandBlockWrapperSize, usbl::ResultShortTransfer());
 
         u32 transferred = 0;
@@ -315,7 +317,8 @@ namespace ams::mitm::usbl::usb {
             }
 
             /* A stalled data phase is still followed by a status phase once the halt is cleared. */
-            if (R_FAILED(PostBuffer(ep, m_transfer_buffer, cmd.data_length, std::addressof(transferred)))) {
+            if (const Result result = this->PostBuffer(ep, m_transfer_buffer, cmd.data_length, std::addressof(transferred)); R_FAILED(result)) {
+                R_UNLESS(!usbl::ResultTransferTimedOut::Includes(result), result);
                 transferred = 0;
                 R_TRY(this->ClearHalt(*ep));
             } else if (is_in) {
@@ -331,9 +334,10 @@ namespace ams::mitm::usbl::usb {
 
     Result MassStorageDevice::ReceiveStatus(u32 tag) {
         u32 received = 0;
-        if (R_FAILED(PostBuffer(std::addressof(m_in_endpoint), m_status_buffer, CommandStatusWrapperSize, std::addressof(received)))) {
+        if (const Result result = this->PostBuffer(std::addressof(m_in_endpoint), m_status_buffer, CommandStatusWrapperSize, std::addressof(received)); R_FAILED(result)) {
+            R_UNLESS(!usbl::ResultTransferTimedOut::Includes(result), result);
             R_TRY(this->ClearHalt(m_in_endpoint));
-            R_TRY(PostBuffer(std::addressof(m_in_endpoint), m_status_buffer, CommandStatusWrapperSize, std::addressof(received)));
+            R_TRY(this->PostBuffer(std::addressof(m_in_endpoint), m_status_buffer, CommandStatusWrapperSize, std::addressof(received)));
         }
 
         R_UNLESS(received == CommandStatusWrapperSize,                         usbl::ResultInvalidCommandStatus());
@@ -366,6 +370,39 @@ namespace ams::mitm::usbl::usb {
         R_TRY(this->ClearHalt(m_in_endpoint));
         R_TRY(this->ClearHalt(m_out_endpoint));
         R_SUCCEED();
+    }
+
+    Result MassStorageDevice::PostBuffer(::UsbHsClientEpSession *ep, void *buffer, u32 size, u32 *out_transferred) {
+        /* Its last transfer may still be pending: nothing more goes to the drive until it is plugged in again. */
+        R_UNLESS(!m_is_unresponsive, usbl::ResultTransferTimedOut());
+
+        u32 xfer_id = 0;
+        R_TRY(::usbHsEpPostBufferAsync(ep, buffer, size, 0, std::addressof(xfer_id)));
+
+        ::Event *event = ::usbHsEpGetXferEvent(ep);
+        if (R_FAILED(::eventWait(event, TransferTimeout.GetNanoSeconds()))) {
+            this->GiveUpOnUnresponsiveDrive();
+            R_THROW(usbl::ResultTransferTimedOut());
+        }
+        ::eventClear(event);
+
+        ::UsbHsXferReport report = {};
+        u32 count = 0;
+        R_TRY(::usbHsEpGetXferReport(ep, std::addressof(report), 1, std::addressof(count)));
+        R_UNLESS(count >= 1, usbl::ResultShortTransfer());
+
+        *out_transferred = report.transferredSize;
+        R_RETURN(report.res);
+    }
+
+    void MassStorageDevice::GiveUpOnUnresponsiveDrive() {
+        Log("usb: interface %d did not answer for %lld s, resetting it", m_interface_session.ID, static_cast<long long>(TransferTimeout.GetSeconds()));
+        m_is_unresponsive = true;
+
+        /* Like unplugging it: the pending transfer ends, the drive is detached, and it comes back once it answers again. */
+        if (const Result result = ::usbHsIfResetDevice(std::addressof(m_interface_session)); R_FAILED(result)) {
+            Log("usb: interface %d: reset failed 2%03d-%04d", m_interface_session.ID, result.GetModule(), result.GetDescription());
+        }
     }
 
     Result MassStorageDevice::ClearHalt(const ::UsbHsClientEpSession &ep) {

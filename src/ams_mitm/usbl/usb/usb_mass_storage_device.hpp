@@ -31,6 +31,9 @@ namespace ams::mitm::usbl::usb {
             /* Up to 256 KB per command; a drive that fails one falls back to 64 KB, a size every drive takes. */
             static constexpr size_t TransferBufferSize = 256_KB;
             static constexpr size_t SafeTransferSize   = 64_KB;
+            /* As long as a drive may take to answer (a hard drive spinning up, a flash drive busy with its own housekeeping);
+             * past it the drive is reset, which the console sees as unplugging it and plugging it back in. */
+            static constexpr TimeSpan TransferTimeout = TimeSpan::FromSeconds(20);
         private:
             enum class Direction : u8 {
                 Out = 0x00,
@@ -52,6 +55,7 @@ namespace ams::mitm::usbl::usb {
             u32 m_block_size;
             u64 m_block_count;
             bool m_is_open;
+            bool m_is_unresponsive;
             u32 m_max_transfer_size;
 
             /* Per device: several drives run commands concurrently. usb:hs wants page-aligned buffers. */
@@ -60,7 +64,7 @@ namespace ams::mitm::usbl::usb {
             alignas(os::MemoryPageSize) u8 m_status_buffer[os::MemoryPageSize];
             alignas(os::MemoryPageSize) u8 m_control_buffer[os::MemoryPageSize];
         public:
-            constexpr MassStorageDevice() : m_interface_session(), m_in_endpoint(), m_out_endpoint(), m_tag(0), m_lun(0), m_block_size(0), m_block_count(0), m_is_open(false), m_max_transfer_size(TransferBufferSize), m_transfer_buffer(), m_command_buffer(), m_status_buffer(), m_control_buffer() { /* ... */ }
+            constexpr MassStorageDevice() : m_interface_session(), m_in_endpoint(), m_out_endpoint(), m_tag(0), m_lun(0), m_block_size(0), m_block_count(0), m_is_open(false), m_is_unresponsive(false), m_max_transfer_size(TransferBufferSize), m_transfer_buffer(), m_command_buffer(), m_status_buffer(), m_control_buffer() { /* ... */ }
             ~MassStorageDevice() { this->Close(); }
 
             Result Open(::UsbHsInterface *intf);
@@ -84,6 +88,10 @@ namespace ams::mitm::usbl::usb {
 
             Result ResetRecovery();
             Result ClearHalt(const ::UsbHsClientEpSession &ep);
+
+            /* A bulk transfer that gives up after TransferTimeout instead of waiting forever. */
+            Result PostBuffer(::UsbHsClientEpSession *ep, void *buffer, u32 size, u32 *out_transferred);
+            void GiveUpOnUnresponsiveDrive();
     };
 
 }
