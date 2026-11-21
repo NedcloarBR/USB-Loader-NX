@@ -127,7 +127,13 @@ namespace ams::mitm::usbl {
             size_t games;
             size_t updates;
             size_t add_ons;
+            /* Dumps and folders not read: path too long, folder too deep, too many entries, index full. */
+            size_t left_out;
         };
+
+        bool IsDumpName(const char *name) {
+            return HasExtension(name, "xci") || HasExtension(name, "nsp");
+        }
 
         void IndexGameFolder(s32 drive, const char *folder, int depth, GameFileCount *count) {
             DIR dir;
@@ -138,15 +144,24 @@ namespace ams::mitm::usbl {
             ON_SCOPE_EXIT { f_closedir(std::addressof(dir)); };
 
             FILINFO &info = g_file_infos[depth];
-            for (size_t entries = 0; entries < MaxListedEntries && f_readdir(std::addressof(dir), std::addressof(info)) == FR_OK && info.fname[0] != '\x00'; ++entries) {
+            size_t entries = 0;
+            for (; entries < MaxListedEntries && f_readdir(std::addressof(dir), std::addressof(info)) == FR_OK && info.fname[0] != '\x00'; ++entries) {
+                const bool is_folder = (info.fattrib & AM_DIR) != 0;
                 char path[MaxPathLength];
                 if (static_cast<size_t>(util::SNPrintf(path, sizeof(path), "%s/%s", folder, info.fname)) >= sizeof(path)) {
+                    if (is_folder || IsDumpName(info.fname)) {
+                        Log("left out %s/%s: the path is longer than %zu bytes", folder, info.fname, MaxPathLength - 1);
+                        ++count->left_out;
+                    }
                     continue;
                 }
 
-                if ((info.fattrib & AM_DIR) != 0) {
+                if (is_folder) {
                     if (depth < MaxFolderDepth) {
                         IndexGameFolder(drive, path, depth + 1, count);
+                    } else {
+                        Log("left out %s: only one level of folders inside games is read", path);
+                        ++count->left_out;
                     }
                 } else if (HasExtension(info.fname, "xci")) {
                     ++count->games;
@@ -159,6 +174,11 @@ namespace ams::mitm::usbl {
                         case xci::NspKind::Unknown:                        break;
                     }
                 }
+            }
+
+            if (entries == MaxListedEntries && f_readdir(std::addressof(dir), std::addressof(info)) == FR_OK && info.fname[0] != '\x00') {
+                Log("left out: %s has more than %zu entries, the rest is not read", folder, MaxListedEntries);
+                ++count->left_out;
             }
         }
 
@@ -174,8 +194,16 @@ namespace ams::mitm::usbl {
             }
 
             GameFileCount count = {};
+            R_DISCARD(TakeIndexFullCount());
             IndexGameFolder(drive, folder, 0, std::addressof(count));
+            if (const s32 full = TakeIndexFullCount(); full > 0) {
+                Log("left out %d files: the index is full (64 files, 512 contents)", full);
+                count.left_out += full;
+            }
             Log("drive %d: %zu games, %zu updates, %zu add-ons, %d contents indexed in total", drive, count.games, count.updates, count.add_ons, GetIndexedContentCount());
+            if (count.left_out > 0) {
+                Log("drive %d: %zu files or folders left out (see the lines above)", drive, count.left_out);
+            }
             return count;
         }
 
@@ -303,6 +331,9 @@ namespace ams::mitm::usbl {
                         Log("drive %d: back after sleep", drive);
                     } else {
                         NotifyDriveConnected(slot.device.GetBlockCount() * slot.device.GetBlockSize(), game_files.games, game_files.updates, game_files.add_ons);
+                        if (game_files.left_out > 0) {
+                            NotifyFilesLeftOut(game_files.left_out);
+                        }
                     }
                     xci::ExcludeInstalledApplications();
                     if (IsDebugEnabled()) {

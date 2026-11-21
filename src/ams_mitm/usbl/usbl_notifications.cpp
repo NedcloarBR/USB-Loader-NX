@@ -188,6 +188,13 @@ namespace ams::mitm::usbl {
         Post(ConnectedIcon, text);
     }
 
+    void NotifyFilesLeftOut(size_t count) {
+        char number[16], text[256];
+        util::SNPrintf(number, sizeof(number), "%zu", count);
+        i18n::Format(text, sizeof(text), "Notifications.FilesLeftOut", { { "COUNT", number } });
+        Post(RemovedIcon, text);
+    }
+
     void NotifyDriveRemoved() {
         char text[256];
         i18n::Format(text, sizeof(text), "Notifications.DriveRemoved");

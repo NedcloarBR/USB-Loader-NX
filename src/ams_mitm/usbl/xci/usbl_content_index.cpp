@@ -42,6 +42,10 @@ namespace ams::mitm::usbl {
         constinit IndexedContent g_contents[MaxContentCount] = {};
         constinit s32 g_content_count = 0;
 
+        /* Files left (wholly or partly) out of the index because it was full, since TakeIndexFullCount. */
+        constinit s32 g_index_full_files = 0;
+        constinit s32 g_last_full_container = -1;
+
         void AssertLocked() {
             AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
         }
@@ -99,6 +103,7 @@ namespace ams::mitm::usbl {
             }
         }
 
+        ++g_index_full_files;
         R_THROW(usbl::ResultIndexFull());
     }
 
@@ -106,7 +111,13 @@ namespace ams::mitm::usbl {
         AssertLocked();
         AMS_ASSERT(0 <= content.xci_index && content.xci_index < MaxXciCount);
         AMS_ASSERT(g_containers[content.xci_index].used && g_containers[content.xci_index].drive == content.drive);
-        R_UNLESS(g_content_count < MaxContentCount, usbl::ResultIndexFull());
+        if (g_content_count >= MaxContentCount) {
+            if (g_last_full_container != content.xci_index) {
+                g_last_full_container = content.xci_index;
+                ++g_index_full_files;
+            }
+            R_THROW(usbl::ResultIndexFull());
+        }
 
         g_contents[g_content_count++] = content;
         R_SUCCEED();
@@ -199,6 +210,14 @@ namespace ams::mitm::usbl {
             }
             out[count++] = content.program_id;
         }
+        return count;
+    }
+
+    s32 TakeIndexFullCount() {
+        AssertLocked();
+        const s32 count = g_index_full_files;
+        g_index_full_files = 0;
+        g_last_full_container = -1;
         return count;
     }
 

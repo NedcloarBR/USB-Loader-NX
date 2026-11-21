@@ -3,6 +3,7 @@
 		"Title": "USB Loader NX",
 		"DriveConnected": "Dispositivo USB conectado · {{SIZE}} · Jogos: {{GAME_COUNT}} · Atualizações: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
 		"DriveRemoved": "Dispositivo USB removido. Os jogos do USB ficam indisponíveis até reconectar.",
+		"FilesLeftOut": "{{COUNT}} arquivo(s) ou pasta(s) do dispositivo USB não foram lidos (caminho longo demais, pasta funda demais ou memória insuficiente). Veja usbloadernx/logs/usbloadernx.log.",
 		"DriveRequired": "Conecte o dispositivo USB com este jogo para jogar.",
 		"DriveWithoutGamesFolder": "Dispositivo USB conectado, mas sem a pasta /usbloadernx/games.",
 		"DriveUnreadable": "Não foi possível ler o dispositivo USB: sistema de arquivos não suportado."

@@ -101,6 +101,8 @@ namespace ams::mitm::usbl {
     s32 GetIndexedApplications(ncm::ProgramId *out, s32 max_count, s32 drive);
 
     s32 GetIndexedContentCount();
+    /* Files that did not fit in the index (64 files, 512 contents) since the last call, which resets it. */
+    s32 TakeIndexFullCount();
     Result GetIndexedContent(IndexedContent *out, s32 index);
     bool IsIndexedProgram(ncm::ProgramId program_id);
     Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer);

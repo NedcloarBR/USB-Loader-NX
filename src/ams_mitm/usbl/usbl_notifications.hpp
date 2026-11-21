@@ -24,6 +24,8 @@ namespace ams::mitm::usbl {
 
     void NotifyDriveConnected(u64 capacity_bytes, size_t game_count, size_t update_count, size_t add_on_count);
     void NotifyDriveRemoved();
+    /* Some dumps or folders on the drive were not read; the log says which and why. */
+    void NotifyFilesLeftOut(size_t count);
     void NotifyDriveUnreadable();
     void NotifyDriveWithoutGamesFolder();
 
