@@ -60,7 +60,7 @@ What comes next, from compressed dumps to installing to USB, is in [TODO.md](TOD
 | `atmosphere/config/system_settings.ini` | `enable`, and `debug` for extra diagnostics in the log |
 | `atmosphere/config/usbloadernx/config.ini` | Everyday options, created with the defaults on first boot and edited by the Manager |
 | `atmosphere/config_templates/usbloadernx.ini` | Every option of `config.ini`, documented |
-| `atmosphere/config/usbloadernx/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
+| `atmosphere/logs/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
 
 ## Building
 
