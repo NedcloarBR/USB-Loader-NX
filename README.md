@@ -35,7 +35,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 What comes next, from compressed dumps to installing to USB, is in [TODO.md](TODO.md).
 
 > [!NOTE]
-> Tested on a Switch (Mariko) in the dock. The USB-C port with an OTG adapter should work as well, and so should the Switch Lite, but neither has been tested yet.
+> Tested in the dock, on the USB-C port with an OTG adapter and on the Switch Lite. Hard drives that need external power (a powered hub or their own supply) have not been tested yet.
 
 ## Install
 
