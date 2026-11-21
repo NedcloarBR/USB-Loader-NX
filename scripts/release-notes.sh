@@ -24,7 +24,7 @@ else
 fi
 
 FORK_SHA="$(git ls-tree HEAD atmosphere | awk '{print $3}')"
-TESTED="$(grep -o 'tested%20on-[0-9.]*' README.md | head -n1 | cut -d- -f2)"
+TESTED="$(grep -o 'tested%20on-[0-9.%A-F]*' README.md | head -n1 | cut -d- -f2 | sed 's/%20%7C%20/, /g')"
 
 # The README's header (icon, title, badges, links): with links into the README for CHANGELOG.md, and with full GitHub
 # addresses of the tagged files for the notes, since the release page resolves no relative path.
@@ -63,7 +63,7 @@ print(", ".join(seen))')"
     readme_header notes
     if $PRERELEASE; then
         echo "> [!WARNING]"
-        echo "> Pre-release: tested on one console so far. Back up your SD card before installing, and report what you find."
+        echo "> Pre-release: back up your SD card before installing, and report what you find."
         echo
     fi
     echo "| | |"

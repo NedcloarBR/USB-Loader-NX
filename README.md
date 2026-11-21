@@ -8,7 +8,7 @@ Play your Nintendo Switch game dumps straight from a USB drive.<br>
 An Atmosphère fork with a library manager in the spirit of USB Loader GX for the Wii.
 
 ![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)
-![Tested on firmware 19.0.1](https://img.shields.io/badge/tested%20on-19.0.1-2B2D31?labelColor=1E1F22)
+![Tested on firmware 19.0.1 and 23.5.0](https://img.shields.io/badge/tested%20on-19.0.1%20%7C%2023.5.0-2B2D31?labelColor=1E1F22)
 ![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
 
 [Features](#features) · [Install](#install) · [Configuration](#configuration) · [Building](#building) · [Architecture](ARCHITECTURE.md) · [Changelog](CHANGELOG.md) · [TODO](TODO.md) · [License](#license) · [Credits](#credits)
