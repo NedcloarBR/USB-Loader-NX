@@ -56,10 +56,27 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      # The images only change with their Dockerfiles (pinned base image and libnx revision), so a saved copy skips
+      # their 4 minutes and pkg.devkitpro.org, which sometimes answers runners with 403. Tags and pull requests read
+      # the copy saved on master.
+      - name: Restore the build images
+        id: images
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/images.tar.zst
+          key: build-images-${{ hashFiles('atmosphere/Dockerfile', 'docker/Dockerfile', 'scripts/build-image.sh') }}
+
+      - name: Load the build images
+        if: steps.images.outputs.cache-hit == 'true'
+        run: zstd -dc "$RUNNER_TEMP/images.tar.zst" | docker load
+
       # Plain docker build, as on the PC: the second image starts FROM the first, which buildx's isolated builder
       # would look for on Docker Hub instead.
       - name: Build images (Atmosphère's Dockerfile, + libnx from git)
-        run: scripts/build-image.sh
+        if: steps.images.outputs.cache-hit != 'true'
+        run: |
+          scripts/build-image.sh
+          docker save atms-build-libnx | zstd -T0 -3 -q -o "$RUNNER_TEMP/images.tar.zst"
 
       - name: Build
         env:

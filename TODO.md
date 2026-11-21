@@ -109,4 +109,6 @@ Measured before and after each change: the same game from USB and installed on t
 ## Repository
 
 - [x] Actions on Node.js 24 (`checkout@v7`, `upload-artifact@v7`, `download-artifact@v8`)
+- [x] Build images cached between runs
+- [ ] Compiler cache (ccache) for the Atmosphère build, the 18 of the 23 minutes
 - [ ] Workflow that opens a pull request when a new Atmosphère release rebases cleanly, and an issue when it does not
