@@ -14,17 +14,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include <usbl/paths.hpp>
 #include "usbl_known_contents.hpp"
 #include "usbl_content_index.hpp"
 #include "../storage/usbl_volume.hpp"
 #include "../usbl_log.hpp"
+#include "../usbl_results.hpp"
 
 namespace ams::mitm::usbl {
 
     namespace {
 
         constexpr u32 FileMagic   = util::FourCC<'U','S','L','K'>::Code;
-        constexpr u32 FileVersion = 1;
+        constexpr u32 FileVersion = ::usbl::formats::KnownContents;
         constexpr size_t MaxKnownContents = 512;
 
         struct FileHeader {
@@ -38,12 +40,14 @@ namespace ams::mitm::usbl {
         constinit os::SdkMutex g_lock;
         constinit KnownContent g_known[MaxKnownContents] = {};
         constinit size_t g_known_count = 0;
+        /* A newer version's file: its entries may not be laid out like ours, so it is neither read nor rewritten. */
+        constinit bool g_file_is_newer = false;
 
         /* Only the USB volume thread remembers contents; too large for its stack. */
         constinit IndexedContent g_indexed_scratch[MaxKnownContents] = {};
 
         void FormatFilePath(char *dst, size_t dst_size) {
-            util::SNPrintf(dst, dst_size, "%s:/atmosphere/config/usbloadernx/known_contents.bin", ams::fs::impl::SdCardFileSystemMountName);
+            util::SNPrintf(dst, dst_size, "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::KnownContents);
         }
 
         KnownContent *FindLocked(ncm::ContentId content_id) {
@@ -56,9 +60,13 @@ namespace ams::mitm::usbl {
         }
 
         Result SaveLocked() {
+            R_UNLESS(!g_file_is_newer, usbl::ResultNewerFormat());
+
             char directory[ams::fs::EntryNameLengthMax + 1];
-            util::SNPrintf(directory, sizeof(directory), "%s:/atmosphere/config/usbloadernx", ams::fs::impl::SdCardFileSystemMountName);
-            R_DISCARD(ams::fs::CreateDirectory(directory));
+            for (const char *dir : { ::usbl::paths::Root, ::usbl::paths::DataDir }) {
+                util::SNPrintf(directory, sizeof(directory), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, dir);
+                R_DISCARD(ams::fs::CreateDirectory(directory));
+            }
 
             char path[ams::fs::EntryNameLengthMax + 1];
             FormatFilePath(path, sizeof(path));
@@ -96,6 +104,7 @@ namespace ams::mitm::usbl {
     void LoadKnownContents() {
         std::scoped_lock lk(g_lock);
         g_known_count = 0;
+        g_file_is_newer = false;
 
         char path[ams::fs::EntryNameLengthMax + 1];
         FormatFilePath(path, sizeof(path));
@@ -108,7 +117,12 @@ namespace ams::mitm::usbl {
         ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
 
         FileHeader header;
-        if (R_FAILED(ams::fs::ReadFile(file, 0, std::addressof(header), sizeof(header))) || header.magic != FileMagic || header.version != FileVersion || header.count > MaxKnownContents) {
+        if (R_SUCCEEDED(ams::fs::ReadFile(file, 0, std::addressof(header), sizeof(header))) && header.magic == FileMagic && header.version > FileVersion) {
+            Log("known contents: file from a newer version (format %u), left untouched", header.version);
+            g_file_is_newer = true;
+            return;
+        }
+        if (header.magic != FileMagic || header.version != FileVersion || header.count > MaxKnownContents) {
             Log("known contents: file invalid, ignored");
             return;
         }
@@ -120,6 +134,11 @@ namespace ams::mitm::usbl {
 
         g_known_count = header.count;
         Log("known contents: %zu loaded", g_known_count);
+    }
+
+    bool IsKnownContentsFromNewerVersion() {
+        std::scoped_lock lk(g_lock);
+        return g_file_is_newer;
     }
 
     void RememberIndexedContents() {
@@ -156,7 +175,9 @@ namespace ams::mitm::usbl {
             return;
         }
 
-        if (const Result result = SaveLocked(); R_FAILED(result)) {
+        if (const Result result = SaveLocked(); usbl::ResultNewerFormat::Includes(result)) {
+            /* Logged once at load. */
+        } else if (R_FAILED(result)) {
             Log("known contents: save failed 2%03d-%04d", result.GetModule(), result.GetDescription());
         } else {
             Log("known contents: %zu saved", g_known_count);
@@ -211,7 +232,9 @@ namespace ams::mitm::usbl {
         if (g_known_count == old_count) {
             return;
         }
-        if (const Result result = SaveLocked(); R_FAILED(result)) {
+        if (const Result result = SaveLocked(); usbl::ResultNewerFormat::Includes(result)) {
+            /* Logged once at load. */
+        } else if (R_FAILED(result)) {
             Log("known contents: save failed 2%03d-%04d", result.GetModule(), result.GetDescription());
         }
     }
@@ -255,7 +278,9 @@ namespace ams::mitm::usbl {
         std::copy(known + 1, static_cast<const KnownContent *>(g_known + g_known_count), g_known + (known - g_known));
         --g_known_count;
 
-        if (const Result result = SaveLocked(); R_FAILED(result)) {
+        if (const Result result = SaveLocked(); usbl::ResultNewerFormat::Includes(result)) {
+            /* Logged once at load. */
+        } else if (R_FAILED(result)) {
             Log("known contents: save failed 2%03d-%04d", result.GetModule(), result.GetDescription());
         }
         return true;

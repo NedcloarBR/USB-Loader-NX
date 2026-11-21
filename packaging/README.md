@@ -41,7 +41,7 @@ The package includes the **Midnight** theme. To change themes: **+ > Manager > T
 
 ## Something went wrong?
 
-Take a photo of the screen and send it with `atmosphere/logs/usbloadernx.log` from the SD card.
+Take a photo of the screen and send it with `usbloadernx/logs/usbloadernx.log` from the SD card.
 
 ## Uninstall
 

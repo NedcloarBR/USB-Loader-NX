@@ -14,58 +14,60 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <manager_settings.hpp>
-#include <cstdio>
 #include <cstdlib>
-#include <map>
-#include <sys/stat.h>
+#include <sd_files.hpp>
 
 namespace settings {
 
     namespace {
 
-        constexpr const char FilePath[] = "sdmc:/config/usbloadernx-manager/manager.ini";
+        constexpr const char Section[] = "manager";
 
-        std::map<std::string, std::string> g_values;
+        /* Other sections, and the keys of [manager] this version does not use, are written back as they were. */
+        sd::IniFile g_file;
+        bool g_from_newer_version = false;
 
-        std::string Trim(const std::string &text) {
-            const size_t first = text.find_first_not_of(" \t\r\n");
-            const size_t last = text.find_last_not_of(" \t\r\n");
-            return first == std::string::npos ? std::string() : text.substr(first, last - first + 1);
+        std::string FilePath() {
+            return sd::Path(usbl::paths::ManagerFile);
+        }
+
+        sd::IniFile::Entries &Values() {
+            return g_file.Section(Section);
+        }
+
+        const std::string *Find(const char *key) {
+            for (const auto &[name, value] : Values()) {
+                if (name == key) {
+                    return &value;
+                }
+            }
+            return nullptr;
         }
 
     }
 
     void Load() {
-        g_values.clear();
-        FILE *file = std::fopen(FilePath, "r");
-        if (file == nullptr) {
-            return;
-        }
-        char line[256];
-        while (std::fgets(line, sizeof(line), file) != nullptr) {
-            const std::string text = line;
-            const size_t equals = text.find('=');
-            if (equals == std::string::npos || text[0] == ';' || text[0] == '[') {
-                continue;
-            }
-            g_values[Trim(text.substr(0, equals))] = Trim(text.substr(equals + 1));
-        }
-        std::fclose(file);
+        sd::ReadIni(&g_file, FilePath());
+        g_from_newer_version = g_file.version > usbl::formats::Manager;
+    }
+
+    bool IsFromNewerVersion() {
+        return g_from_newer_version;
     }
 
     s32 GetInt(const char *key, s32 default_value) {
-        const auto found = g_values.find(key);
-        if (found == g_values.end() || found->second.empty()) {
+        const std::string *found = Find(key);
+        if (found == nullptr || found->empty()) {
             return default_value;
         }
         char *end = nullptr;
-        const long value = std::strtol(found->second.c_str(), &end, 10);
+        const long value = std::strtol(found->c_str(), &end, 10);
         return *end == '\0' ? static_cast<s32>(value) : default_value;
     }
 
     std::string GetString(const char *key, const std::string &default_value) {
-        const auto found = g_values.find(key);
-        return found != g_values.end() ? found->second : default_value;
+        const std::string *found = Find(key);
+        return found != nullptr ? *found : default_value;
     }
 
     bool SetInt(const char *key, s32 value) {
@@ -73,19 +75,23 @@ namespace settings {
     }
 
     bool SetString(const char *key, const std::string &value) {
-        g_values[key] = value;
+        auto &values = Values();
+        bool replaced = false;
+        for (auto &[name, text] : values) {
+            if (name == key) {
+                text = value;
+                replaced = true;
+            }
+        }
+        if (!replaced) {
+            values.emplace_back(key, value);
+        }
 
-        mkdir(Directory, 0777);
-        FILE *file = std::fopen(FilePath, "w");
-        if (file == nullptr) {
-            return false;
+        /* A newer Manager's file is left as it is: the change holds until the Manager closes. */
+        if (g_from_newer_version) {
+            return true;
         }
-        std::fputs("[manager]\n", file);
-        for (const auto &[name, text] : g_values) {
-            std::fprintf(file, "%s = %s\n", name.c_str(), text.c_str());
-        }
-        std::fclose(file);
-        return true;
+        return sd::WriteIni(g_file, usbl::formats::Manager, FilePath());
     }
 
 }

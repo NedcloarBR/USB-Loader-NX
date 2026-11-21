@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Assembles the release zip from the last build: dist/usb-loader-nx-<version>.zip, holding usb-loader-nx/ with
 #   SD/         what goes on the SD card: atmosphere/ (Atmosphère with USB Loader NX), switch/ (Atmosphère's homebrew and
-#               USBLoaderNX-Manager.nro), bootloader/payloads/fusee.bin and the example theme in config/
+#               USBLoaderNX-Manager.nro), bootloader/payloads/fusee.bin, and usbloadernx/ with the documented config.ini
+#               in templates/ and the example theme
 #   USB/        what goes on the USB drive: the empty usbloadernx/games folder
 #   README.md   the quick guide (from packaging/)
 set -euo pipefail
@@ -23,10 +24,14 @@ unzip -q "$ATMOSPHERE_ZIP" -d "$SD"
 mkdir -p "$SD/bootloader/payloads"
 cp "$RELEASE_DIR/fusee.bin" "$SD/bootloader/payloads/fusee.bin"
 
+# Atmosphère's makefile puts the template with its own; USB Loader NX keeps everything in usbloadernx/ (FORMATS.md).
+mkdir -p "$SD/usbloadernx/templates"
+mv "$SD/atmosphere/config_templates/usbloadernx.ini" "$SD/usbloadernx/templates/config.ini"
+
 if [[ -f "$MANAGER_NRO" ]]; then
-    mkdir -p "$SD/switch" "$SD/config/usbloadernx-manager/themes"
+    mkdir -p "$SD/switch" "$SD/usbloadernx/themes"
     cp "$MANAGER_NRO" "$SD/switch/"
-    cp -r "$ROOT/manager/themes/midnight" "$SD/config/usbloadernx-manager/themes/"
+    cp -r "$ROOT/manager/themes/midnight" "$SD/usbloadernx/themes/"
 else
     echo "note: no Manager build, packaging Atmosphère with USB Loader NX only" >&2
 fi

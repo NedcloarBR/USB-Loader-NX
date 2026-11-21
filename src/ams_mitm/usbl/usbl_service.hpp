@@ -69,7 +69,8 @@ namespace ams::mitm::usbl {
     AMS_SF_METHOD_INFO(C, H, 16, Result, ApplyHomeVisibility,    (),                                                                                                        ())               \
     AMS_SF_METHOD_INFO(C, H, 17, Result, GetGameIcon,            (sf::Out<u32> out_size, const sf::OutBuffer &out, ncm::ApplicationId application_id),                      (out_size, out, application_id)) \
     AMS_SF_METHOD_INFO(C, H, 18, Result, GetGameDisplayVersion,  (sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id),                       (out, application_id)) \
-    AMS_SF_METHOD_INFO(C, H, 19, Result, FinishHomeRefresh,      (),                                                                                                        ())
+    AMS_SF_METHOD_INFO(C, H, 19, Result, FinishHomeRefresh,      (),                                                                                                        ())               \
+    AMS_SF_METHOD_INFO(C, H, 20, Result, GetVersion,             (sf::Out<::usbl::protocol::VersionInfo> out),                                                              (out))
 
 AMS_SF_DEFINE_INTERFACE(ams::mitm::usbl::impl, IService, AMS_USBL_I_SERVICE_INTERFACE_INFO, 0x00000000)
 
@@ -94,6 +95,8 @@ namespace ams::mitm::usbl {
             Result ApplyHomeVisibility();
             Result GetGameIcon(sf::Out<u32> out_size, const sf::OutBuffer &out, ncm::ApplicationId application_id);
             Result GetGameDisplayVersion(sf::Out<::usbl::protocol::DisplayVersion> out, ncm::ApplicationId application_id);
+            /* The protocol version the Manager checks before writing anything, and files left untouched for a newer version. */
+            Result GetVersion(sf::Out<::usbl::protocol::VersionInfo> out);
         private:
             ServedContentInfo FindContent(ncm::ContentId content_id);
             Result ReadCachedContent(ncm::ContentId content_id, s64 offset, void *dst, size_t size);

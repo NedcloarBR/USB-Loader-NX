@@ -39,5 +39,6 @@ namespace ams::mitm::usbl {
     R_DEFINE_ERROR_RESULT(IndexFull,            17);
     R_DEFINE_ERROR_RESULT(DriveNotConnected,    18);
     R_DEFINE_ERROR_RESULT(TransferTimedOut,     19);
+    R_DEFINE_ERROR_RESULT(NewerFormat,          20);
 
 }

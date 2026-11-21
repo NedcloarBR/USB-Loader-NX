@@ -94,7 +94,8 @@
 		"SectionManagerHelp": "Sons, música e aparência do Manager.",
 		"ThemeInUse": "Em uso",
 		"MusicVolume": "Volume da música",
-		"MusicVolumeHelp": "Esquerda e Direita ajustam; os efeitos sonoros continuam iguais."
+		"MusicVolumeHelp": "Esquerda e Direita ajustam; os efeitos sonoros continuam iguais.",
+		"ThemeFromNewerVersion": "feito para uma versão mais nova"
 	},
 	"About": {
 		"Version": "Versão {{VERSION}}",

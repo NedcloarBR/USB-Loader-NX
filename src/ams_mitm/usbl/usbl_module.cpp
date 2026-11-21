@@ -24,6 +24,7 @@
 #include "usbl_perf.hpp"
 #include "usbl_module.hpp"
 #include "usbl_config.hpp"
+#include "usbl_migration.hpp"
 #include "usbl_notifications.hpp"
 #include "usbl_service.hpp"
 #include "usbl_power_state.hpp"
@@ -89,6 +90,7 @@ namespace ams::mitm::usbl {
         xci::InitializeContentMetaReader();
         Log("nca crypto ready");
 
+        MigrateLegacyFiles();
         LoadConfig();
         i18n::Initialize();
         InitializeNotifications();

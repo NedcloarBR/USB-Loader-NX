@@ -55,12 +55,19 @@ What comes next, from compressed dumps to installing to USB, is in [TODO.md](TOD
 
 ## Configuration
 
+Everything USB Loader NX and its Manager keep is in `usbloadernx/` on the SD card, except `enable` and `debug`, which Atmosphère reads. Versions before 1.0.0 kept them in `atmosphere/config/usbloadernx/` and `config/usbloadernx-manager/`; they are moved on the first start. How each file is versioned is in [FORMATS.md](FORMATS.md).
+
 | File | What it holds |
 |---|---|
-| `atmosphere/config/system_settings.ini` | `enable`, and `debug` for extra diagnostics in the log |
-| `atmosphere/config/usbloadernx/config.ini` | Everyday options, created with the defaults on first boot and edited by the Manager |
-| `atmosphere/config_templates/usbloadernx.ini` | Every option of `config.ini`, documented |
-| `atmosphere/logs/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
+| `atmosphere/config/system_settings.ini` | `enable`, and `debug` for extra diagnostics in the log. Packs that copy a boot option's file over it at every boot (such as `cfw_system_settings.ini`) are edited in that file; the Manager says which one |
+| `usbloadernx/config.ini` | Everyday options, created with the defaults on first boot and edited by the Manager |
+| `usbloadernx/templates/config.ini` | Every option of `config.ini`, documented |
+| `usbloadernx/manager.ini` | The Manager's own options |
+| `usbloadernx/data/` | What the module and the Manager remember: the games' contents (so HOME does not see them as missing while unplugged), hidden games, favorites |
+| `usbloadernx/cache/icons/` | The games' icons for the Manager while their drive is unplugged; can be deleted |
+| `usbloadernx/themes/` | Manager themes |
+| `usbloadernx/i18n/` | Translations of the notifications that replace the built-in ones |
+| `usbloadernx/logs/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
 
 ## Building
 

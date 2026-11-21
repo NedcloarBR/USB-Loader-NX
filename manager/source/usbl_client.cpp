@@ -25,6 +25,7 @@ namespace usbl {
         constexpr size_t MaxGames  = 64;
 
         Service g_service;
+        bool g_overwrite_newer_config = false;
 
         constexpr u32 ToCommand(protocol::CommandId id) {
             return static_cast<u32>(id);
@@ -58,9 +59,17 @@ namespace usbl {
         return serviceDispatchInOut(&g_service, ToCommand(protocol::CommandId::GetConfigValue), in, *out);
     }
 
+    Result GetVersion(VersionInfo *out) {
+        return serviceDispatchOut(&g_service, ToCommand(protocol::CommandId::GetVersion), *out);
+    }
+
     Result SetConfigValue(ConfigKey key, bool enabled) {
-        const protocol::SetConfigValueInput in = { key, enabled };
+        const protocol::SetConfigValueInput in = { .key = key, .enabled = enabled, .overwrite = g_overwrite_newer_config, .reserved = {} };
         return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::SetConfigValue), in);
+    }
+
+    void SetOverwriteNewerConfig(bool overwrite) {
+        g_overwrite_newer_config = overwrite;
     }
 
     Result ListDrives(std::vector<DriveStatus> *out) {

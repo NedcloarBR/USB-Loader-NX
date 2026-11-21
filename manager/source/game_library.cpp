@@ -26,12 +26,12 @@
 #include <sys/stat.h>
 #include <SDL2/SDL_image.h>
 #include <ui/theme.hpp>
+#include <sd_files.hpp>
 
 namespace library {
 
     namespace {
 
-        constexpr const char ManagerDirectory[] = "sdmc:/config/usbloadernx-manager";
         /* Decoded on the CPU so the corners can be rounded once, with an antialiased edge, instead of on every frame. */
         pu::sdl2::TextureHandle::Ref LoadRoundedIcon(const void *jpeg, size_t size) {
             SDL_Surface *decoded = IMG_Load_RW(SDL_RWFromConstMem(jpeg, static_cast<int>(size)), 1);
@@ -71,18 +71,23 @@ namespace library {
             return pu::sdl2::TextureHandle::New(texture);
         }
 
-        constexpr const char FavoritesPath[] = "sdmc:/config/usbloadernx-manager/favorites.txt";
+        constexpr const char FavoritesSection[] = "favorites";
 
-        std::vector<u64> ReadFavorites() {
+        /* usbloadernx/data/favorites.ini: "<application id> = 1" under [favorites], in the order they were added. */
+        std::vector<u64> ReadFavorites(sd::IniFile *out_file = nullptr) {
+            sd::IniFile file;
+            sd::ReadIni(&file, sd::Path(usbl::paths::Favorites));
+
             std::vector<u64> favorites;
-            if (FILE *file = std::fopen(FavoritesPath, "r"); file != nullptr) {
-                char line[32];
-                while (std::fgets(line, sizeof(line), file) != nullptr) {
-                    if (const u64 application_id = std::strtoull(line, nullptr, 16); application_id != 0) {
+            if (const auto *entries = file.FindSection(FavoritesSection); entries != nullptr) {
+                for (const auto &[key, value] : *entries) {
+                    if (const u64 application_id = std::strtoull(key.c_str(), nullptr, 16); application_id != 0 && value == "1") {
                         favorites.push_back(application_id);
                     }
                 }
-                std::fclose(file);
+            }
+            if (out_file != nullptr) {
+                *out_file = std::move(file);
             }
             return favorites;
         }
@@ -105,11 +110,9 @@ namespace library {
         }
 
         /* The games' own icons, kept for when their drive is unplugged. */
-        constexpr const char IconCacheDirectory[] = "sdmc:/config/usbloadernx-manager/icons";
-
         std::string IconCachePath(u64 application_id) {
             char path[96];
-            std::snprintf(path, sizeof(path), "%s/%016" PRIX64 ".jpg", IconCacheDirectory, application_id);
+            std::snprintf(path, sizeof(path), "sdmc:%s/%016" PRIX64 ".jpg", usbl::paths::IconCacheDir, application_id);
             return path;
         }
 
@@ -133,8 +136,7 @@ namespace library {
             if (ReadFile(path) == jpeg) {
                 return;
             }
-            mkdir(ManagerDirectory, 0777);
-            mkdir(IconCacheDirectory, 0777);
+            sd::MakeDirectories(sd::Path(usbl::paths::IconCacheDir));
             if (FILE *file = std::fopen(path.c_str(), "wb"); file != nullptr) {
                 std::fwrite(jpeg.data(), 1, jpeg.size(), file);
                 std::fclose(file);
@@ -260,22 +262,33 @@ namespace library {
     }
 
     bool SetFavorite(u64 application_id, bool favorite) {
-        std::vector<u64> favorites = ReadFavorites();
+        sd::IniFile file;
+        std::vector<u64> favorites = ReadFavorites(&file);
+        /* A newer version's list is left as it is. */
+        if (file.version > usbl::formats::Favorites) {
+            return false;
+        }
         favorites.erase(std::remove(favorites.begin(), favorites.end(), application_id), favorites.end());
         if (favorite) {
             favorites.push_back(application_id);
         }
+        return WriteFavorites(favorites);
+    }
 
-        mkdir(ManagerDirectory, 0777);
-        FILE *file = std::fopen(FavoritesPath, "w");
-        if (file == nullptr) {
-            return false;
-        }
+    bool WriteFavorites(const std::vector<u64> &favorites) {
+        sd::IniFile file;
+        auto &entries = file.Section(FavoritesSection);
         for (const u64 id : favorites) {
-            std::fprintf(file, "%016" PRIx64 "\n", id);
+            char key[17];
+            std::snprintf(key, sizeof(key), "%016" PRIx64, id);
+            entries.emplace_back(key, "1");
         }
-        std::fclose(file);
-        return true;
+        return sd::WriteIni(file, usbl::formats::Favorites, sd::Path(usbl::paths::Favorites));
+    }
+
+    bool AreFavoritesFromNewerVersion() {
+        sd::IniFile file;
+        return sd::ReadIni(&file, sd::Path(usbl::paths::Favorites)) && file.version > usbl::formats::Favorites;
     }
 
     void SortGames(std::vector<Game> *games, SortMode mode) {

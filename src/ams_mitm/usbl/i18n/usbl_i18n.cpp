@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include <usbl/paths.hpp>
 #include "usbl_i18n.hpp"
 #include "../usbl_log.hpp"
 
@@ -245,7 +246,7 @@ namespace ams::mitm::usbl::i18n {
 
         bool LoadFromSdCard(Table *table, const char *locale) {
             char path[ams::fs::EntryNameLengthMax + 1];
-            util::SNPrintf(path, sizeof(path), "%s:/atmosphere/config/usbloadernx/i18n/%s.json", ams::fs::impl::SdCardFileSystemMountName, locale);
+            util::SNPrintf(path, sizeof(path), "%s:%s/%s.json", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::I18nDir, locale);
 
             ams::fs::FileHandle file;
             if (R_FAILED(ams::fs::OpenFile(std::addressof(file), path, ams::fs::OpenMode_Read))) {

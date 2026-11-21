@@ -54,6 +54,9 @@ namespace library {
 
     /* Favorites are the Manager's own list (favorites.txt next to manager.ini) and always come first. */
     bool SetFavorite(u64 application_id, bool favorite);
+    /* Replaces the whole list (used when converting the old favorites.txt). */
+    bool WriteFavorites(const std::vector<u64> &favorites);
+    bool AreFavoritesFromNewerVersion();
 
     enum class SortMode : s32 {
         Name,

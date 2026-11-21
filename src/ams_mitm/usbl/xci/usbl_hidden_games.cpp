@@ -14,23 +14,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include <usbl/paths.hpp>
 #include "usbl_hidden_games.hpp"
 #include "../usbl_log.hpp"
+#include "../usbl_results.hpp"
 
 namespace ams::mitm::usbl {
 
     namespace {
 
         constexpr s32 MaxHiddenGames = 64;
-        /* "0100000000000000\n" */
-        constexpr size_t LineLength = 2 * sizeof(u64) + 1;
+        constexpr char HiddenSection[] = "hidden";
+        /* "0100000000000000 = 1\n" */
+        constexpr size_t LineLength = 2 * sizeof(u64) + 5;
+        constexpr size_t MaxFileSize = 0x40 + MaxHiddenGames * LineLength * 2;
 
         constinit os::SdkMutex g_hidden_lock;
         constinit ncm::ApplicationId g_hidden[MaxHiddenGames] = {};
         constinit s32 g_hidden_count = 0;
+        constinit int g_file_version = ::usbl::formats::HiddenGames;
 
         void FormatHiddenGamesPath(char *dst, size_t dst_size) {
-            util::SNPrintf(dst, dst_size, "%s:/atmosphere/config/usbloadernx/hidden_games.txt", ams::fs::impl::SdCardFileSystemMountName);
+            util::SNPrintf(dst, dst_size, "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::HiddenGames);
         }
 
         ncm::ApplicationId *FindLocked(ncm::ApplicationId application_id) {
@@ -39,17 +44,40 @@ namespace ams::mitm::usbl {
             return it != end ? it : nullptr;
         }
 
+        void AddLocked(u64 id) {
+            if (id != 0 && g_hidden_count < MaxHiddenGames && FindLocked({ id }) == nullptr) {
+                g_hidden[g_hidden_count++] = { id };
+            }
+        }
+
+        int HiddenGamesIniHandler(void *, const char *section, const char *name, const char *value) {
+            if (std::strcmp(section, ::usbl::formats::FormatSection) == 0) {
+                if (std::strcmp(name, ::usbl::formats::VersionKey) == 0) {
+                    g_file_version = std::max(1, static_cast<int>(std::strtol(value, nullptr, 10)));
+                }
+            } else if (std::strcmp(section, HiddenSection) == 0 && std::strcmp(value, "1") == 0) {
+                AddLocked(std::strtoull(name, nullptr, 16));
+            }
+            return 1;
+        }
+
         Result SaveLocked() {
-            char text[MaxHiddenGames * LineLength + 1];
-            size_t len = 0;
-            for (s32 i = 0; i < g_hidden_count; ++i) {
-                len += util::SNPrintf(text + len, sizeof(text) - len, "%016" PRIx64 "\n", g_hidden[i].value);
+            char text[MaxFileSize];
+            size_t len = util::SNPrintf(text, sizeof(text), "[%s]\n%s = %d\n\n[%s]\n", ::usbl::formats::FormatSection, ::usbl::formats::VersionKey, ::usbl::formats::HiddenGames, HiddenSection);
+            for (s32 i = 0; i < g_hidden_count && len < sizeof(text); ++i) {
+                len += util::SNPrintf(text + len, sizeof(text) - len, "%016" PRIx64 " = 1\n", g_hidden[i].value);
+            }
+            R_UNLESS(len < sizeof(text), ams::fs::ResultInvalidSize());
+
+            char directory[ams::fs::EntryNameLengthMax + 1];
+            for (const char *dir : { ::usbl::paths::Root, ::usbl::paths::DataDir }) {
+                util::SNPrintf(directory, sizeof(directory), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, dir);
+                R_DISCARD(ams::fs::CreateDirectory(directory));
             }
 
             char path[ams::fs::EntryNameLengthMax + 1];
             FormatHiddenGamesPath(path, sizeof(path));
             R_DISCARD(ams::fs::DeleteFile(path));
-            R_SUCCEED_IF(len == 0);
 
             R_TRY(ams::fs::CreateFile(path, len));
             ams::fs::FileHandle file;
@@ -63,6 +91,7 @@ namespace ams::mitm::usbl {
     void LoadHiddenGames() {
         std::scoped_lock lk(g_hidden_lock);
         g_hidden_count = 0;
+        g_file_version = ::usbl::formats::HiddenGames;
 
         char path[ams::fs::EntryNameLengthMax + 1];
         FormatHiddenGamesPath(path, sizeof(path));
@@ -73,25 +102,16 @@ namespace ams::mitm::usbl {
         }
         ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
 
-        char text[MaxHiddenGames * LineLength * 2 + 1] = {};
-        size_t read = 0;
-        if (R_FAILED(ams::fs::ReadFile(std::addressof(read), file, 0, text, sizeof(text) - 1))) {
-            return;
-        }
-
-        for (char *line = text; *line != '\x00' && g_hidden_count < MaxHiddenGames; ) {
-            char *end = nullptr;
-            const u64 id = std::strtoull(line, std::addressof(end), 16);
-            if (end != line && id != 0) {
-                g_hidden[g_hidden_count++] = { id };
-            }
-            line = std::strchr(end != line ? end : line, '\n');
-            if (line == nullptr) {
-                break;
-            }
-            ++line;
-        }
+        util::ini::ParseFile(file, nullptr, HiddenGamesIniHandler);
         Log("hidden games: %d", g_hidden_count);
+        if (g_file_version > ::usbl::formats::HiddenGames) {
+            Log("hidden games: hidden_games.ini is from a newer version (format %d), read only", g_file_version);
+        }
+    }
+
+    bool IsHiddenGamesFromNewerVersion() {
+        std::scoped_lock lk(g_hidden_lock);
+        return g_file_version > ::usbl::formats::HiddenGames;
     }
 
     bool IsHiddenGame(ncm::ApplicationId application_id) {
@@ -101,6 +121,7 @@ namespace ams::mitm::usbl {
 
     Result SetHiddenGame(ncm::ApplicationId application_id, bool hidden) {
         std::scoped_lock lk(g_hidden_lock);
+        R_UNLESS(g_file_version <= ::usbl::formats::HiddenGames, usbl::ResultNewerFormat());
 
         ncm::ApplicationId *existing = FindLocked(application_id);
         if (hidden) {
@@ -112,6 +133,26 @@ namespace ams::mitm::usbl {
             *existing = g_hidden[--g_hidden_count];
         }
         R_RETURN(SaveLocked());
+    }
+
+    void ConvertLegacyHiddenGames(const char *legacy_text, size_t size) {
+        std::scoped_lock lk(g_hidden_lock);
+
+        /* The old file: one application id in hex per line. */
+        for (size_t pos = 0; pos < size; ) {
+            char *end = nullptr;
+            const u64 id = std::strtoull(legacy_text + pos, std::addressof(end), 16);
+            AddLocked(id);
+            const char *newline = static_cast<const char *>(std::memchr(legacy_text + pos, '\n', size - pos));
+            if (newline == nullptr) {
+                break;
+            }
+            pos = static_cast<size_t>(newline - legacy_text) + 1;
+        }
+
+        if (const Result result = SaveLocked(); R_FAILED(result)) {
+            Log("hidden games: conversion not saved 2%03d-%04d", result.GetModule(), result.GetDescription());
+        }
     }
 
 }

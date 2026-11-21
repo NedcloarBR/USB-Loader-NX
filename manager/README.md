@@ -55,13 +55,13 @@ When a game was already played with an update that is no longer on its drive, th
 
 ## Files on the SD card
 
-Everything the Manager writes is under `sdmc:/config/usbloadernx-manager/`:
+Everything the Manager writes is under `sdmc:/usbloadernx/`, next to the module's files (see [FORMATS.md](../FORMATS.md)):
 
 | File | What it holds |
 |---|---|
-| `manager.ini` | `sounds`, `sort`, `theme`, `music` and `music_volume` |
-| `favorites.txt` | One application id per line |
-| `icons/` | The games' own icons (without the HOME badge), kept for when their drive is unplugged |
+| `manager.ini` | `sounds`, `sort`, `theme`, `music` and `music_volume` under `[manager]` |
+| `data/favorites.ini` | `<application id> = 1` under `[favorites]` |
+| `cache/icons/` | The games' own icons (without the HOME badge), kept for when their drive is unplugged |
 | `themes/<name>/` | Installed themes, see [themes/README.md](themes/README.md) |
 
 It also reads the console's play records (`pdm`) for play time and the launch version (`avm`) to warn about a missing update; neither is written.

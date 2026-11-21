@@ -19,6 +19,7 @@
 #include <iterator>
 #include <cstdio>
 #include <manager_settings.hpp>
+#include <migration.hpp>
 #include <sound.hpp>
 
 namespace ui {
@@ -59,6 +60,7 @@ namespace ui {
     }
 
     void MainApplication::OnLoad() {
+        migration::MoveLegacyFiles();
         settings::Load();
         strings::Initialize();
         ui::theme::ApplySaved();

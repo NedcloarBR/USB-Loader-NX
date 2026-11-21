@@ -37,6 +37,7 @@ namespace ams::mitm::usbl {
 
     /* Requires the SD card (call after mitm::WaitInitialized). */
     void LoadKnownContents();
+    bool IsKnownContentsFromNewerVersion();
 
     /* Merges the contents indexed from the mounted drive and rewrites the SD file only when something changed.
      * Must be called without the volume lock. */

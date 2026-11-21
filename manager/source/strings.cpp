@@ -126,6 +126,7 @@ namespace strings {
             "Game.UpdateElsewhereRow",
             "Game.PartsElsewhereBadge",
             "Game.PartsElsewhereHelp",
+            "Settings.ThemeFromNewerVersion",
         };
         static_assert(std::size(Keys) == static_cast<size_t>(Id::Count));
 

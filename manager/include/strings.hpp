@@ -128,6 +128,7 @@ namespace strings {
         UpdateElsewhereRow,
         PartsElsewhereBadge,
         PartsElsewhereHelp,
+        ThemeFromNewerVersion,
 
         Count,
     };

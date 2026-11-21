@@ -21,13 +21,15 @@
 #include <sys/stat.h>
 #include <json.hpp>
 #include <manager_settings.hpp>
+#include <sd_files.hpp>
+#include <strings.hpp>
 #include <ui/motion.hpp>
 
 namespace ui::theme {
 
     namespace {
 
-        constexpr const char ThemesDirectory[] = "sdmc:/config/usbloadernx-manager/themes";
+        const std::string ThemesDirectory = sd::Path(usbl::paths::ThemesDir);
         constexpr const char ThemeKey[] = "theme";
 
         struct Slot {
@@ -93,7 +95,7 @@ namespace ui::theme {
         }
 
         std::string ThemePath(const std::string &name) {
-            return std::string(ThemesDirectory) + "/" + name;
+            return ThemesDirectory + "/" + name;
         }
 
         bool Exists(const std::string &path) {
@@ -105,7 +107,7 @@ namespace ui::theme {
 
     std::vector<std::string> List() {
         std::vector<std::string> names;
-        if (DIR *directory = opendir(ThemesDirectory); directory != nullptr) {
+        if (DIR *directory = opendir(ThemesDirectory.c_str()); directory != nullptr) {
             while (const dirent *entry = readdir(directory)) {
                 const std::string name = entry->d_name;
                 if (name != "." && name != ".." && Exists(ThemePath(name) + "/theme.json")) {
@@ -248,6 +250,10 @@ namespace ui::theme {
                 continue;
             }
             Preview preview = { .name = name, .display_name = Value(table, "Theme.Name").empty() ? name : Value(table, "Theme.Name") };
+            /* "Format": { "Version": "N" }; a newer theme still loads what this version understands. */
+            if (std::strtol(Value(table, "Format.Version").c_str(), nullptr, 10) > usbl::formats::Theme) {
+                preview.display_name += " (" + strings::Get(strings::Id::ThemeFromNewerVersion) + ")";
+            }
             colors(table, &preview);
             for (const std::string &candidate : { Value(table, "Images.Thumbnail"), std::string("thumb.png"), std::string("thumb.jpg"), Value(table, "Images.Background") }) {
                 if (preview.thumbnail = ThemeFileOf(name, candidate); !preview.thumbnail.empty()) {

@@ -28,13 +28,19 @@ namespace usbl {
     using protocol::DriveStatus;
     using protocol::GameSource;
     using protocol::GameStatus;
+    using protocol::VersionInfo;
 
     /* Fails when USB Loader NX is disabled ([usbloadernx] enable) or this is not the USB Loader NX build of Atmosphère. */
     Result Initialize();
     void Exit();
 
+    /* Fails (2001-... from the module's command table) on a module older than protocol 1.0, which has no GetVersion. */
+    Result GetVersion(VersionInfo *out);
+
     Result GetConfigValue(ConfigValue *out, ConfigKey key);
+    /* A config.ini from a newer version is only rewritten after SetOverwriteNewerConfig(true) (the user said so). */
     Result SetConfigValue(ConfigKey key, bool enabled);
+    void SetOverwriteNewerConfig(bool overwrite);
     Result ListDrives(std::vector<DriveStatus> *out);
     Result ListGames(std::vector<GameStatus> *out);
     Result SetGameHidden(u64 application_id, bool hidden);

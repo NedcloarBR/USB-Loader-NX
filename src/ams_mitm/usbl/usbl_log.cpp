@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
+#include <usbl/paths.hpp>
 #include "usbl_log.hpp"
 
 namespace ams::mitm::usbl {
@@ -31,10 +32,12 @@ namespace ams::mitm::usbl {
         /* ams.mitm mounts the SD card during initialization; callers run after mitm::WaitInitialized. */
         const Result result = []() -> Result {
             char directory_path[ams::fs::EntryNameLengthMax + 1];
-            util::SNPrintf(directory_path, sizeof(directory_path), "%s:/atmosphere/logs", ams::fs::impl::SdCardFileSystemMountName);
-            util::SNPrintf(g_log_file_path, sizeof(g_log_file_path), "%s/usbloadernx.log", directory_path);
+            for (const char *dir : { ::usbl::paths::Root, ::usbl::paths::LogsDir }) {
+                util::SNPrintf(directory_path, sizeof(directory_path), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, dir);
+                R_DISCARD(ams::fs::CreateDirectory(directory_path));
+            }
+            util::SNPrintf(g_log_file_path, sizeof(g_log_file_path), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::LogFile);
 
-            R_DISCARD(ams::fs::CreateDirectory(directory_path));
             R_DISCARD(ams::fs::DeleteFile(g_log_file_path));
             R_RETURN(ams::fs::CreateFile(g_log_file_path, 0));
         }();

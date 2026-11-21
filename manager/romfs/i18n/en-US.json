@@ -94,7 +94,8 @@
 		"SectionManagerHelp": "The Manager's sounds, music and look.",
 		"ThemeInUse": "In use",
 		"MusicVolume": "Music volume",
-		"MusicVolumeHelp": "Left and Right set it; the sound effects keep their volume."
+		"MusicVolumeHelp": "Left and Right set it; the sound effects keep their volume.",
+		"ThemeFromNewerVersion": "made for a newer version"
 	},
 	"About": {
 		"Version": "Version {{VERSION}}",

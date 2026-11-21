@@ -26,6 +26,8 @@
 #include "usbl_results.hpp"
 #include "usbl_log.hpp"
 #include "usbl_notifications.hpp"
+#include "xci/usbl_hidden_games.hpp"
+#include <usbl/version.hpp>
 
 namespace ams::mitm::usbl {
 
@@ -94,7 +96,7 @@ namespace ams::mitm::usbl {
 
     Result Service::SetConfigValue(const ::usbl::protocol::SetConfigValueInput &input) {
         R_UNLESS(input.key < ConfigKey::Count, usbl::ResultOutOfRange());
-        R_TRY(usbl::SetConfigValue(input.key, input.enabled));
+        R_TRY(usbl::SetConfigValue(input.key, input.enabled, input.overwrite));
 
         /* HOME follows the new value right away instead of at the next boot or plug. Notifications are read at each one. */
         switch (input.key) {
@@ -153,6 +155,19 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
+
+    Result Service::GetVersion(sf::Out<::usbl::protocol::VersionInfo> out) {
+        ::usbl::protocol::VersionInfo info = { .major = ::usbl::protocol::VersionMajor, .minor = ::usbl::protocol::VersionMinor, .flags = 0, .module_version = {} };
+        if (IsConfigFromNewerVersion()) {
+            info.flags |= ::usbl::protocol::VersionFlag_ConfigFromNewerVersion;
+        }
+        if (IsKnownContentsFromNewerVersion() || IsHiddenGamesFromNewerVersion()) {
+            info.flags |= ::usbl::protocol::VersionFlag_DataFromNewerVersion;
+        }
+        util::Strlcpy(info.module_version, ::usbl::Version, sizeof(info.module_version));
+        out.SetValue(info);
+        R_SUCCEED();
+    }
 
     Result Service::ReadCachedContent(ncm::ContentId content_id, s64 offset, void *dst, size_t size) {
         std::scoped_lock lk(m_read_cache_lock);

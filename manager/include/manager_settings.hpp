@@ -17,13 +17,13 @@
 #include <string>
 #include <switch.h>
 
-/* The Manager's own options (not the module's config.ini): sdmc:/config/usbloadernx-manager/manager.ini, one
- * "key = value" per line under [manager]. Read once at start; every change rewrites the file. */
+/* The Manager's own options (not the module's config.ini): sdmc:/usbloadernx/manager.ini, "key = value" lines under
+ * [manager] after its [format] section. Read once at start; every change rewrites the file, unless a newer Manager wrote it. */
 namespace settings {
 
-    constexpr const char Directory[] = "sdmc:/config/usbloadernx-manager";
-
     void Load();
+    /* manager.ini comes from a newer Manager: changes are kept until the Manager closes, not written. */
+    bool IsFromNewerVersion();
 
     s32 GetInt(const char *key, s32 default_value);
     bool SetInt(const char *key, s32 value);

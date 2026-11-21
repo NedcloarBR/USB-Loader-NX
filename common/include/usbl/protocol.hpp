@@ -24,6 +24,12 @@ namespace usbl::protocol {
 
     constexpr char ServiceName[] = "usbl";
 
+    /* The Manager's side of the service (FORMATS.md). A new command, or a new field in reserved bytes, raises the minor
+     * version; changing what an existing command takes or returns raises the major one, and a Manager refuses to write
+     * through a module of another major version. */
+    constexpr std::uint16_t VersionMajor = 1;
+    constexpr std::uint16_t VersionMinor = 0;
+
     enum class CommandId : std::uint32_t {
         IsServedProgram      = 0,  /* loader */
         GetContentInfoForNcm = 4,  /* ncm */
@@ -46,7 +52,23 @@ namespace usbl::protocol {
         GetGameDisplayVersion = 18,
         /* The Manager is closing: games taken off HOME by a badge change come back now, so HOME fetches their new icons. */
         FinishHomeRefresh    = 19,
+        GetVersion           = 20,
     };
+
+    enum VersionFlag : std::uint32_t {
+        /* config.ini was written by a newer version: read only until SetConfigValue says to overwrite it. */
+        VersionFlag_ConfigFromNewerVersion = 1u << 0,
+        /* A file in usbloadernx/data was written by a newer version and is left untouched. */
+        VersionFlag_DataFromNewerVersion   = 1u << 1,
+    };
+
+    struct VersionInfo {
+        std::uint16_t major;
+        std::uint16_t minor;
+        std::uint32_t flags;
+        char module_version[0x18];
+    };
+    static_assert(sizeof(VersionInfo) == 0x20);
 
     struct DisplayVersion {
         char text[0x10];
@@ -129,8 +151,11 @@ namespace usbl::protocol {
     struct SetConfigValueInput {
         ConfigKey key;
         bool enabled;
+        /* Also when config.ini comes from a newer version (VersionFlag_ConfigFromNewerVersion). */
+        bool overwrite;
+        std::uint8_t reserved[5];
     };
-    static_assert(sizeof(SetConfigValueInput) == 0x2);
+    static_assert(sizeof(SetConfigValueInput) == 0x8);
 
     struct SetGameHiddenInput {
         std::uint64_t application_id;
@@ -139,6 +164,6 @@ namespace usbl::protocol {
     };
     static_assert(sizeof(SetGameHiddenInput) == 0x10);
 
-    static_assert(std::is_trivially_copyable_v<ConfigValue> && std::is_trivially_copyable_v<DriveStatus> && std::is_trivially_copyable_v<GameStatus>);
+    static_assert(std::is_trivially_copyable_v<ConfigValue> && std::is_trivially_copyable_v<VersionInfo> && std::is_trivially_copyable_v<DriveStatus> && std::is_trivially_copyable_v<GameStatus>);
 
 }

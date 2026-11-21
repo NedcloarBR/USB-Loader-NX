@@ -112,7 +112,7 @@ body:
     attributes:
       label: Log
       description: |
-        Attach `atmosphere/logs/usbloadernx.log` from the SD card (drag the file here). For a crash, also the newest file in `atmosphere/crash_reports/` or `atmosphere/fatal_reports/`.
+        Attach `usbloadernx/logs/usbloadernx.log` from the SD card (drag the file here). For a crash, also the newest file in `atmosphere/crash_reports/` or `atmosphere/fatal_reports/`.
     validations:
       required: true
 

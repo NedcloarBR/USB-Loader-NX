@@ -18,13 +18,17 @@
 
 namespace ams::mitm::usbl {
 
-    /* Games the user hid from HOME in the Manager, kept in sd:/atmosphere/config/usbloadernx/hidden_games.txt
-     * (one application id in hex per line), so they stay hidden across reboots and drive reconnections. */
+    /* Games the user hid from HOME in the Manager, kept in sd:/usbloadernx/data/hidden_games.ini ("[hidden]" with
+     * "<application id> = 1"), so they stay hidden across reboots and drive reconnections. */
     void LoadHiddenGames();
+    bool IsHiddenGamesFromNewerVersion();
+
+    /* The pre-1.0.0 hidden_games.txt (one id per line), saved in the new format. */
+    void ConvertLegacyHiddenGames(const char *legacy_text, size_t size);
 
     bool IsHiddenGame(ncm::ApplicationId application_id);
 
-    /* Updates the list and rewrites the file (writes to the SD card). */
+    /* Updates the list and rewrites the file (writes to the SD card); ResultNewerFormat for a newer version's file. */
     Result SetHiddenGame(ncm::ApplicationId application_id, bool hidden);
 
 }

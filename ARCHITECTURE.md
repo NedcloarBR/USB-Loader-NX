@@ -18,12 +18,12 @@ The repository has two branches with no history in common.
 │   │   └── fs_mitm/         USB content in fsp-srv, and the hooks fs_mitm_service.cpp calls
 │   ├── loader/              usbl client inside loader
 │   └── ncm/                 usbl client inside ncm
-├── common/include/usbl/     usbl service wire format, shared by the module and the Manager
+├── common/include/usbl/     usbl service wire format and the SD card paths, shared by the module and the Manager
 ├── usbl.mk                  adds src/ to the Atmosphère modules
 ├── manager/                 the Manager .nro (README.md: features, settings, files, code)
 │   ├── themes/              example theme and the theme format
 │   └── lib/Plutonium/       → submodule (UI library)
-├── config_templates/        usbloadernx.ini, shipped in atmosphere/config_templates/
+├── config_templates/        usbloadernx.ini, shipped as usbloadernx/templates/config.ini
 ├── assets/                  project icon
 ├── tools/assets/            generators for the notification icons, the badge, the Manager icon, sounds and the example theme
 ├── docker/                  build image: Atmosphère's Dockerfile plus a newer libnx

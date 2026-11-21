@@ -19,8 +19,8 @@
 
 namespace ams::mitm::usbl {
 
-    /* Every preference except `enable` and `debug` (system_settings.ini) lives in sd:/atmosphere/config/usbloadernx/config.ini,
-     * written by the Manager and created with the defaults when missing. Values are part of the usbl service wire format. */
+    /* Every preference except `enable` and `debug` (system_settings.ini) lives in sd:/usbloadernx/config.ini, written by
+     * the Manager and created with the defaults when missing. Values are part of the usbl service wire format. */
     using ConfigKey   = ::usbl::protocol::ConfigKey;
     using ConfigValue = ::usbl::protocol::ConfigValue;
 
@@ -28,8 +28,10 @@ namespace ams::mitm::usbl {
     void LoadConfig();
 
     ConfigValue GetConfigValue(ConfigKey key);
-    /* Rewrites config.ini with every option (this one changed) and applies it at once. Writes to the SD card. */
-    Result SetConfigValue(ConfigKey key, bool enabled);
+    /* Rewrites config.ini with every option (this one changed) and applies it at once. Writes to the SD card.
+     * A config.ini from a newer version is only rewritten with overwrite (ResultNewerFormat otherwise). */
+    Result SetConfigValue(ConfigKey key, bool enabled, bool overwrite);
+    bool IsConfigFromNewerVersion();
     bool IsConfigEnabled(ConfigKey key);
 
 }
