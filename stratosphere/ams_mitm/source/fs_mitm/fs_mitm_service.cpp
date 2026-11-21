@@ -467,6 +467,10 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageByCurrentProcessForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
 
@@ -484,6 +488,10 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageByProgramIdForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out, ncm::ProgramId program_id) {
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), program_id, m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
 
@@ -501,6 +509,11 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageWithProgramIndexForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out, u8 program_index) {
+        /* USB Loader NX only serves single-program applications: index 0 is the client itself. */
+        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(), sm::mitm::ResultShouldForwardToSession());
 
@@ -522,6 +535,10 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageByPathForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out, const fssrv::sf::Path &path, u8 content_attributes, u32 file_system_proxy_type) {
+        if (const Result usbl_result = usbl_hooks::OpenDataStorageByPath(out, m_forward_service.get(), path, file_system_proxy_type); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* Only mitm if we should override contents for the current process. */
         R_UNLESS(m_client_info.override_status.IsProgramSpecific(),     sm::mitm::ResultShouldForwardToSession());
         
