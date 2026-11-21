@@ -7,9 +7,9 @@
 Play your Nintendo Switch game dumps straight from a USB drive.<br>
 An Atmosphère fork with a library manager in the spirit of USB Loader GX for the Wii.
 
-![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)
+[![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)](https://github.com/Atmosphere-NX/Atmosphere)
 ![Tested on firmware 19.0.1 and 23.5.0](https://img.shields.io/badge/tested%20on-19.0.1%20%7C%2023.5.0-2B2D31?labelColor=1E1F22)
-![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
+[![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)](LICENSE)
 
 [Features](#features) · [Install](#install) · [Configuration](#configuration) · [Building](#building) · [Architecture](ARCHITECTURE.md) · [Changelog](CHANGELOG.md) · [TODO](TODO.md) · [License](#license) · [Credits](#credits)
 
@@ -51,7 +51,7 @@ What comes next, from compressed dumps to installing to USB, is in [TODO.md](TOD
    enable = u8!0x0
    ```
 
-3. Put your dumps in `usbloadernx/games/` on the USB drive and plug it in. Subfolders one level deep are scanned too. Keep each game's update and DLC on the same drive as the game: parts on another drive are not used.
+3. Put your dumps in `usbloadernx/games/` on the USB drive and plug it in. Subfolders up to two levels deep are scanned too (for example `games/<game>/` or `games/<group>/<game>/`). Keep each game's update and DLC on the same drive as the game: parts on another drive are not used.
 
 ## Configuration
 
@@ -68,6 +68,31 @@ Everything USB Loader NX and its Manager keep is in `usbloadernx/` on the SD car
 | `usbloadernx/themes/` | Manager themes |
 | `usbloadernx/i18n/` | Translations of the notifications that replace the built-in ones |
 | `usbloadernx/logs/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
+
+## Common problems
+
+| What happens | What to do |
+|---|---|
+| The Manager says USB Loader NX is off | It names the file the boot option in use reads and offers **Turn on and restart**. Packs such as CNX copy `cfw_system_settings.ini` over `system_settings.ini` at every boot, so a change made only in `system_settings.ini` is undone |
+| The Manager says this Atmosphère does not have USB Loader NX, or that it and the Manager do not match | Copy the `SD` folder of one package over the SD card (merging folders, never replacing `atmosphere/` as a whole) and restart |
+| A mod or translation does not show up | Most are made for the game's latest update: put the update on the same drive as the game. Holding L while the game starts turns mods off |
+| A notification says files on the drive were not read | The log lists each one with the reason (`left out ...`): a path longer than 767 bytes, a folder more than two levels inside `games`, more than 4096 entries in a folder, or no memory left for the index (it has no fixed limit, but always leaves 3 MB of ams.mitm's memory free) |
+| HOME asks to update a game, or will not start it | The game was played with an update that is no longer on its drive: put the update back next to the game. If HOME offers to download it, choose Cancel |
+| A `2505-xxxx` error | See the table below |
+
+To report a problem, send `usbloadernx/logs/usbloadernx.log` from the SD card, without restarting first (each boot starts a new log), and for a crash the newest file in `atmosphere/crash_reports/` or `atmosphere/fatal_reports/`. `debug = u8!0x1` under `[usbloadernx]` adds more detail.
+
+| Error | Meaning |
+|---|---|
+| `2505-0001` to `2505-0008` | The drive did not behave like USB storage (no bulk endpoints, failed or short commands, not ready, unsupported block size) |
+| `2505-0009` | The file system could not be read: a loose connection, or a drive that needs to be checked on a computer |
+| `2505-0010` to `2505-0014` | A dump that is not valid (XCI or HFS0 header, hash, partition, or keys this console does not have) |
+| `2505-0015` | The drive was removed while it was being read |
+| `2505-0016` | The content is not on any drive plugged in |
+| `2505-0017` | No memory left for the index (it always leaves 3 MB of ams.mitm's memory free) |
+| `2505-0018` | The game's drive is not plugged in |
+| `2505-0019` | The drive stopped answering for 20 s and was reset |
+| `2505-0020` | A file was written by a newer version of USB Loader NX and is left as it is |
 
 ## Building
 

@@ -2,23 +2,18 @@
 
 What is planned for USB Loader NX, roughly in the order it will be worked on. Done items move to the release notes.
 
-## Before 1.0.0
-
-- [ ] Say when something on the drive is left out (path too long, folder too deep, index full), in the log and in a notification
-- [ ] Common problems in the README (a mod that needs the game's update, the CNX `cfw_system_settings.ini`, sending the log, `2505-xxxx` errors)
-
 ## Manager
 
-- [ ] Hold a direction to repeat (lists, grid, the music volume slider)
 - [ ] Study how CardsNX fetches custom per-game backgrounds from an online service through its API, and add something alike: the Manager's first network feature (opt-in), saving the downloaded art to the SD card or the USB drive. Comes before the network game loading
 - [ ] Cover art from GameTDB for the carousel and grid, without the USB badge of the HOME icons (opt-in, after the background art above)
+- [ ] Download missing covers and art from GameTDB in the Manager itself, for every game on the drives
+- [ ] Shelves or folders view: the subfolders of `usbloadernx/games/` as categories (needs the GameTDB art above)
 - [ ] Reset the launch required version of a game whose update is gone (as DBI's "Reset required version" does): first only copy the candidate system saves (0x8000000000000180, 0x8000000000000045) to the SD before and after DBI's reset to learn what changes; then a risky, emuMMC-only option with backup, double confirmation and reboot
 
 ## Themes
 
 The Manager's look and sound as a theme anyone can make and share, like USB Loader GX themes on the Wii.
 
-- [ ] Theme format: a folder in `sdmc:/usbloadernx/themes/<name>/` with a `theme.json` (name, author, version, preview) and its assets; also as a `.zip`
 - [ ] Layout: position and size of the toolbar, carousel, dock buttons, free space bar and windows; hide any of them
 - [ ] Carousel and grid: number of covers, spacing, arc and scale of the carousel, columns and rows of the grid
 - [ ] Background image tiled
@@ -44,7 +39,6 @@ A desktop app to manage a drive's dumps and installs from the computer, written 
 - [ ] Compressed dumps: NSZ, and XCZ in block mode (random access, needed to play without installing)
 - [ ] Data patches for DLC (DLC with their own updates)
 - [ ] Applications with more than one program (only program index 0 is served today)
-- [ ] Higher limits for games with many DLC (32 per game, 512 NCAs and 64 files in total today)
 
 ## Storage
 

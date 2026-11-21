@@ -1,2 +1,2 @@
 Put your games here (.xci and .nsp), together with their updates and DLC.
-You can make one folder per game.
+You can make one folder per game, and group those in folders too (two levels: games/<group>/<game>/).
