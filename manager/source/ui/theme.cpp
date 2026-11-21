@@ -15,10 +15,13 @@
  */
 #include <ui/theme.hpp>
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <dirent.h>
 #include <string_view>
+#include <vector>
 #include <sys/stat.h>
+#include <minizip/unzip.h>
 #include <json.hpp>
 #include <manager_settings.hpp>
 #include <sd_files.hpp>
@@ -103,6 +106,147 @@ namespace ui::theme {
             return stat(path.c_str(), &info) == 0;
         }
 
+    }
+
+    namespace {
+
+        constexpr size_t MaxThemeFileSize = 64 * 1024 * 1024;
+
+        bool EndsWithZip(const std::string &name) {
+            if (name.size() <= 4) {
+                return false;
+            }
+            std::string ext = name.substr(name.size() - 4);
+            for (char &c : ext) {
+                c = static_cast<char>(c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
+            }
+            return ext == ".zip";
+        }
+
+        s64 ModifiedTime(const std::string &path) {
+            struct stat info;
+            return stat(path.c_str(), &info) == 0 ? static_cast<s64>(info.st_mtime) : -1;
+        }
+
+        /* Names inside the archive must stay inside the theme's folder. */
+        bool IsSafeRelativePath(const std::string &path) {
+            if (path.empty() || path[0] == '/' || path[0] == '\\' || path.find(':') != std::string::npos) {
+                return false;
+            }
+            size_t start = 0;
+            while (start <= path.size()) {
+                const size_t end = path.find_first_of("/\\", start);
+                const std::string part = path.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                if (part == "..") {
+                    return false;
+                }
+                if (end == std::string::npos) {
+                    break;
+                }
+                start = end + 1;
+            }
+            return true;
+        }
+
+        std::string CurrentEntryName(unzFile zip) {
+            char name[512] = {};
+            unz_file_info64 info = {};
+            if (unzGetCurrentFileInfo64(zip, &info, name, sizeof(name), nullptr, 0, nullptr, 0) != UNZ_OK) {
+                return {};
+            }
+            return name;
+        }
+
+        /* theme.json at the archive's root, or inside one folder at its root (zipping the theme's folder itself). */
+        bool FindThemeRoot(unzFile zip, std::string *out_prefix) {
+            for (int rc = unzGoToFirstFile(zip); rc == UNZ_OK; rc = unzGoToNextFile(zip)) {
+                const std::string name = CurrentEntryName(zip);
+                if (name == "theme.json") {
+                    *out_prefix = {};
+                    return true;
+                }
+                if (const size_t slash = name.find('/'); slash != std::string::npos && name.compare(slash + 1, std::string::npos, "theme.json") == 0) {
+                    *out_prefix = name.substr(0, slash + 1);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ExtractCurrentFile(unzFile zip, const std::string &path) {
+            unz_file_info64 info = {};
+            if (unzGetCurrentFileInfo64(zip, &info, nullptr, 0, nullptr, 0, nullptr, 0) != UNZ_OK || info.uncompressed_size > MaxThemeFileSize) {
+                return false;
+            }
+            if (unzOpenCurrentFile(zip) != UNZ_OK) {
+                return false;
+            }
+            bool ok = false;
+            if (FILE *file = std::fopen(path.c_str(), "wb"); file != nullptr) {
+                std::vector<char> buffer(64 * 1024);
+                int read = 0;
+                ok = true;
+                while ((read = unzReadCurrentFile(zip, buffer.data(), static_cast<unsigned>(buffer.size()))) > 0) {
+                    ok = ok && std::fwrite(buffer.data(), 1, static_cast<size_t>(read), file) == static_cast<size_t>(read);
+                }
+                ok = ok && read == 0;
+                std::fclose(file);
+            }
+            unzCloseCurrentFile(zip);
+            return ok;
+        }
+
+        void InstallZip(const std::string &zip_path, const std::string &folder) {
+            unzFile zip = unzOpen64(zip_path.c_str());
+            if (zip == nullptr) {
+                return;
+            }
+            std::string prefix;
+            if (FindThemeRoot(zip, &prefix)) {
+                sd::MakeDirectories(folder);
+                for (int rc = unzGoToFirstFile(zip); rc == UNZ_OK; rc = unzGoToNextFile(zip)) {
+                    const std::string name = CurrentEntryName(zip);
+                    if (name.size() <= prefix.size() || name.compare(0, prefix.size(), prefix) != 0) {
+                        continue;
+                    }
+                    const std::string relative = name.substr(prefix.size());
+                    if (!IsSafeRelativePath(relative)) {
+                        continue;
+                    }
+                    const std::string path = folder + "/" + relative;
+                    if (relative.back() == '/') {
+                        sd::MakeDirectories(path.substr(0, path.size() - 1));
+                        continue;
+                    }
+                    sd::MakeDirectories(path.substr(0, path.rfind('/')));
+                    ExtractCurrentFile(zip, path);
+                }
+            }
+            unzClose(zip);
+        }
+
+    }
+
+    void InstallZips() {
+        std::vector<std::string> zips;
+        if (DIR *directory = opendir(ThemesDirectory.c_str()); directory != nullptr) {
+            while (const dirent *entry = readdir(directory)) {
+                if (EndsWithZip(entry->d_name)) {
+                    zips.push_back(entry->d_name);
+                }
+            }
+            closedir(directory);
+        }
+
+        for (const auto &zip : zips) {
+            const std::string zip_path = ThemePath(zip), folder = ThemePath(zip.substr(0, zip.size() - 4));
+            /* Unpacked once, and again when the .zip is newer than what came out of it. Files are only added or replaced. */
+            const s64 unpacked = ModifiedTime(folder + "/theme.json");
+            if (unpacked >= 0 && unpacked >= ModifiedTime(zip_path)) {
+                continue;
+            }
+            InstallZip(zip_path, folder);
+        }
     }
 
     std::vector<std::string> List() {

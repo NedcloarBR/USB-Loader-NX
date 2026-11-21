@@ -72,6 +72,9 @@ namespace ui {
      * Anything a theme leaves out keeps the default. */
     namespace theme {
 
+        /* Unpacks each themes/<name>.zip into themes/<name>/ (again when the .zip is newer). Writes to the SD card. */
+        void InstallZips();
+
         /* The installed themes' folder names, sorted; the built-in theme is "". */
         std::vector<std::string> List();
         /* Applies a theme (or the built-in one for "" or a theme that cannot be read) and remembers it in manager.ini. */

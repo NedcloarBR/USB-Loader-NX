@@ -97,6 +97,7 @@ namespace ui {
         migration::MoveLegacyFiles();
         settings::Load();
         strings::Initialize();
+        ui::theme::InstallZips();
         ui::theme::ApplySaved();
         sound::Initialize();
         this->sort_mode = static_cast<library::SortMode>(std::clamp<s32>(settings::GetInt(SortKey, 0), 0, static_cast<s32>(library::SortMode::Count) - 1));

@@ -1,6 +1,6 @@
 # Manager themes
 
-A theme changes the Manager's colors and sounds. Copy its folder to `usbloadernx/themes/` on the SD card and pick it in **Settings → Manager → Theme**, a row of previews; A applies the focused one right away.
+A theme changes the Manager's colors and sounds. Copy its folder, or its `.zip`, to `usbloadernx/themes/` on the SD card and pick it in **Settings → Manager → Theme**, a row of previews; A applies the focused one right away.
 
 ```text
 usbloadernx/themes/<name>/
@@ -28,6 +28,8 @@ usbloadernx/themes/<name>/
 ```
 
 `Format.Version` is the version of this format the theme was made for (`"1"` here, and for a theme without it). A Manager that only knows an older format still loads what it understands and marks the theme in the picker as made for a newer version. `Theme.Version` is the theme's own version, whatever its author likes.
+
+A `<name>.zip` is unpacked into `<name>/` when the Manager starts, and again whenever the `.zip` is newer; `theme.json` can be at the archive's root or in one folder at its root. The `.zip` stays where it is.
 
 Anything left out keeps the default, so a theme can change a single color. A `theme.json` that does not parse is ignored as a whole. File names are relative to the theme's folder and cannot leave it.
 
