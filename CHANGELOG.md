@@ -7,15 +7,43 @@
 Play your Nintendo Switch game dumps straight from a USB drive.<br>
 An Atmosphère fork with a library manager in the spirit of USB Loader GX for the Wii.
 
-![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)
+[![Atmosphère 1.12.2](https://img.shields.io/badge/Atmosph%C3%A8re-1.12.2-2B2D31?labelColor=1E1F22)](https://github.com/Atmosphere-NX/Atmosphere)
 ![Tested on firmware 19.0.1 and 23.5.0](https://img.shields.io/badge/tested%20on-19.0.1%20%7C%2023.5.0-2B2D31?labelColor=1E1F22)
-![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)
+[![License GPLv2](https://img.shields.io/badge/license-GPLv2-00C26F?labelColor=1E1F22)](LICENSE)
 
 [Features](README.md#features) · [Install](README.md#install) · [Configuration](README.md#configuration) · [Building](README.md#building) · [Architecture](ARCHITECTURE.md) · [README](README.md) · [TODO](TODO.md) · [License](README.md#license) · [Credits](README.md#credits)
 
 </div>
 
 Every release of USB Loader NX, newest first.
+
+## v1.0.0 — 2026-11-21
+
+### ✨ Features
+
+- Keep every file in sdmc:/usbloadernx with versioned formats ([`84edefd`](https://github.com/NedcloarBR/USB-Loader-NX/commit/84edefda9b8e3fc9ee668b57aacaff32d097c55a) by @NedcloarBR)
+- **manager:** Check the system on start and turn USB Loader NX on ([`994f796`](https://github.com/NedcloarBR/USB-Loader-NX/commit/994f796cf524ce038c06707e13dae15d767ea5bc) by @NedcloarBR)
+- **manager:** Repeat a held direction ([`2719416`](https://github.com/NedcloarBR/USB-Loader-NX/commit/2719416042dbe739f2458db1d69e635a4d10316e) by @NedcloarBR)
+- **manager:** Install themes from a .zip ([`fa1ba09`](https://github.com/NedcloarBR/USB-Loader-NX/commit/fa1ba0919b8f65c2dccd7a7985093dd5ba645ab6) by @NedcloarBR)
+- **usbl:** Say which files on the drive were left out ([`957a2c5`](https://github.com/NedcloarBR/USB-Loader-NX/commit/957a2c50062928e599830da3511dfe5b0e1bb7cf) by @NedcloarBR)
+- **usbl:** Grow the index with the drives instead of fixed limits ([`77a973e`](https://github.com/NedcloarBR/USB-Loader-NX/commit/77a973e6cfb6e263b40cebd64b50bde86a5c6eb7) by @NedcloarBR)
+
+### 🐛 Fixes
+
+- **usb:** Give up on a drive that stops answering after 20 s ([`480b9d4`](https://github.com/NedcloarBR/USB-Loader-NX/commit/480b9d46773651baa555ea504d9d48e2b6a9d531) by @NedcloarBR)
+- **usbl:** Keep hidden games in the Manager after boot ([`1f52d8c`](https://github.com/NedcloarBR/USB-Loader-NX/commit/1f52d8c5b3dabed8b30a87aa1523a002ba4e05fa) by @NedcloarBR)
+
+### 📝 Documentation
+
+- Drop done TODO items and update the tested hardware ([`9281208`](https://github.com/NedcloarBR/USB-Loader-NX/commit/92812081cca3de0dc03726434eef9e575da4fc32) by @NedcloarBR)
+- Common problems, linked badges and the new limits ([`9966aed`](https://github.com/NedcloarBR/USB-Loader-NX/commit/9966aed0cc11afc1407339b7711098aa5c6bcdde) by @NedcloarBR)
+
+### 🏗️ Build and CI
+
+- Move the actions to Node 24 ([`8c4165a`](https://github.com/NedcloarBR/USB-Loader-NX/commit/8c4165a5322d55eccd9d9a827e9f5c0b1a621b24) by @NedcloarBR)
+- Cache the build images between runs ([`a54034d`](https://github.com/NedcloarBR/USB-Loader-NX/commit/a54034d0a2287f0318a20348d3a52750e255c720) by @NedcloarBR)
+
+**Full changelog:** [v0.4.0...v1.0.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v0.4.0...v1.0.0)
 
 ## v0.4.0 — 2026-11-21
 
