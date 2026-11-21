@@ -1108,7 +1108,24 @@ namespace ams::mitm::usbl::xci {
         AMS_ASSERT(!GetVolumeLock().IsLockedByCurrentThread());
 
         ncm::ProgramId applications[MaxApplicationCount];
-        const s32 count = std::min(GetKnownApplications(applications, MaxApplicationCount), max_count);
+        s32 count = GetKnownApplications(applications, MaxApplicationCount);
+
+        /* A game on a plugged-in drive is listed even when it is not known (any more): ns deletes at boot the contents of
+         * games without an ns record, hidden ones included, and that makes them forgotten until the drive is plugged again. */
+        {
+            ncm::ProgramId indexed[MaxApplicationCount];
+            s32 indexed_count;
+            {
+                std::scoped_lock lk(GetVolumeLock());
+                indexed_count = GetIndexedApplications(indexed, MaxApplicationCount, -1);
+            }
+            for (s32 i = 0; i < indexed_count && count < MaxApplicationCount; ++i) {
+                if (std::find(applications, applications + count, indexed[i]) == applications + count) {
+                    applications[count++] = indexed[i];
+                }
+            }
+        }
+        count = std::min(count, max_count);
 
         ncm::ContentMetaDatabase db;
         const bool has_db = R_SUCCEEDED(ncm::OpenContentMetaDatabase(std::addressof(db), ncm::StorageId::SdCard));

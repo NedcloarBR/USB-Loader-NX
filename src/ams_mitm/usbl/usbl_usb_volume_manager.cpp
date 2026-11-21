@@ -422,6 +422,9 @@ namespace ams::mitm::usbl {
                     boot_hide_pending = false;
                     Log("boot: putting HOME in line with the options");
                     xci::ApplyHomeVisibility();
+                    /* ns deleted the contents of games without a record (hidden ones) while it finished booting; they are
+                     * still on the drive, so they are known again. */
+                    RememberIndexedContents();
                 }
 
                 if (boot_hide_pending) {
