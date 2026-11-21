@@ -64,6 +64,20 @@ Everything the Manager writes is under `sdmc:/usbloadernx/`, next to the module'
 | `cache/icons/` | The games' own icons (without the HOME badge), kept for when their drive is unplugged |
 | `themes/<name>/` | Installed themes, see [themes/README.md](themes/README.md) |
 
+On start, the Manager checks the system before showing the library:
+
+| What it finds | What it shows |
+|---|---|
+| An Atmosphère without USB Loader NX | Its version and commit, and to install the package over it |
+| `[usbloadernx] enable = u8!0x0` | Which file to change for the boot option in use, and **Turn on and restart**, which writes `enable = u8!0x1` there (keeping a `.bak` copy) and restarts the console |
+| USB Loader NX on but not running | Where its log is |
+| USB Loader NX and the Manager from different packages | Which one is older and what to copy from the package; nothing is written |
+| Files written by a newer version | That they are read but not changed; **Write anyway** lets this version save `config.ini` again |
+
+The boot option's file is found by content: packs like CNX copy it (`cfw_system_settings.ini`, `stock_system_settings.ini`…) over `system_settings.ini` at every boot, so the file in `atmosphere/config/` with the very same content is the one to edit.
+
+It writes `atmosphere/config/*system_settings*.ini` only through **Turn on and restart**.
+
 It also reads the console's play records (`pdm`) for play time and the launch version (`avm`) to warn about a missing update; neither is written.
 
 ## Translations

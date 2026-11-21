@@ -15,6 +15,7 @@
  */
 #pragma once
 #include <strings.hpp>
+#include <system_check.hpp>
 #include <ui/library_screen.hpp>
 #include <ui/settings_screen.hpp>
 
@@ -31,6 +32,8 @@ namespace ui {
             LibraryScreen::Ref library_screen;
             SettingsScreen::Ref settings_screen;
             bool service_available = false;
+            /* What the start-up check found: why the library is empty, or files from a newer version. */
+            system_check::Report system;
             /* What the drives and games looked like at the last refresh, and when to look again. */
             std::string library_snapshot;
             size_t library_drive_count = 0;
@@ -42,6 +45,8 @@ namespace ui {
             void ShowLibrary();
             void ShowSettings();
             void ShowError(strings::Id id, Result rc);
+            void ShowSystemNotice();
+            void EnableAndRestart();
             void PollLibrary();
 
             void Launch(const library::Game &game);

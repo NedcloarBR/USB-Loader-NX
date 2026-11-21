@@ -18,9 +18,11 @@
 #include <cinttypes>
 #include <iterator>
 #include <cstdio>
+#include <game_library.hpp>
 #include <manager_settings.hpp>
 #include <migration.hpp>
 #include <sound.hpp>
+#include <usbl/version.hpp>
 
 namespace ui {
 
@@ -86,9 +88,11 @@ namespace ui {
             this->library_screen->Enter();
         });
 
-        this->service_available = R_SUCCEEDED(usbl::Initialize());
+        this->system = system_check::Run();
+        this->service_available = this->system.state == system_check::State::Ready;
         this->ShowLibrary();
         this->library_screen->Enter();
+        this->ShowSystemNotice();
 
         this->AddRenderCallback([this]() { this->PollLibrary(); });
         this->SetOnInput([this](const u64 keys_down, const u64, const u64, const pu::ui::TouchPoint) {
@@ -109,7 +113,13 @@ namespace ui {
          * folded into the snapshot and missed. */
         this->library_snapshot = this->service_available ? TakeSnapshot() : std::string();
         if (!this->service_available) {
-            message = strings::Get(strings::Id::ServiceUnavailable);
+            switch (this->system.state) {
+                case system_check::State::NotOurAtmosphere: message = strings::Get(strings::Id::SystemNotOurAtmosphereTitle); break;
+                case system_check::State::Disabled:         message = strings::Get(strings::Id::SystemDisabledTitle);         break;
+                case system_check::State::NotStarted:       message = strings::Get(strings::Id::SystemNotStartedTitle);       break;
+                case system_check::State::VersionMismatch:  message = strings::Get(strings::Id::SystemVersionMismatchTitle);  break;
+                case system_check::State::Ready:            message = strings::Get(strings::Id::ServiceUnavailable);          break;
+            }
         } else if (const Result rc = library::LoadGames(&games); R_FAILED(rc)) {
             message = strings::Format(strings::Id::ActionFailed, { { "CODE", FormatResult(rc) } });
         } else {
@@ -156,6 +166,77 @@ namespace ui {
     void MainApplication::ShowError(strings::Id id, Result rc) {
         sound::Play(sound::Effect::Error);
         this->library_screen->ShowMessage(strings::Get(strings::Id::AppTitle), strings::Format(id, { { "CODE", FormatResult(rc) } }), false);
+    }
+
+    void MainApplication::ShowSystemNotice() {
+        using strings::Id;
+        const auto &report = this->system;
+        const std::initializer_list<strings::Argument> atmosphere = { { "VERSION", report.atmosphere_version }, { "COMMIT", report.atmosphere_commit } };
+
+        switch (report.state) {
+            case system_check::State::NotOurAtmosphere:
+                this->library_screen->ShowMessage(strings::Get(Id::SystemNotOurAtmosphereTitle), strings::Format(Id::SystemNotOurAtmosphere, atmosphere), false);
+                return;
+            case system_check::State::NotStarted:
+                this->library_screen->ShowMessage(strings::Get(Id::SystemNotStartedTitle), strings::Format(Id::SystemNotStarted, atmosphere), false);
+                return;
+            case system_check::State::Disabled:
+                if (report.file_enables) {
+                    this->library_screen->ShowMessage(strings::Get(Id::SystemDisabledTitle), strings::Format(Id::SystemDisabledRestart, { { "FILE", report.settings_file } }), false,
+                                                      { strings::Get(Id::SystemRestart), [] { system_check::Reboot(); } });
+                } else {
+                    this->library_screen->ShowMessage(strings::Get(Id::SystemDisabledTitle), strings::Format(Id::SystemDisabled, { { "FILE", report.settings_file } }), false,
+                                                      { strings::Get(Id::SystemEnableAndRestart), [this] { this->EnableAndRestart(); } });
+                }
+                return;
+            case system_check::State::VersionMismatch: {
+                /* No GetVersion: a module from before protocol 1.0. Otherwise the major versions say which side to update. */
+                const std::string module(report.version.module_version, strnlen(report.version.module_version, sizeof(report.version.module_version)));
+                const Id text = !report.has_version ? Id::SystemModuleTooOld : (report.version.major < usbl::protocol::VersionMajor ? Id::SystemModuleOlder : Id::SystemModuleNewer);
+                this->library_screen->ShowMessage(strings::Get(Id::SystemVersionMismatchTitle), strings::Format(text, { { "MANAGER", usbl::Version }, { "MODULE", module } }), false);
+                return;
+            }
+            case system_check::State::Ready:
+                break;
+        }
+
+        /* Files a newer version wrote: read, not rewritten (FORMATS.md). */
+        std::string text;
+        const auto add = [&text](const std::string &paragraph) { text += (text.empty() ? "" : " ") + paragraph; };
+        const bool newer_config = (report.version.flags & usbl::protocol::VersionFlag_ConfigFromNewerVersion) != 0;
+        if (newer_config) {
+            add(strings::Get(Id::SystemNewerConfig));
+        }
+        if ((report.version.flags & usbl::protocol::VersionFlag_DataFromNewerVersion) != 0 || library::AreFavoritesFromNewerVersion()) {
+            add(strings::Get(Id::SystemNewerData));
+        }
+        if (settings::IsFromNewerVersion()) {
+            add(strings::Get(Id::SystemNewerManager));
+        }
+        if (text.empty()) {
+            return;
+        }
+        LibraryScreen::MessageAction write_anyway;
+        if (newer_config) {
+            write_anyway = { strings::Get(Id::SystemWriteAnyway), [] {
+                sound::Play(sound::Effect::ToggleOn);
+                usbl::SetOverwriteNewerConfig(true);
+            } };
+        }
+        this->library_screen->ShowMessage(strings::Get(Id::SystemNewerConfigTitle), text, false, std::move(write_anyway));
+    }
+
+    void MainApplication::EnableAndRestart() {
+        if (const Result rc = system_check::EnableUsbLoaderNx(this->system.settings_file); R_FAILED(rc)) {
+            sound::Play(sound::Effect::Error);
+            this->library_screen->ShowMessage(strings::Get(strings::Id::SystemDisabledTitle),
+                                              strings::Format(strings::Id::SystemEnableFailed, { { "FILE", this->system.settings_file }, { "CODE", FormatResult(rc) } }), false);
+            return;
+        }
+        sound::Play(sound::Effect::Launch);
+        this->FadeOut();
+        sound::Exit();
+        system_check::Reboot();
     }
 
     void MainApplication::Launch(const library::Game &game) {

@@ -739,9 +739,11 @@ namespace ui {
         AddHintBar(*this, DesignWidth - Edge, FooterCenterY, { { "B", strings::Get(Id::HintBack) } }, color::TextSoft);
     }
 
-    void LibraryScreen::ShowMessage(const std::string &title, const std::string &text, bool with_game_icon) {
+    void LibraryScreen::ShowMessage(const std::string &title, const std::string &text, bool with_game_icon, MessageAction action) {
         this->message_title = title;
         this->message_text = text;
+        this->message_action = std::move(action);
+        this->message_on_action = true;
         this->message_has_icon = with_game_icon && this->GetSelectedGame() != nullptr;
         this->message_return = this->window == Window::Message ? this->message_return : this->window;
         this->window = Window::Message;
@@ -753,7 +755,7 @@ namespace ui {
         constexpr double W = 720, X = (DesignWidth - W) / 2, Pad = 40, IconSize = 88;
         const double text_x = X + Pad + (this->message_has_icon ? IconSize + 24 : 0), text_w = X + W - Pad - text_x;
         const auto title = WrapLines(this->message_title, 26, text_w, 2);
-        const auto lines = WrapLines(this->message_text, 16, text_w, 8);
+        const auto lines = WrapLines(this->message_text, 16, text_w, 11);
         const double title_h = title.size() * 34, body_h = lines.size() * 24;
         const double content_h = std::max(this->message_has_icon ? IconSize : 0.0, title_h + 14 + body_h);
         const double h = Pad + content_h + 32 + 56 + Pad, y = std::max(24.0, (FooterY - h) / 2);
@@ -771,6 +773,16 @@ namespace ui {
         }
         for (size_t i = 0; i < lines.size(); ++i) {
             this->Slide(AddText(*this, text_x, y + Pad + title_h + 14 + i * 24, lines[i], 16, color::TextSoft));
+        }
+
+        if (!this->message_action.label.empty()) {
+            const std::string close = strings::Get(Id::Close), action = this->message_action.label;
+            const double action_w = TextWidth(action, 20) + 96, close_w = TextWidth(close, 20) + 64, button_y = y + h - Pad - 56;
+            const double action_x = X + W - Pad - action_w, close_x = action_x - 16 - close_w;
+            const bool on_action = this->message_on_action;
+            this->AddActionButton(close_x, button_y, close_w, 56, close, !on_action, true, !on_action, true);
+            this->AddActionButton(action_x, button_y, action_w, 56, action, on_action, true, on_action, true);
+            return;
         }
 
         const std::string ok = strings::Get(Id::Ok);
@@ -878,8 +890,23 @@ namespace ui {
                 return;
             }
             case Window::Message:
-                if (keys_down & (HidNpadButton_A | HidNpadButton_B)) {
+                if (this->message_action.run && (keys_down & (HidNpadButton_AnyLeft | HidNpadButton_AnyRight))) {
+                    const bool on_action = (keys_down & HidNpadButton_AnyRight) != 0;
+                    if (on_action != this->message_on_action) {
+                        sound::Play(sound::Effect::Move);
+                        this->message_on_action = on_action;
+                        this->Rebuild();
+                    }
+                } else if ((keys_down & HidNpadButton_A) && this->message_action.run && this->message_on_action) {
+                    /* The action may show another message; it is taken out first so that one can replace it. */
+                    const auto run = std::move(this->message_action.run);
+                    this->message_action = {};
+                    this->window = this->message_return;
+                    this->Rebuild();
+                    run();
+                } else if (keys_down & (HidNpadButton_A | HidNpadButton_B)) {
                     sound::Play(sound::Effect::Back);
+                    this->message_action = {};
                     this->window = this->message_return;
                     this->Rebuild();
                 }

@@ -42,6 +42,12 @@ namespace ui {
                 std::function<void()> clear_search;
             };
 
+            /* A second button in a message window, next to Close: left and right pick one, A presses it, B closes. */
+            struct MessageAction {
+                std::string label;
+                std::function<void()> run;
+            };
+
             /* How the list is browsed, shown on the toolbar: the sort order's name and the search, if any. */
             struct Browse {
                 std::string sort_name;
@@ -95,6 +101,9 @@ namespace ui {
             /* A message over the screen (an error, why a game cannot start); closing it goes back to `message_return`. */
             std::string message_title, message_text;
             bool message_has_icon = false;
+            MessageAction message_action;
+            /* With an action: which of the two buttons A presses (left/right move between them). */
+            bool message_on_action = true;
             Window message_return = Window::None;
             HomeButton home_button = HomeButton::Launch;
             s32 selected = 0;
@@ -147,8 +156,8 @@ namespace ui {
             void Show(std::vector<library::Game> games, std::vector<usbl::DriveStatus> drives, std::string message, Browse browse);
             void OnInput(u64 keys_down);
             /* Shows `text` in a window in the theme's colors, with the selected game's icon next to the title when
-             * `with_game_icon`. */
-            void ShowMessage(const std::string &title, const std::string &text, bool with_game_icon);
+             * `with_game_icon`, and an action button when `action` has a label. */
+            void ShowMessage(const std::string &title, const std::string &text, bool with_game_icon, MessageAction action = {});
             /* Plays the entrance (fade, and the covers gliding in the first time). */
             void Enter();
     };

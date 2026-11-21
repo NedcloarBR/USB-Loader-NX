@@ -119,7 +119,8 @@
 	},
 	"Common": {
 		"Back": "Voltar",
-		"Ok": "OK"
+		"Ok": "OK",
+		"Close": "Fechar"
 	},
 	"Errors": {
 		"LaunchFailed": "Não foi possível iniciar o jogo ({{CODE}}).",
@@ -135,5 +136,26 @@
 	"Format": {
 		"DecimalSeparator": ",",
 		"Date": "{{DAY}}/{{MONTH}}/{{YEAR}}"
+	},
+	"System": {
+		"NotOurAtmosphereTitle": "Este Atmosphère não tem o USB Loader NX",
+		"NotOurAtmosphere": "O console está com o Atmosphère {{VERSION}} (commit {{COMMIT}}), sem o USB Loader NX. Copie a pasta SD do pacote do USB Loader NX por cima do cartão SD e reinicie o console.",
+		"DisabledTitle": "O USB Loader NX está desligado",
+		"Disabled": "Abra {{FILE}} no cartão SD e, na seção [usbloadernx], deixe enable = u8!0x1. Depois reinicie o console. É esse o arquivo que a sua opção de boot lê.",
+		"DisabledRestart": "{{FILE}} já liga o USB Loader NX. Reinicie o console para ele iniciar.",
+		"EnableAndRestart": "Ligar e reiniciar",
+		"EnableFailed": "Não foi possível alterar {{FILE}} ({{CODE}}). Altere pelo computador: na seção [usbloadernx], enable = u8!0x1.",
+		"NotStartedTitle": "O USB Loader NX não iniciou",
+		"NotStarted": "O Atmosphère {{VERSION}} (commit {{COMMIT}}) está com o USB Loader NX ligado, mas ele não está rodando. Veja usbloadernx/logs/usbloadernx.log no cartão SD e confira se o Atmosphère e o Manager são do mesmo pacote.",
+		"VersionMismatchTitle": "USB Loader NX e Manager de versões diferentes",
+		"NewerConfigTitle": "Configurações de uma versão mais nova",
+		"NewerConfig": "usbloadernx/config.ini foi gravado por uma versão mais nova do USB Loader NX. As opções podem ser lidas, mas não são salvas, para nada do que aquela versão definiu se perder. Grave mesmo assim para mudá-las com esta versão.",
+		"NewerData": "Alguns arquivos em usbloadernx/data foram gravados por uma versão mais nova do USB Loader NX; eles são lidos mas não alterados (os jogos ocultos só podem mudar depois de atualizar).",
+		"NewerManager": "usbloadernx/manager.ini foi gravado por um Manager mais novo. As mudanças nas opções do Manager valem até você fechá-lo.",
+		"WriteAnyway": "Gravar mesmo assim",
+		"Restart": "Reiniciar",
+		"ModuleTooOld": "O USB Loader NX do Atmosphère é mais antigo que este Manager ({{MANAGER}}). Copie a pasta atmosphere do mesmo pacote deste Manager por cima do cartão SD e reinicie o console. Até lá, o Manager não altera nada.",
+		"ModuleOlder": "O USB Loader NX do Atmosphère ({{MODULE}}) é mais antigo que este Manager ({{MANAGER}}). Copie a pasta atmosphere do mesmo pacote deste Manager por cima do cartão SD e reinicie o console. Até lá, o Manager não altera nada.",
+		"ModuleNewer": "Este Manager ({{MANAGER}}) é mais antigo que o USB Loader NX do Atmosphère ({{MODULE}}). Copie switch/USBLoaderNX-Manager.nro do mesmo pacote do Atmosphère para o cartão SD. Até lá, o Manager não altera nada."
 	}
 }

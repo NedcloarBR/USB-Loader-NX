@@ -30,7 +30,8 @@ namespace usbl {
     using protocol::GameStatus;
     using protocol::VersionInfo;
 
-    /* Fails when USB Loader NX is disabled ([usbloadernx] enable) or this is not the USB Loader NX build of Atmosphère. */
+    /* Fails right away (without waiting for the service) when USB Loader NX is disabled ([usbloadernx] enable), did not
+     * start, or this is not the USB Loader NX build of Atmosphère. */
     Result Initialize();
     void Exit();
 

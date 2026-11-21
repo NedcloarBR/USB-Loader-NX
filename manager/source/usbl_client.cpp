@@ -47,6 +47,16 @@ namespace usbl {
     }
 
     Result Initialize() {
+        /* sm holds a request for a service nobody registered until someone does: with USB Loader NX off that is never,
+         * and the Manager would wait on a black screen. Atmosphère's sm answers whether it exists (command 65100). */
+        const SmServiceName name = smEncodeName(protocol::ServiceName);
+        u8 has_service = 0;
+        if (const Result rc = tipcDispatchInOut(smGetServiceSessionTipc(), 65100, name, has_service); R_FAILED(rc)) {
+            return rc;
+        }
+        if ((has_service & 1) == 0) {
+            return MAKERESULT(Module_Libnx, LibnxError_NotFound);
+        }
         return smGetService(&g_service, protocol::ServiceName);
     }
 
