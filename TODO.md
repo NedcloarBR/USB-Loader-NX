@@ -78,7 +78,9 @@ Play games from a PC or NAS on the local network, like Open PS2 Loader does over
 
 - [x] A badge change shows on HOME as soon as it comes to the front: the games leave HOME and come back when the Manager loses focus or closes (HOME's grid keeps its own copy of each icon)
 - [x] Romfs mods and translations (`atmosphere/contents/<id>/romfs`) on USB games, through Atmosphère's LayeredFS; holding the override button turns them off as for installed games
-- [ ] Serve the `ForBatchRead` data storage commands (firmware 23.0.0 and later)
+- [x] Serve the `ForBatchRead` data storage commands (firmware 23.0.0 and later), with romfs mods; `BatchRead` itself unsupported, as in Atmosphère
+- [x] Tested on firmware 23.5.0: games, updates and romfs mods from USB
+- [ ] More testers on 23.x, and removing the drive with a game running on 23.x
 - [ ] Replace the `ncm` hooks with an `ncm` mitm inside `ams.mitm` (fewer upstream changes, no IPC hop)
 
 ## Performance

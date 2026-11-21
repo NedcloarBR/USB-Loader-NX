@@ -42,6 +42,34 @@ namespace ams::mitm::fs::usbl_hooks {
             return sf::CreateSharedObjectEmplaced<ams::fssrv::sf::IStorage, ams::fssrv::impl::StorageInterfaceAdapter>(std::forward<Arguments>(args)...);
         }
 
+        template<typename... Arguments>
+        constexpr ALWAYS_INLINE auto MakeSharedStorageForBatchRead(Arguments &&... args) {
+            return sf::CreateSharedObjectEmplaced<ams::fssrv::sf::IStorageForBatchRead, ams::fssrv::impl::StorageInterfaceAdapterForBatchRead>(std::forward<Arguments>(args)...);
+        }
+
+        /* A storage behind the ForBatchRead interface; BatchRead is unsupported like in Atmosphère's LayeredFS. */
+        class BatchReadStorage final : public IStorageForBatchRead, public ams::fs::impl::Newable {
+            private:
+                std::shared_ptr<IStorage> m_base;
+            public:
+                explicit BatchReadStorage(std::shared_ptr<IStorage> base) : m_base(std::move(base)) { /* ... */ }
+
+                virtual Result Read(s64 offset, void *buffer, size_t size) override { R_RETURN(m_base->Read(offset, buffer, size)); }
+                virtual Result Write(s64 offset, const void *buffer, size_t size) override { R_RETURN(m_base->Write(offset, buffer, size)); }
+                virtual Result Flush() override { R_RETURN(m_base->Flush()); }
+                virtual Result SetSize(s64 size) override { R_RETURN(m_base->SetSize(size)); }
+                virtual Result GetSize(s64 *out) override { R_RETURN(m_base->GetSize(out)); }
+
+                virtual Result OperateRange(void *dst, size_t dst_size, OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override {
+                    R_RETURN(m_base->OperateRange(dst, dst_size, op_id, offset, size, src, src_size));
+                }
+
+                virtual Result BatchRead(void *out0, void *out1, void *out2, void *out3, void *out4, void *out5, void *out6, const void *in) override {
+                    AMS_UNUSED(out0, out1, out2, out3, out4, out5, out6, in);
+                    R_THROW(ams::fs::ResultUnsupportedOperation());
+                }
+        };
+
         /* FS never sees these requests, so borrow a real object (and its id) for domain bookkeeping and keep it alive alongside ours. */
         Result BorrowObjectId(FsFileSystem *out, Service *fwd) {
             R_SUCCEED_IF(R_SUCCEEDED(fsOpenSdCardFileSystemFwd(fwd, out)));
@@ -76,6 +104,17 @@ namespace ams::mitm::fs::usbl_hooks {
             const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(std::addressof(owner.s))};
 
             out.SetValue(MakeSharedStorage(HoldWithObjectIdOwner(std::move(storage), owner)), target_object_id);
+            R_SUCCEED();
+        }
+
+        Result ReturnStorage(StorageForBatchReadOut &out, Service *fwd, std::shared_ptr<IStorage> &&storage) {
+            storage = usbl::perf::MeasureGameReads(std::move(storage));
+            FsFileSystem owner;
+            R_TRY(BorrowObjectId(std::addressof(owner), fwd));
+            const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(std::addressof(owner.s))};
+
+            std::shared_ptr<IStorageForBatchRead> batch_storage = std::make_shared<BatchReadStorage>(std::move(storage));
+            out.SetValue(MakeSharedStorageForBatchRead(HoldWithObjectIdOwner(std::move(batch_storage), owner)), target_object_id);
             R_SUCCEED();
         }
 
@@ -143,19 +182,39 @@ namespace ams::mitm::fs::usbl_hooks {
             return ::ams::mitm::fs::GetLayeredRomfsStorage(id, std::make_unique<SharedStorageAdapter>(std::move(storage)), is_process_romfs);
         }
 
+        Result OpenProgramData(std::shared_ptr<IStorage> *out, ncm::ProgramId program_id, bool allow_mods) {
+            constexpr auto FileSystemTypeRom = static_cast<FsFileSystemType>(1);
+
+            R_UNLESS(IsUsblProgram(program_id), sm::mitm::ResultShouldForwardToSession());
+
+            std::shared_ptr<IStorage> romfs_storage;
+            if (const Result result = OpenUsblProgramContentStorage(std::addressof(romfs_storage), program_id, FileSystemTypeRom); R_FAILED(result)) {
+                usbl::Log("fs.mitm: cannot open RomFS of %016" PRIx64 ": 2%03d-%04d", program_id.value, result.GetModule(), result.GetDescription());
+                R_THROW(result);
+            }
+            *out = WithRomfsMods(std::move(romfs_storage), program_id, allow_mods, true);
+            R_SUCCEED();
+        }
+
+        Result OpenDataByPath(std::shared_ptr<IStorage> *out, const fssrv::sf::Path &path, u32 file_system_proxy_type) {
+            ncm::ContentId content_id;
+            R_UNLESS(IsUsblContentPath(std::addressof(content_id), path.str), sm::mitm::ResultShouldForwardToSession());
+
+            R_RETURN(OpenUsblContentStorage(out, content_id, static_cast<FsFileSystemType>(file_system_proxy_type)));
+        }
+
     }
 
     Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods) {
-        constexpr auto FileSystemTypeRom = static_cast<FsFileSystemType>(1);
+        std::shared_ptr<IStorage> storage;
+        R_TRY(OpenProgramData(std::addressof(storage), program_id, allow_mods));
+        R_RETURN(ReturnStorage(out, fwd, std::move(storage)));
+    }
 
-        R_UNLESS(IsUsblProgram(program_id), sm::mitm::ResultShouldForwardToSession());
-
-        std::shared_ptr<IStorage> romfs_storage;
-        if (const Result result = OpenUsblProgramContentStorage(std::addressof(romfs_storage), program_id, FileSystemTypeRom); R_FAILED(result)) {
-            usbl::Log("fs.mitm: cannot open RomFS of %016" PRIx64 ": 2%03d-%04d", program_id.value, result.GetModule(), result.GetDescription());
-            R_THROW(result);
-        }
-        R_RETURN(ReturnStorage(out, fwd, WithRomfsMods(std::move(romfs_storage), program_id, allow_mods, true)));
+    Result OpenProgramDataStorage(StorageForBatchReadOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods) {
+        std::shared_ptr<IStorage> storage;
+        R_TRY(OpenProgramData(std::addressof(storage), program_id, allow_mods));
+        R_RETURN(ReturnStorage(out, fwd, std::move(storage)));
     }
 
     Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id, bool allow_mods) {
@@ -170,12 +229,15 @@ namespace ams::mitm::fs::usbl_hooks {
     }
 
     Result OpenDataStorageByPath(StorageOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type) {
-        ncm::ContentId content_id;
-        R_UNLESS(IsUsblContentPath(std::addressof(content_id), path.str), sm::mitm::ResultShouldForwardToSession());
+        std::shared_ptr<IStorage> storage;
+        R_TRY(OpenDataByPath(std::addressof(storage), path, file_system_proxy_type));
+        R_RETURN(ReturnStorage(out, fwd, std::move(storage)));
+    }
 
-        std::shared_ptr<IStorage> content_storage;
-        R_TRY(OpenUsblContentStorage(std::addressof(content_storage), content_id, static_cast<FsFileSystemType>(file_system_proxy_type)));
-        R_RETURN(ReturnStorage(out, fwd, std::move(content_storage)));
+    Result OpenDataStorageByPath(StorageForBatchReadOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type) {
+        std::shared_ptr<IStorage> storage;
+        R_TRY(OpenDataByPath(std::addressof(storage), path, file_system_proxy_type));
+        R_RETURN(ReturnStorage(out, fwd, std::move(storage)));
     }
 
     Result GetRightsIdAndKeyGenerationByPath(sf::Out<ams::fs::RightsId> &out, sf::Out<u8> &out_key_generation, const fssrv::sf::FspPath &path) {

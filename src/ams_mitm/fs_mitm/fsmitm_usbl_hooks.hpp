@@ -22,6 +22,7 @@ namespace ams::mitm::fs::usbl_hooks {
 
     using FileSystemOut = sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>>;
     using StorageOut    = sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>>;
+    using StorageForBatchReadOut = sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>>;
 
     inline bool IsHandled(Result result) {
         return !sm::mitm::ResultShouldForwardToSession::Includes(result);
@@ -42,6 +43,11 @@ namespace ams::mitm::fs::usbl_hooks {
     Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id, bool allow_mods);
     /* OpenDataStorageByPath. */
     Result OpenDataStorageByPath(StorageOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type);
+
+    /* The ForBatchRead variants (firmware 23.0.0 and later): the same storages. BatchRead itself is unsupported, as in
+     * Atmosphère's LayeredFS, so the client falls back to plain reads. */
+    Result OpenProgramDataStorage(StorageForBatchReadOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods);
+    Result OpenDataStorageByPath(StorageForBatchReadOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type);
 
     Result GetRightsIdAndKeyGenerationByPath(sf::Out<ams::fs::RightsId> &out, sf::Out<u8> &out_key_generation, const fssrv::sf::FspPath &path);
     Result GetProgramId(sf::Out<ncm::ProgramId> &out, const fssrv::sf::FspPath &path);
