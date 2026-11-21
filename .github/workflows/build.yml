@@ -50,7 +50,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # atmosphere/ is this repository's "atmosphere" branch (relative submodule URL); manager/lib/Plutonium is public.
           submodules: recursive
@@ -68,7 +68,7 @@ jobs:
           scripts/build.sh
           scripts/package.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: usb-loader-nx
           path: dist/*.zip

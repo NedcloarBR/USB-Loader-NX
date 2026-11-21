@@ -108,4 +108,5 @@ Measured before and after each change: the same game from USB and installed on t
 
 ## Repository
 
+- [x] Actions on Node.js 24 (`checkout@v7`, `upload-artifact@v7`, `download-artifact@v8`)
 - [ ] Workflow that opens a pull request when a new Atmosphère release rebases cleanly, and an issue when it does not
