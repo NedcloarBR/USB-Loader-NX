@@ -43,9 +43,9 @@ A desktop app to manage a drive's dumps and installs from the computer, written 
 ## Storage
 
 - [ ] Install to USB: copy NSP/XCI content to the drive (needs write support in FatFs)
+- [ ] Homebrew writing to the drive's `usbloadernx/usb/`: creating folders first (some homebrew create their own folders inside the one they are pointed at), then files; needs write support in FatFs and a safe way to unplug
 - [ ] Move installed games, with their update and DLC, between the USB drive, the SD card and the console's storage (the emuMMC's when one is active), from the Manager, like the console's own "Move data"
 - [ ] Play from the SD card without installing, with an SD badge on the icon
-- [ ] Homebrew access to the drive (for example as `sdmc:/usb/`, read-only)
 
 ## Network
 

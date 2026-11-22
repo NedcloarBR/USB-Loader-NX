@@ -27,6 +27,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 | **Newer games** | The firmware a game asks for is dropped on registration, like DBI does |
 | **Several drives** | At once, and they survive sleep without notifications or a HOME refresh |
 | **Mods** | Romfs mods and translations in `atmosphere/contents/<id>/` apply to USB games too, as to installed ones |
+| **Homebrew** | What you put in `usbloadernx/usb/` on a USB drive, homebrew read (read-only) at `sdmc:/usbloadernx/usb/<volume serial>/` (the serial Windows shows, like `A1B2-C3D4`), without a USB driver of their own; the option `homebrew_access` turns it off |
 | **Hiding** | Hide games while their drive is unplugged, or single games from the Manager |
 | **Notifications** | Ultrahand notifications when a drive is connected or removed, in English and Brazilian Portuguese |
 | **Manager** | [`USBLoaderNX-Manager.nro`](manager/README.md): games as a shelf or a grid, launch, details, play time, favorites, search and sorting, show or hide on HOME, drive usage, settings and [themes](manager/themes/README.md) |

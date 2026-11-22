@@ -17,6 +17,7 @@ sdmc:/usbloadernx/
 ├── themes/<name>/          Manager themes (manager/themes/README.md)
 ├── i18n/<locale>.json      notification texts that replace the built-in ones
 ├── logs/usbloadernx.log    the module's log, started again at every boot
+├── usb/                    virtual for homebrew: one folder per USB drive (its volume serial, A1B2-C3D4) with that drive's usbloadernx/usb/, read-only; empty on the card itself
 └── games/                  reserved for playing from the SD card; not read yet
 ```
 
@@ -26,6 +27,7 @@ Not in `usbloadernx/`:
 |---|---|
 | `atmosphere/config/system_settings.ini`, `[usbloadernx]` `enable` and `debug` | Atmosphère reads it at boot, before USB Loader NX starts |
 | `usbloadernx/games/` on the USB drive | The dumps; read only |
+| `usbloadernx/usb/` on the USB drive | Shared with homebrew, read-only, at `sdmc:/usbloadernx/usb/<volume serial>/` |
 
 Versions before 1.0.0 kept the module's files in `atmosphere/config/usbloadernx/` (with `hidden_games.txt`), the log in `atmosphere/logs/`, and the Manager's in `config/usbloadernx-manager/` (with `favorites.txt` and `icons/`). On the first start the module moves its own files and the Manager moves its own; the two lists become `.ini` files. When the new place already has a file, that one stays and the old one is kept next to it as `<name>.old`. An old folder is removed only once it is empty.
 
@@ -50,7 +52,7 @@ A version goes up only when a file can no longer be read the old way: a key movi
 
 ## `usbl` service
 
-The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor`, 1.0 since 1.0.0, returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
+The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor` (1.0 in USB Loader NX 1.0.0; 1.1 adds the `homebrew_access` option and the drives' volume serial), returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
 
 | Change | Version |
 |---|---|
