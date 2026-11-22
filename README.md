@@ -36,7 +36,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 What comes next, from compressed dumps to installing to USB, is in [TODO.md](TODO.md).
 
 > [!NOTE]
-> Tested in the dock, on the USB-C port with an OTG adapter and on the Switch Lite. Hard drives that need external power (a powered hub or their own supply) have not been tested yet.
+> Tested in the dock, on the USB-C port with an OTG adapter and on the Switch Lite. A 2.5" hard drive (WD Elements 1 TB) works with a Y cable for more power; without it the drive is not seen at all. Hard drives with their own supply or on a powered hub have not been tested yet.
 
 ## Install
 

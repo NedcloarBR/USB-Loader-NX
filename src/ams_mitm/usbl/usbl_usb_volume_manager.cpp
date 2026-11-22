@@ -257,12 +257,15 @@ namespace ams::mitm::usbl {
                 Log("drive %d: homebrew see it at sdmc:/usbloadernx/usb/%s/", drive, name);
             }
 
-            /* For the Manager's usage bar: one pass over the allocation bitmap (or FAT), reads only. */
+            /* For the Manager's usage bar: one pass over the allocation bitmap (or FAT), reads only. The size is the mounted
+             * volume's, not the whole drive's: a drive can have other partitions next to it. */
             DWORD free_clusters = 0;
             FATFS *fatfs = nullptr;
             if (f_countfree(volume, std::addressof(free_clusters), std::addressof(fatfs)) == FR_OK) {
-                g_slots[drive].status.free_space = static_cast<u64>(free_clusters) * fatfs->csize * g_slots[drive].device.GetBlockSize();
-                Log("drive %d: %" PRIu64 " MB free", drive, g_slots[drive].status.free_space / 1_MB);
+                const u64 cluster_size = static_cast<u64>(fatfs->csize) * g_slots[drive].device.GetBlockSize();
+                g_slots[drive].status.free_space = static_cast<u64>(free_clusters) * cluster_size;
+                g_slots[drive].status.capacity   = static_cast<u64>(fatfs->n_fatent - 2) * cluster_size;
+                Log("drive %d: %" PRIu64 " MB free of %" PRIu64 " MB", drive, g_slots[drive].status.free_space / 1_MB, g_slots[drive].status.capacity / 1_MB);
             }
 
             ClearContentIndex(drive);
@@ -345,7 +348,7 @@ namespace ams::mitm::usbl {
                     if (resumed) {
                         Log("drive %d: back after sleep", drive);
                     } else {
-                        NotifyDriveConnected(slot.device.GetBlockCount() * slot.device.GetBlockSize(), game_files.games, game_files.updates, game_files.add_ons);
+                        NotifyDriveConnected(slot.status.capacity, game_files.games, game_files.updates, game_files.add_ons);
                         if (game_files.left_out > 0) {
                             NotifyFilesLeftOut(game_files.left_out);
                         }
