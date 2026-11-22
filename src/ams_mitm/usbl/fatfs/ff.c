@@ -4955,6 +4955,18 @@ FRESULT f_countfree (
 
 	*fatfs = fs;
 	nfree = 0;
+	if (fs->fs_type == FS_FAT32	/* FAT32: the count kept in FSInfo, as the read-write mount does, instead of reading the whole FAT */
+		&& move_window(fs, fs->volbase) == FR_OK
+		&& ld_16(fs->win + BPB_FSInfo32) == 1
+		&& move_window(fs, fs->volbase + 1) == FR_OK
+		&& ld_32(fs->win + FSI_LeadSig) == 0x41615252
+		&& ld_32(fs->win + FSI_StrucSig) == 0x61417272
+		&& ld_32(fs->win + FSI_TrailSig) == 0xAA550000
+		&& ld_32(fs->win + FSI_Free_Count) <= fs->n_fatent - 2)
+	{
+		*nclst = ld_32(fs->win + FSI_Free_Count);
+		LEAVE_FF(fs, FR_OK);
+	}
 	if (fs->fs_type == FS_FAT12) {	/* FAT12: Scan bit field FAT entries */
 		clst = 2; obj.fs = fs;
 		do {
