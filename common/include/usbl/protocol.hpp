@@ -28,7 +28,8 @@ namespace usbl::protocol {
      * version; changing what an existing command takes or returns raises the major one, and a Manager refuses to write
      * through a module of another major version. */
     constexpr std::uint16_t VersionMajor = 1;
-    constexpr std::uint16_t VersionMinor = 0;
+    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial. */
+    constexpr std::uint16_t VersionMinor = 1;
 
     enum class CommandId : std::uint32_t {
         IsServedProgram      = 0,  /* loader */
@@ -83,6 +84,8 @@ namespace usbl::protocol {
         Notifications   = 1,
         Badge           = 2,
         HideWhenRemoved = 3,
+        /* 1.1 */
+        HomebrewAccess  = 4,
 
         Count,
     };
@@ -112,7 +115,8 @@ namespace usbl::protocol {
         std::uint32_t game_count;
         std::uint32_t update_count;
         std::uint32_t add_on_count;
-        std::uint32_t reserved2;
+        /* 1.1: the volume serial number; homebrew read the drive at sdmc:/usbloadernx/usb/XXXX-XXXX/ (0 from a 1.0 module). */
+        std::uint32_t volume_serial;
         char name[0x30];
     };
     static_assert(sizeof(DriveStatus) == 0x58);

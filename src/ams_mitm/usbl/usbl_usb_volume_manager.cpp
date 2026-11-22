@@ -242,6 +242,21 @@ namespace ams::mitm::usbl {
             g_slots[drive].status.is_exfat = g_slots[drive].fatfs.fs_type == FS_EXFAT;
             Log("drive %d: mounted %s volume", drive, g_slots[drive].status.is_exfat ? "exFAT" : "FAT");
 
+            /* Names the drive for homebrew (sdmc:/usbloadernx/usb/<serial>/): the same at every boot and in any port. */
+            {
+                char label[64];
+                DWORD serial = 0;
+                if (f_getlabel(volume, label, std::addressof(serial)) != FR_OK) {
+                    serial = 0;
+                }
+                SetVolumeSerial(drive, serial);
+                g_slots[drive].status.volume_serial = serial;
+
+                char name[VolumeNameLength];
+                FormatVolumeName(name, sizeof(name), drive);
+                Log("drive %d: homebrew see it at sdmc:/usbloadernx/usb/%s/", drive, name);
+            }
+
             /* For the Manager's usage bar: one pass over the allocation bitmap (or FAT), reads only. */
             DWORD free_clusters = 0;
             FATFS *fatfs = nullptr;

@@ -37,6 +37,7 @@ namespace ams::mitm::usbl {
             { "notifications",     true,  "Ultrahand notifications when a drive is connected or removed."                                },
             { "badge",             true,  "USB + game card badge on the icons of games served from USB."                                 },
             { "hide_when_removed", false, "Hide games from HOME while their drive is unplugged."                                         },
+            { "homebrew_access",   true,  "Let homebrew read each USB drive's usbloadernx/usb at sdmc:/usbloadernx/usb/<serial>/ (read only)."},
         };
         static_assert(util::size(ConfigKeys) == static_cast<size_t>(ConfigKey::Count));
 

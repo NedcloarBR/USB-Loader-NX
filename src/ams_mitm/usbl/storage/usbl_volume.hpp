@@ -28,4 +28,15 @@ namespace ams::mitm::usbl {
     void NotifyVolumeMounted(s32 drive);
     void NotifyVolumeUnmounted(s32 drive);
 
+    /* The volume serial number (as Windows shows it, "A1B2-C3D4") names a drive for homebrew: sdmc:/usbloadernx/usb/<name>/.
+     * A second mounted volume with the same serial is "<serial>-2". All of these require the volume lock. */
+    constexpr inline size_t VolumeNameLength = 16;
+    void SetVolumeSerial(s32 drive, u32 serial);
+    u32 GetVolumeSerial(s32 drive);
+    void FormatVolumeName(char *out, size_t out_size, s32 drive);
+    /* The mounted drive with that name (case does not matter), or -1. */
+    s32 FindMountedVolume(const char *name, size_t name_length);
+    /* Mounted drives, in drive order. */
+    s32 ListMountedVolumes(s32 *out, s32 max_count);
+
 }
