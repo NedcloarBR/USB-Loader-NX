@@ -203,6 +203,10 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenSdCardFileSystem(sf::Out<sf::SharedPointer<ams::fssrv::sf::IFileSystem>> out) {
+        if (const Result usbl_result = usbl_hooks::OpenSdCardFileSystem(out, m_forward_service.get(), m_client_info); usbl_hooks::IsHandled(usbl_result)) {
+            R_RETURN(usbl_result);
+        }
+
         /* We only care about redirecting this for NS/emummc. */
         R_UNLESS(m_client_info.program_id == ncm::SystemProgramId::Ns, sm::mitm::ResultShouldForwardToSession());
         R_UNLESS(emummc::IsActive(),                                   sm::mitm::ResultShouldForwardToSession());
