@@ -63,6 +63,10 @@ namespace ui {
             ModuleOption<usbl::ConfigKey::HideWhenRemoved>(Id::SettingHideWhenRemoved, Id::SettingHideWhenRemovedHelp, [] { return IsModuleOptionOn(usbl::ConfigKey::AutoRegister); }),
             ModuleOption<usbl::ConfigKey::Badge>(Id::SettingBadge, Id::SettingBadgeHelp),
             ModuleOption<usbl::ConfigKey::Notifications>(Id::SettingNotifications, Id::SettingNotificationsHelp),
+            /* Protocol 1.1: a 1.0 module has no such option. */
+            { Id::SettingHomebrewAccess, Id::SettingHomebrewAccessHelp, [] { return IsModuleOptionOn(usbl::ConfigKey::HomebrewAccess); },
+              [](bool on) { return R_SUCCEEDED(usbl::SetConfigValue(usbl::ConfigKey::HomebrewAccess, on)); }, [] { return usbl::GetModuleMinorVersion() >= 1; },
+              nullptr, Id::SettingNeedsNewerModule },
         };
 
         constexpr SettingOption ManagerOptions[] = {

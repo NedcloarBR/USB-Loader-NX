@@ -63,6 +63,8 @@ namespace strings {
             "Settings.HideWhenRemoved", "Settings.HideWhenRemovedHelp",
             "Settings.Badge", "Settings.BadgeHelp",
             "Settings.Notifications", "Settings.NotificationsHelp",
+            "Settings.HomebrewAccess", "Settings.HomebrewAccessHelp",
+            "Settings.NeedsNewerModule",
             "Settings.NeedsAutoRegister",
             "Settings.Sounds", "Settings.SoundsHelp",
             "Hints.Toggle",

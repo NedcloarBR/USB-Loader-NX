@@ -65,6 +65,8 @@ namespace strings {
         SettingHideWhenRemoved, SettingHideWhenRemovedHelp,
         SettingBadge, SettingBadgeHelp,
         SettingNotifications, SettingNotificationsHelp,
+        SettingHomebrewAccess, SettingHomebrewAccessHelp,
+        SettingNeedsNewerModule,
         SettingNeedsAutoRegister,
         SettingSounds, SettingSoundsHelp,
         HintToggle,

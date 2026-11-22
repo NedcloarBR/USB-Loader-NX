@@ -16,6 +16,7 @@
 #include <ui/library_screen.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <sound.hpp>
 #include <strings.hpp>
 
@@ -724,6 +725,12 @@ namespace ui {
                     break;
                 case usbl::DriveState::NoGamesFolder: detail = strings::Get(Id::DriveNoGamesFolder); break;
                 default:                              detail = strings::Get(Id::DriveUnreadable);    break;
+            }
+            /* Where homebrew read it (protocol 1.1; 0 from an older module). */
+            if (drive.volume_serial != 0) {
+                char path[48];
+                std::snprintf(path, sizeof(path), "sdmc:/usbloadernx/usb/%04X-%04X/", static_cast<unsigned>(drive.volume_serial >> 16), static_cast<unsigned>(drive.volume_serial & 0xFFFF));
+                detail += ", " + std::string(path);
             }
             this->Slide(AddText(*this, CardX + 88, card_y + 47, detail, 14, color::Muted, Align::Left, CardW - 112));
             if (almost_full) {

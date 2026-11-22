@@ -95,7 +95,10 @@
 		"ThemeInUse": "Em uso",
 		"MusicVolume": "Volume da música",
 		"MusicVolumeHelp": "Esquerda e Direita ajustam; os efeitos sonoros continuam iguais.",
-		"ThemeFromNewerVersion": "feito para uma versão mais nova"
+		"ThemeFromNewerVersion": "feito para uma versão mais nova",
+		"HomebrewAccess": "Acesso dos homebrews ao USB",
+		"HomebrewAccessHelp": "Os homebrews leem a pasta usbloadernx/usb de cada dispositivo USB (só leitura) em sdmc:/usbloadernx/usb/<serial do volume>/. Os jogos não são afetados.",
+		"NeedsNewerModule": "Precisa do USB Loader NX 1.1 ou mais novo no Atmosphère."
 	},
 	"About": {
 		"Version": "Versão {{VERSION}}",

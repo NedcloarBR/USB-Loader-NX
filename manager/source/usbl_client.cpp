@@ -26,6 +26,7 @@ namespace usbl {
 
         Service g_service;
         bool g_overwrite_newer_config = false;
+        u16 g_module_minor_version = 0;
 
         constexpr u32 ToCommand(protocol::CommandId id) {
             return static_cast<u32>(id);
@@ -84,7 +85,15 @@ namespace usbl {
     }
 
     Result GetVersion(VersionInfo *out) {
-        return serviceDispatchOut(&g_service, ToCommand(protocol::CommandId::GetVersion), *out);
+        const Result rc = serviceDispatchOut(&g_service, ToCommand(protocol::CommandId::GetVersion), *out);
+        if (R_SUCCEEDED(rc)) {
+            g_module_minor_version = out->minor;
+        }
+        return rc;
+    }
+
+    u16 GetModuleMinorVersion() {
+        return g_module_minor_version;
     }
 
     Result SetConfigValue(ConfigKey key, bool enabled) {

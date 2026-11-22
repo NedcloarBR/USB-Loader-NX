@@ -37,6 +37,8 @@ namespace usbl {
 
     /* Fails (2001-... from the module's command table) on a module older than protocol 1.0, which has no GetVersion. */
     Result GetVersion(VersionInfo *out);
+    /* The module's protocol minor version, from the last GetVersion (0 before it). Options it added need at least that. */
+    u16 GetModuleMinorVersion();
 
     Result GetConfigValue(ConfigValue *out, ConfigKey key);
     /* A config.ini from a newer version is only rewritten after SetOverwriteNewerConfig(true) (the user said so). */
