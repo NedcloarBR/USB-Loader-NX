@@ -1,6 +1,7 @@
 {
 	"Notifications": {
 		"Title": "USB Loader NX",
+		"DriveReading": "Dispositivo USB encontrado. Lendo os jogos…",
 		"DriveConnected": "Dispositivo USB conectado · {{SIZE}} · Jogos: {{GAME_COUNT}} · Atualizações: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
 		"DriveRemoved": "Dispositivo USB removido. Os jogos do USB ficam indisponíveis até reconectar.",
 		"FilesLeftOut": "{{COUNT}} arquivo(s) ou pasta(s) do dispositivo USB não foram lidos (caminho longo demais, pasta funda demais ou memória insuficiente). Veja usbloadernx/logs/usbloadernx.log.",

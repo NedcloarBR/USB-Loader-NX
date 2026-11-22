@@ -55,6 +55,8 @@ namespace strings {
         DevicesTitle,
         DriveNoGamesFolder,
         DriveUnreadable,
+        DriveReading,
+        CountingSpace,
         AlmostFull,
         Total,
         SettingsTitle,

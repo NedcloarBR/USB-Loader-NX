@@ -177,6 +177,12 @@ namespace ams::mitm::usbl {
         Log("notify: ready (locale %s, %s)", i18n::GetLocale(), IsConfigEnabled(ConfigKey::Notifications) ? "on" : "off");
     }
 
+    void NotifyDriveReading() {
+        char text[256];
+        i18n::Format(text, sizeof(text), "Notifications.DriveReading");
+        Post(ConnectedIcon, text);
+    }
+
     void NotifyDriveConnected(u64 capacity_bytes, size_t game_count, size_t update_count, size_t add_on_count) {
         char size[32], games[16], updates[16], add_ons[16], text[256];
         FormatCapacity(size, sizeof(size), capacity_bytes);

@@ -65,6 +65,8 @@
 		"Title": "USB drives",
 		"NoGamesFolder": "No usbloadernx/games folder found.",
 		"Unreadable": "Cannot be read. Use exFAT or FAT32.",
+		"Reading": "Reading the drive…",
+		"CountingSpace": "Counting free space…",
 		"AlmostFull": "Almost full. Free some space before copying more games.",
 		"Total": "Total: {{FREE}} free of {{TOTAL}}, {{GAMES}}"
 	},

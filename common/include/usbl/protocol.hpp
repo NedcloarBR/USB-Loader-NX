@@ -28,7 +28,7 @@ namespace usbl::protocol {
      * version; changing what an existing command takes or returns raises the major one, and a Manager refuses to write
      * through a module of another major version. */
     constexpr std::uint16_t VersionMajor = 1;
-    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial. */
+    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading. */
     constexpr std::uint16_t VersionMinor = 1;
 
     enum class CommandId : std::uint32_t {
@@ -102,13 +102,18 @@ namespace usbl::protocol {
         Unreadable    = 0,
         NoGamesFolder = 1,
         Ready         = 2,
+        /* 1.1: listed while it is mounted and indexed; a 1.0 module lists a drive only once it is read. */
+        Reading       = 3,
     };
 
     struct DriveStatus {
         std::int32_t drive;
         DriveState state;
         bool is_exfat;
-        std::uint8_t reserved[2];
+        /* 1.1: free_space is still being counted (after the games are indexed). */
+        bool is_counting_free_space;
+        std::uint8_t reserved[1];
+        /* Size of the mounted volume (the whole drive until it is mounted). */
         std::uint64_t capacity;
         /* Free space of the mounted volume; 0 when it could not be counted. */
         std::uint64_t free_space;

@@ -67,13 +67,17 @@ namespace ams::mitm::usbl {
             s32 interface_id;
             bool active;
             bool mounted;
-            /* What the Manager shows; written and read under the volume lock, listed once the drive is indexed. */
+            /* What the Manager shows, from the moment the drive is opened; written and read under g_status_lock. */
             DriveStatus status;
             bool is_listed;
         };
 
         /* Slot index == FatFs volume number. Only this thread changes slots; FatFs calls still take the volume lock. */
         constinit DriveSlot g_slots[MaxDrives] = {};
+
+        /* Guards the slots' status apart from the volume lock, which mounting and indexing hold for as long as they take:
+         * the Manager can list a drive that is still being read. Taken inside the volume lock, never around it. */
+        constinit os::SdkMutex g_status_lock;
 
         /* Drives that dropped off the bus because the console went to sleep; their return is not announced. */
         constinit DriveIdentity g_sleeping_drives[MaxDrives] = {};
@@ -217,7 +221,7 @@ namespace ams::mitm::usbl {
             usb::InquiryData inquiry = {};
             if (R_SUCCEEDED(device.Inquiry(std::addressof(inquiry)))) {
                 Log("drive %d: '%s' '%s' rev '%s'", drive, inquiry.vendor, inquiry.product, inquiry.revision);
-                std::scoped_lock lk(GetVolumeLock());
+                std::scoped_lock lk(g_status_lock);
                 util::SNPrintf(g_slots[drive].status.name, sizeof(g_slots[drive].status.name), "%s %s", inquiry.vendor, inquiry.product);
             }
 
@@ -239,8 +243,16 @@ namespace ams::mitm::usbl {
             }
 
             NotifyVolumeMounted(drive);
-            g_slots[drive].status.is_exfat = g_slots[drive].fatfs.fs_type == FS_EXFAT;
-            Log("drive %d: mounted %s volume", drive, g_slots[drive].status.is_exfat ? "exFAT" : "FAT");
+            const FATFS &fatfs = g_slots[drive].fatfs;
+            const bool is_exfat = fatfs.fs_type == FS_EXFAT;
+            {
+                /* The mounted volume's size, not the whole drive's: a drive can have other partitions next to it. */
+                std::scoped_lock status_lk(g_status_lock);
+                g_slots[drive].status.is_exfat = is_exfat;
+                g_slots[drive].status.capacity = static_cast<u64>(fatfs.n_fatent - 2) * fatfs.csize * g_slots[drive].device.GetBlockSize();
+                g_slots[drive].status.is_counting_free_space = true;
+            }
+            Log("drive %d: mounted %s volume", drive, is_exfat ? "exFAT" : "FAT");
 
             /* Names the drive for homebrew (sdmc:/usbloadernx/usb/<serial>/): the same at every boot and in any port. */
             {
@@ -250,22 +262,14 @@ namespace ams::mitm::usbl {
                     serial = 0;
                 }
                 SetVolumeSerial(drive, serial);
-                g_slots[drive].status.volume_serial = serial;
+                {
+                    std::scoped_lock status_lk(g_status_lock);
+                    g_slots[drive].status.volume_serial = serial;
+                }
 
                 char name[VolumeNameLength];
                 FormatVolumeName(name, sizeof(name), drive);
                 Log("drive %d: homebrew see it at sdmc:/usbloadernx/usb/%s/", drive, name);
-            }
-
-            /* For the Manager's usage bar: one pass over the allocation bitmap (or FAT), reads only. The size is the mounted
-             * volume's, not the whole drive's: a drive can have other partitions next to it. */
-            DWORD free_clusters = 0;
-            FATFS *fatfs = nullptr;
-            if (f_countfree(volume, std::addressof(free_clusters), std::addressof(fatfs)) == FR_OK) {
-                const u64 cluster_size = static_cast<u64>(fatfs->csize) * g_slots[drive].device.GetBlockSize();
-                g_slots[drive].status.free_space = static_cast<u64>(free_clusters) * cluster_size;
-                g_slots[drive].status.capacity   = static_cast<u64>(fatfs->n_fatent - 2) * cluster_size;
-                Log("drive %d: %" PRIu64 " MB free of %" PRIu64 " MB", drive, g_slots[drive].status.free_space / 1_MB, g_slots[drive].status.capacity / 1_MB);
             }
 
             ClearContentIndex(drive);
@@ -276,6 +280,35 @@ namespace ams::mitm::usbl {
 
             *out_count = *games;
             return DriveState::Ready;
+        }
+
+        /* For the Manager's usage bar, once the games are on HOME: FSInfo on FAT32 (one sector), the allocation bitmap on
+         * exFAT; only a FAT32 volume with no valid FSInfo needs a pass over the whole FAT. Reads only. */
+        void CountFreeSpace(s32 drive) {
+            std::scoped_lock lk(GetVolumeLock());
+
+            char volume[VolumePathLength];
+            FormatVolumePath(volume, sizeof(volume), drive);
+
+            DWORD free_clusters = 0;
+            FATFS *fatfs = nullptr;
+            const bool counted = f_countfree(volume, std::addressof(free_clusters), std::addressof(fatfs)) == FR_OK;
+
+            u64 free_space = 0, capacity = 0;
+            {
+                std::scoped_lock status_lk(g_status_lock);
+                if (counted) {
+                    g_slots[drive].status.free_space = static_cast<u64>(free_clusters) * fatfs->csize * g_slots[drive].device.GetBlockSize();
+                }
+                g_slots[drive].status.is_counting_free_space = false;
+                free_space = g_slots[drive].status.free_space;
+                capacity   = g_slots[drive].status.capacity;
+            }
+            if (counted) {
+                Log("drive %d: %" PRIu64 " MB free of %" PRIu64 " MB", drive, free_space / 1_MB, capacity / 1_MB);
+            } else {
+                Log("drive %d: free space not counted", drive);
+            }
         }
 
         void Unmount(s32 drive) {
@@ -317,14 +350,20 @@ namespace ams::mitm::usbl {
                 return;
             }
 
-            {
-                std::scoped_lock lk(GetVolumeLock());
-                slot.status = { .drive = drive, .capacity = slot.device.GetBlockCount() * slot.device.GetBlockSize() };
-            }
             slot.interface_id = slot.device.GetInterfaceId();
             slot.identity     = { intf.device_desc.idVendor, intf.device_desc.idProduct, slot.device.GetBlockCount() };
             slot.active       = true;
             const bool resumed = TakeSleepingDrive(slot.identity);
+
+            /* Listed right away: a large drive can take a while to mount and index. */
+            {
+                std::scoped_lock lk(g_status_lock);
+                slot.status    = { .drive = drive, .state = DriveState::Reading, .capacity = slot.device.GetBlockCount() * slot.device.GetBlockSize() };
+                slot.is_listed = true;
+            }
+            if (!resumed) {
+                NotifyDriveReading();
+            }
 
             LogDriveInfo(drive);
             GameFileCount game_files = {};
@@ -335,12 +374,11 @@ namespace ams::mitm::usbl {
             }
             slot.mounted = state != DriveState::Unreadable;
             {
-                std::scoped_lock lk(GetVolumeLock());
+                std::scoped_lock lk(g_status_lock);
                 slot.status.state        = state;
                 slot.status.game_count   = game_files.games;
                 slot.status.update_count = game_files.updates;
                 slot.status.add_on_count = game_files.add_ons;
-                slot.is_listed           = true;
             }
 
             switch (state) {
@@ -374,6 +412,12 @@ namespace ams::mitm::usbl {
                 case DriveState::Unreadable:
                     NotifyDriveUnreadable();
                     break;
+                case DriveState::Reading:
+                    break;
+            }
+
+            if (slot.mounted) {
+                CountFreeSpace(drive);
             }
         }
 
@@ -407,6 +451,7 @@ namespace ams::mitm::usbl {
                 slot.device.Close();
                 slot.active    = false;
                 slot.mounted   = false;
+                std::scoped_lock status_lk(g_status_lock);
                 slot.is_listed = false;
             }
 
@@ -494,7 +539,7 @@ namespace ams::mitm::usbl {
     }
 
     s32 GetDriveStatuses(DriveStatus *out, s32 max_count) {
-        std::scoped_lock lk(GetVolumeLock());
+        std::scoped_lock lk(g_status_lock);
 
         s32 count = 0;
         for (s32 drive = 0; drive < MaxDrives && count < max_count; ++drive) {
@@ -510,6 +555,7 @@ namespace ams::mitm::usbl {
         if (drive < 0 || drive >= MaxDrives || !g_slots[drive].mounted) {
             return false;
         }
+        std::scoped_lock status_lk(g_status_lock);
         *out_free  = g_slots[drive].status.free_space;
         *out_total = g_slots[drive].status.capacity;
         return true;

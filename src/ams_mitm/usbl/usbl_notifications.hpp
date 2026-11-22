@@ -22,6 +22,8 @@ namespace ams::mitm::usbl {
      * Only written when Ultrahand is installed and usbloadernx!notifications is enabled. */
     void InitializeNotifications();
 
+    /* A drive was found and is being read; a large one can take a while before NotifyDriveConnected. */
+    void NotifyDriveReading();
     void NotifyDriveConnected(u64 capacity_bytes, size_t game_count, size_t update_count, size_t add_on_count);
     void NotifyDriveRemoved();
     /* Some dumps or folders on the drive were not read; the log says which and why. */

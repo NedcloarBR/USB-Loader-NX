@@ -53,6 +53,8 @@ namespace strings {
             "Drives.Title",
             "Drives.NoGamesFolder",
             "Drives.Unreadable",
+            "Drives.Reading",
+            "Drives.CountingSpace",
             "Drives.AlmostFull",
             "Drives.Total",
             "Settings.Title",

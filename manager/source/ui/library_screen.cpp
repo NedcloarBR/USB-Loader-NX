@@ -709,12 +709,16 @@ namespace ui {
                     draw::UsageBar(BarX, card_y + 84, BarW, 12, usage);
                 }
             });
-            const std::string space = has_space ? strings::Format(Id::FreeOf, { { "FREE", strings::Size(drive.free_space) }, { "TOTAL", strings::Size(drive.capacity) } }) : std::string();
+            const std::string space = has_space                    ? strings::Format(Id::FreeOf, { { "FREE", strings::Size(drive.free_space) }, { "TOTAL", strings::Size(drive.capacity) } })
+                                    : drive.is_counting_free_space ? strings::Get(Id::CountingSpace)
+                                                                   : std::string();
             const double space_w = space.empty() ? 0 : TextWidth(space, 17) + 24;
             this->Slide(AddText(*this, CardX + 88, card_y + 20, drive.name, 19, color::Text, Align::Left, CardW - 112 - space_w));
             if (!space.empty()) {
-                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 22, space, 17, color::Text, Align::Right));
-                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 79, std::to_string(static_cast<s32>(std::lround(usage * 100))) + "%", 14, almost_full ? color::ErrorText : color::Text, Align::Right));
+                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 22, space, 17, has_space ? color::Text : color::Muted, Align::Right));
+                if (has_space) {
+                    this->Slide(AddText(*this, CardX + CardW - 24, card_y + 79, std::to_string(static_cast<s32>(std::lround(usage * 100))) + "%", 14, almost_full ? color::ErrorText : color::Text, Align::Right));
+                }
             }
 
             std::string detail;
@@ -724,6 +728,7 @@ namespace ui {
                              strings::Count(drive.update_count, Id::UpdateOne, Id::UpdateMany) + ", " + strings::Count(drive.add_on_count, Id::AddOnOne, Id::AddOnMany);
                     break;
                 case usbl::DriveState::NoGamesFolder: detail = strings::Get(Id::DriveNoGamesFolder); break;
+                case usbl::DriveState::Reading:       detail = strings::Get(Id::DriveReading);       break;
                 default:                              detail = strings::Get(Id::DriveUnreadable);    break;
             }
             /* Where homebrew read it (protocol 1.1; 0 from an older module). */

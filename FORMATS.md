@@ -52,7 +52,7 @@ A version goes up only when a file can no longer be read the old way: a key movi
 
 ## `usbl` service
 
-The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor` (1.0 in USB Loader NX 1.0.0; 1.1 adds the `homebrew_access` option and the drives' volume serial), returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
+The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor` (1.0 in USB Loader NX 1.0.0; 1.1 adds the `homebrew_access` option, the drives' volume serial, and drives listed while they are read, with their free space counted afterwards), returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
 
 | Change | Version |
 |---|---|

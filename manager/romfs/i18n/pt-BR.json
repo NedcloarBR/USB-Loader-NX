@@ -65,6 +65,8 @@
 		"Title": "Dispositivos USB",
 		"NoGamesFolder": "Pasta usbloadernx/games não encontrada.",
 		"Unreadable": "Não foi possível ler. Use exFAT ou FAT32.",
+		"Reading": "Lendo o dispositivo…",
+		"CountingSpace": "Calculando o espaço livre…",
 		"AlmostFull": "Quase cheio. Libere espaço antes de copiar mais jogos.",
 		"Total": "Total: {{FREE}} livres de {{TOTAL}}, {{GAMES}}"
 	},

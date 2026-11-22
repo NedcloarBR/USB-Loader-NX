@@ -1,6 +1,7 @@
 {
 	"Notifications": {
 		"Title": "USB Loader NX",
+		"DriveReading": "USB storage found. Reading its games…",
 		"DriveConnected": "USB storage connected · {{SIZE}} · Games: {{GAME_COUNT}} · Updates: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
 		"DriveRemoved": "USB storage removed. Its games are unavailable until it is reconnected.",
 		"FilesLeftOut": "{{COUNT}} file(s) or folder(s) on the USB storage were not read (path too long, folder too deep or not enough memory). See usbloadernx/logs/usbloadernx.log.",
