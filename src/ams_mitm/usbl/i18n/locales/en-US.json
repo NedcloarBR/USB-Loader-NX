@@ -7,6 +7,7 @@
 		"FilesLeftOut": "{{COUNT}} file(s) or folder(s) on the USB storage were not read (path too long, folder too deep or not enough memory). See usbloadernx/logs/usbloadernx.log.",
 		"DriveRequired": "Connect the USB storage device with this game to play it.",
 		"DriveWithoutGamesFolder": "USB storage connected, but it has no /usbloadernx/games folder.",
+		"DriveNotOpened": "The USB storage device did not answer. If it is a hard drive, give it more power (a Y cable or its own supply) and plug it in again.",
 		"DriveUnreadable": "Could not read the USB storage device: unsupported file system."
 	}
 }

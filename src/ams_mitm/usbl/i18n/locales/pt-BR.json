@@ -7,6 +7,7 @@
 		"FilesLeftOut": "{{COUNT}} arquivo(s) ou pasta(s) do dispositivo USB não foram lidos (caminho longo demais, pasta funda demais ou memória insuficiente). Veja usbloadernx/logs/usbloadernx.log.",
 		"DriveRequired": "Conecte o dispositivo USB com este jogo para jogar.",
 		"DriveWithoutGamesFolder": "Dispositivo USB conectado, mas sem a pasta /usbloadernx/games.",
+		"DriveNotOpened": "O dispositivo USB não respondeu. Se for um HD, dê mais energia a ele (cabo Y ou fonte) e conecte de novo.",
 		"DriveUnreadable": "Não foi possível ler o dispositivo USB: sistema de arquivos não suportado."
 	}
 }

@@ -72,7 +72,7 @@ Measured before and after each change: the same game from USB and installed on t
 ## Testing
 
 - [ ] Hard drives with their own supply or on a powered hub (a 2.5" drive powered by the console works)
-- [ ] Notify when a drive fails to open (today only the log says so) and retry a few times for drives slow to spin up
+- [ ] Open a drive plugged in while another is still being registered on HOME, instead of waiting for it
 - [ ] DLC larger than cosmetics (new levels or modes)
 
 ## Repository

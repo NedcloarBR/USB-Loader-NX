@@ -29,6 +29,7 @@
 #include "usbl_perf.hpp"
 #include "usbl_notifications.hpp"
 #include "usbl_power_state.hpp"
+#include "usbl_results.hpp"
 
 extern "C" {
 #include "fatfs/ff.h"
@@ -97,6 +98,14 @@ namespace ams::mitm::usbl {
 
             *it = g_sleeping_drives[--g_sleeping_drive_count];
             return true;
+        }
+
+        /* Before the drive answers there is no block count yet: a drive of the same make waking with the console is
+         * taken for one coming back from sleep, and not announced. */
+        bool MaybeSleepingDrive(const ::UsbHsInterface &intf) {
+            return std::any_of(g_sleeping_drives, g_sleeping_drives + g_sleeping_drive_count, [&](const DriveIdentity &identity) {
+                return identity.vendor_id == intf.device_desc.idVendor && identity.product_id == intf.device_desc.idProduct;
+            });
         }
 
         /* Interfaces that failed to open stay "available"; skip them until they are unplugged. */
@@ -344,9 +353,18 @@ namespace ams::mitm::usbl {
             DriveSlot &slot = g_slots[drive];
             LogDeviceInfo(drive, intf);
 
+            /* Said before opening: a hard drive can take up to UnitReadyTimeout to spin up. */
+            const bool maybe_resuming = MaybeSleepingDrive(intf);
+            if (!maybe_resuming) {
+                NotifyDriveReading();
+            }
+
             if (const Result result = slot.device.Open(std::addressof(intf)); R_FAILED(result)) {
                 Log("drive %d: failed to open: 2%03d-%04d", drive, result.GetModule(), result.GetDescription());
                 Reject(intf.inf.ID);
+                if (!ResultDriveDetached::Includes(result)) {
+                    NotifyDriveNotOpened();
+                }
                 return;
             }
 
@@ -360,9 +378,6 @@ namespace ams::mitm::usbl {
                 std::scoped_lock lk(g_status_lock);
                 slot.status    = { .drive = drive, .state = DriveState::Reading, .capacity = slot.device.GetBlockCount() * slot.device.GetBlockSize() };
                 slot.is_listed = true;
-            }
-            if (!resumed) {
-                NotifyDriveReading();
             }
 
             LogDriveInfo(drive);

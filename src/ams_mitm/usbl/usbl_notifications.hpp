@@ -29,6 +29,8 @@ namespace ams::mitm::usbl {
     /* Some dumps or folders on the drive were not read; the log says which and why. */
     void NotifyFilesLeftOut(size_t count);
     void NotifyDriveUnreadable();
+    /* The drive never answered (a hard drive without enough power, usually); it is skipped until plugged in again. */
+    void NotifyDriveNotOpened();
     void NotifyDriveWithoutGamesFolder();
 
     /* A title on an unplugged drive was launched; rate-limited, since loader mounts the ExeFS several times per launch. */

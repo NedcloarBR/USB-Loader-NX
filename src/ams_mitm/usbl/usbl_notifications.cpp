@@ -228,6 +228,12 @@ namespace ams::mitm::usbl {
         Post(RemovedIcon, text);
     }
 
+    void NotifyDriveNotOpened() {
+        char text[256];
+        i18n::Format(text, sizeof(text), "Notifications.DriveNotOpened");
+        Post(UnreadableIcon, text);
+    }
+
     void NotifyDriveUnreadable() {
         char text[256];
         i18n::Format(text, sizeof(text), "Notifications.DriveUnreadable");

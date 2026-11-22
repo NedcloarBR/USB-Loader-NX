@@ -17,6 +17,7 @@
 #include "usb_mass_storage_device.hpp"
 #include "../usbl_results.hpp"
 #include "../usbl_log.hpp"
+#include "usb_host.hpp"
 
 namespace ams::mitm::usbl::usb {
 
@@ -57,7 +58,8 @@ namespace ams::mitm::usbl::usb {
         constexpr u32 ReadCapacity10DataSize = 8;
         constexpr u32 ReadCapacity16DataSize = 32;
 
-        constexpr int UnitReadyRetryCount = 20;
+        /* A hard drive powered by the console can take several seconds to spin up after it is plugged in. */
+        constexpr TimeSpan UnitReadyTimeout       = TimeSpan::FromSeconds(30);
         constexpr TimeSpan UnitReadyRetryInterval = TimeSpan::FromMilliSeconds(250);
 
         void StoreLe32(u8 *dst, u32 v) {
@@ -175,14 +177,19 @@ namespace ams::mitm::usbl::usb {
         const Command cmd = { .cdb = { ScsiTestUnitReady }, .cdb_length = 6, .direction = Direction::Out, .data_length = 0 };
 
         /* Drives commonly report UNIT ATTENTION / NOT READY right after enumeration; sensing clears it. */
-        for (int i = 0; i < UnitReadyRetryCount; ++i) {
+        const os::Tick start = os::GetSystemTick();
+        while (true) {
             if (R_SUCCEEDED(this->Execute(cmd, nullptr))) {
+                if (const s64 waited_ms = (os::GetSystemTick() - start).ToTimeSpan().GetMilliSeconds(); waited_ms >= 1000) {
+                    usbl::Log("usb: interface %d ready after %" PRId64 " ms", this->GetInterfaceId(), waited_ms);
+                }
                 R_SUCCEED();
             }
+            /* Unplugged while spinning up: no point waiting for the rest of the timeout. */
+            R_UNLESS(usb::IsInterfaceAcquired(this->GetInterfaceId()), usbl::ResultDriveDetached());
+            R_UNLESS((os::GetSystemTick() - start).ToTimeSpan() < UnitReadyTimeout, usbl::ResultUnitNotReady());
             os::SleepThread(UnitReadyRetryInterval);
         }
-
-        R_THROW(usbl::ResultUnitNotReady());
     }
 
     Result MassStorageDevice::ReadCapacity() {
