@@ -502,4 +502,14 @@ namespace ams::mitm::usbl {
         return count;
     }
 
+    bool GetDriveSpace(s32 drive, u64 *out_free, u64 *out_total) {
+        AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
+        if (drive < 0 || drive >= MaxDrives || !g_slots[drive].mounted) {
+            return false;
+        }
+        *out_free  = g_slots[drive].status.free_space;
+        *out_total = g_slots[drive].status.capacity;
+        return true;
+    }
+
 }

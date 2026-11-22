@@ -3,7 +3,7 @@
 #   SD/         what goes on the SD card: atmosphere/ (Atmosphère with USB Loader NX), switch/ (Atmosphère's homebrew and
 #               USBLoaderNX-Manager.nro), bootloader/payloads/fusee.bin, and usbloadernx/ with the documented config.ini
 #               in templates/ and the example theme
-#   USB/        what goes on the USB drive: the empty usbloadernx/games folder
+#   USB/        what goes on the USB drive: the usbloadernx/games folder for the dumps and usbloadernx/usb for homebrew
 #   README.md   the quick guide (from packaging/)
 set -euo pipefail
 
@@ -19,7 +19,7 @@ trap 'rm -rf "${STAGE:?}"' EXIT
 PACKAGE="$STAGE/usb-loader-nx"
 SD="$PACKAGE/SD"
 
-mkdir -p "$SD" "$PACKAGE/USB/usbloadernx/games"
+mkdir -p "$SD" "$PACKAGE/USB/usbloadernx/games" "$PACKAGE/USB/usbloadernx/usb"
 unzip -q "$ATMOSPHERE_ZIP" -d "$SD"
 mkdir -p "$SD/bootloader/payloads"
 cp "$RELEASE_DIR/fusee.bin" "$SD/bootloader/payloads/fusee.bin"
@@ -40,6 +40,7 @@ fi
 crlf() { sed -e "s/{{VERSION}}/$VERSION/g" -e "s/{{ATMOSPHERE}}/$ATMOSPHERE_VERSION/g" -e 's/$/\r/' "$1" > "$2"; }
 crlf "$ROOT/packaging/README.md" "$PACKAGE/README.md"
 crlf "$ROOT/packaging/games-folder.txt" "$PACKAGE/USB/usbloadernx/games/PUT_YOUR_GAMES_HERE.txt"
+crlf "$ROOT/packaging/homebrew-folder.txt" "$PACKAGE/USB/usbloadernx/usb/FOR_HOMEBREW.txt"
 
 mkdir -p "$ROOT/dist"
 OUTPUT="$ROOT/dist/usb-loader-nx-$VERSION.zip"

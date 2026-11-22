@@ -28,4 +28,7 @@ namespace ams::mitm::usbl {
     /* Drives plugged in and attached right now. */
     s32 GetDriveStatuses(DriveStatus *out, s32 max_count);
 
+    /* Capacity and free space measured at mount. Requires the volume lock. */
+    bool GetDriveSpace(s32 drive, u64 *out_free, u64 *out_total);
+
 }

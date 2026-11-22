@@ -1,0 +1,4 @@
+Files in this folder can be read by homebrew (from the homebrew menu or a forwarder),
+read only, at sdmc:/usbloadernx/usb/<volume serial>/ on the console.
+The volume serial is the one Windows shows (vol E: in the Command Prompt) and the Manager shows in its drive window (Y).
+Homebrew cannot create, change or delete anything here: create the folders a homebrew needs on the PC.

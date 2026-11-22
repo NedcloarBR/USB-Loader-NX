@@ -23,7 +23,7 @@ extern "C" {
 namespace ams::mitm::usbl {
 
     /* Read-only view of [offset, offset + size) of a file on the USB volume, owning its own FatFs handle. */
-    class UsbFileStorage : public fs::IStorage, public fs::impl::Newable {
+    class UsbFileStorage : public ams::fs::IStorage, public ams::fs::impl::Newable {
         NON_COPYABLE(UsbFileStorage);
         NON_MOVEABLE(UsbFileStorage);
         private:
@@ -47,7 +47,7 @@ namespace ams::mitm::usbl {
             virtual Result Write(s64 offset, const void *buffer, size_t size) override;
             virtual Result Flush() override;
             virtual Result SetSize(s64 size) override;
-            virtual Result OperateRange(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override;
+            virtual Result OperateRange(void *dst, size_t dst_size, ams::fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override;
         private:
             bool IsHandleValid() const;
     };

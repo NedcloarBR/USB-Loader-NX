@@ -32,6 +32,9 @@ namespace ams::mitm::fs::usbl_hooks {
     Result OpenFileSystemByPath(FileSystemOut &out, Service *fwd, const fssrv::sf::Path &path, u32 file_system_proxy_type);
     /* OpenFileSystemWithPatch: a USB-served program by id. */
     Result OpenFileSystemWithPatch(FileSystemOut &out, Service *fwd, ncm::ProgramId program_id, u32 file_system_proxy_type);
+    /* OpenSdCardFileSystem: for homebrew (hbl, or the application: a forwarder), with homebrew_access on, the SD card with the
+     * USB drives readable at /usbloadernx/usb/<volume serial>/. */
+    Result OpenSdCardFileSystem(FileSystemOut &out, Service *fwd, const sm::MitmProcessInfo &client_info);
     /* OpenContentStorageFileSystem: the SD card content folder, overlaid with the USB-served NCAs. */
     Result OpenContentStorageFileSystem(FileSystemOut &out, Service *fwd, u32 content_storage_id);
 

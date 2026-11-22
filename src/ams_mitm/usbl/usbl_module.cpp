@@ -23,6 +23,7 @@
 #include "usbl_log.hpp"
 #include "usbl_perf.hpp"
 #include "usbl_module.hpp"
+#include <usbl/paths.hpp>
 #include "usbl_config.hpp"
 #include "usbl_migration.hpp"
 #include "usbl_notifications.hpp"
@@ -67,6 +68,8 @@ namespace ams::mitm::usbl {
             return ams::settings::fwdbg::GetSettingsItemValue(std::addressof(enabled), sizeof(enabled), "usbloadernx", "enable") == sizeof(enabled) && enabled != 0;
         }
 
+        constinit std::atomic<bool> g_started = false;
+
         void ServerThreadFunction(void *) {
             g_server_manager.LoopProcess();
         }
@@ -92,6 +95,12 @@ namespace ams::mitm::usbl {
 
         MigrateLegacyFiles();
         LoadConfig();
+        if (IsConfigEnabled(ConfigKey::HomebrewAccess)) {
+            /* So file browsers show it; opening it lists the drives (fs_mitm). */
+            char path[ams::fs::EntryNameLengthMax + 1];
+            util::SNPrintf(path, sizeof(path), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::HomebrewUsbDir);
+            R_DISCARD(ams::fs::CreateDirectory(path));
+        }
         i18n::Initialize();
         InitializeNotifications();
         LoadKnownContents();
@@ -104,6 +113,7 @@ namespace ams::mitm::usbl {
 
         R_ABORT_UNLESS(g_server_manager.RegisterObjectForServer(g_service_object.GetShared(), ServiceName, MaxServiceSessions));
         Log("service usbl registered");
+        g_started = true;
         perf::LogHeap("at start");
 
         for (size_t i = 0; i < ExtraServerThreadCount; ++i) {
@@ -113,6 +123,10 @@ namespace ams::mitm::usbl {
         }
 
         g_server_manager.LoopProcess();
+    }
+
+    bool IsStarted() {
+        return g_started;
     }
 
 }

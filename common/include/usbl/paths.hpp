@@ -33,6 +33,8 @@ namespace usbl::paths {
     constexpr char I18nDir[]       = "/usbloadernx/i18n";
     constexpr char LogsDir[]       = "/usbloadernx/logs";
     constexpr char LogFile[]       = "/usbloadernx/logs/usbloadernx.log";
+    /* Virtual for homebrew: one folder per USB drive (by volume serial), read only. Created empty on the SD card. */
+    constexpr char HomebrewUsbDir[] = "/usbloadernx/usb";
     /* Reserved for playing from the SD card; not read yet. */
     constexpr char GamesDir[]      = "/usbloadernx/games";
 

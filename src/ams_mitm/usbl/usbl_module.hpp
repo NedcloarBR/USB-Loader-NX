@@ -21,4 +21,7 @@ namespace ams::mitm::usbl {
 
     DEFINE_MITM_MODULE_CLASS(0x8000, AMS_GET_SYSTEM_THREAD_PRIORITY(mitm_usbl, IpcServer));
 
+    /* USB Loader NX is on and its service is up (fs_mitm only offers the USB drives to homebrew then). */
+    bool IsStarted();
+
 }

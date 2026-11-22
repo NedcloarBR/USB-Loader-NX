@@ -20,11 +20,14 @@
 #include "fsmitm_usbl_hooks.hpp"
 #include "fsmitm_usbl_content.hpp"
 #include "fsmitm_usbl_content_storage_fs.hpp"
+#include "fsmitm_usbl_sd_card_fs.hpp"
 #include "fsmitm_layered_romfs_storage.hpp"
 #include "../amsmitm_fs_utils.hpp"
 #include "../usbl/nca/usbl_external_keys.hpp"
 #include "../usbl/usbl_log.hpp"
 #include "../usbl/usbl_perf.hpp"
+#include "../usbl/usbl_config.hpp"
+#include "../usbl/usbl_module.hpp"
 
 namespace ams::mitm::fs::usbl_hooks {
 
@@ -135,6 +138,43 @@ namespace ams::mitm::fs::usbl_hooks {
         std::shared_ptr<fsa::IFileSystem> content_fs;
         R_TRY(OpenUsblProgramFileSystem(std::addressof(content_fs), program_id, static_cast<FsFileSystemType>(file_system_proxy_type)));
         R_RETURN(ReturnFileSystem(out, fwd, std::move(content_fs)));
+    }
+
+    Result OpenSdCardFileSystem(FileSystemOut &out, Service *fwd, const sm::MitmProcessInfo &client_info) {
+        /* Homebrew runs as hbl (an applet) or as the application (a forwarder). Background modules, ours or not, are left out:
+         * their SD card access stays straight to FS. A game without SD card access is refused by FS below, as before. */
+        if (usbl::IsDebugEnabled()) {
+            usbl::Log("fs.mitm: sd open by %016" PRIx64 " (pid %" PRIu64 ", hbl %d)", client_info.program_id.value, client_info.process_id.value, client_info.override_status.IsHbl() ? 1 : 0);
+        }
+        os::ProcessId application_process_id;
+        const bool is_application = R_SUCCEEDED(::ams::pm::dmnt::GetApplicationProcessId(std::addressof(application_process_id))) && application_process_id == client_info.process_id;
+        if (usbl::IsDebugEnabled()) {
+            usbl::Log("fs.mitm: sd open by %016" PRIx64 ": application %d", client_info.program_id.value, is_application ? 1 : 0);
+        }
+        R_UNLESS(client_info.override_status.IsHbl() || is_application, sm::mitm::ResultShouldForwardToSession());
+        const ncm::ProgramId program_id = client_info.program_id;
+        if (!usbl::IsStarted() || !usbl::IsConfigEnabled(usbl::ConfigKey::HomebrewAccess)) {
+            usbl::Log("fs.mitm: homebrew %016" PRIx64 " opened the SD card without the USB drives (%s)", program_id.value, usbl::IsStarted() ? "homebrew_access off" : "not started yet");
+            R_THROW(sm::mitm::ResultShouldForwardToSession());
+        }
+
+        /* FS decides whether this program may open the SD card at all; the copy it hands back is closed again. */
+        {
+            FsFileSystem client_sd_fs;
+            R_TRY(fsOpenSdCardFileSystemFwd(fwd, std::addressof(client_sd_fs)));
+            fsFsClose(std::addressof(client_sd_fs));
+        }
+
+        /* The SD card behind the overlay is opened on fs.mitm's own session (as for the hbl web content), not on the program's:
+         * that one closes with the program, and the overlay would then close an object on a session that is gone. */
+        FsFileSystem sd_fs;
+        R_TRY(fsOpenSdCardFileSystem(std::addressof(sd_fs)));
+        const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(std::addressof(sd_fs.s))};
+
+        auto sd_card_fs = std::make_shared<UsblSdCardFileSystem>(std::make_unique<RemoteFileSystem>(sd_fs));
+        out.SetValue(MakeSharedFileSystem(std::move(sd_card_fs), false), target_object_id);
+        usbl::Log("fs.mitm: homebrew %016" PRIx64 " opened the SD card with the USB drives", program_id.value);
+        R_SUCCEED();
     }
 
     Result OpenContentStorageFileSystem(FileSystemOut &out, Service *fwd, u32 content_storage_id) {
