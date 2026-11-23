@@ -377,6 +377,33 @@ namespace ams::mitm::usbl::content {
 
         constexpr s32 MaxAddOnContentCount = 512;
 
+        /* A DLC's own update (firmware 15+), registered like the DLC. libstratosphere does not describe its extended
+         * header: the DLC's data id, then its application. */
+        struct DataPatchMetaExtendedHeader {
+            ncm::DataId data_id;
+            ncm::ApplicationId application_id;
+            u32 required_application_version;
+            u32 extended_data_size;
+        };
+
+        /* The application an add-on content, or the update of one, belongs to. */
+        bool IsAddOnContentOf(const ncm::PackagedContentMetaReader &reader, ncm::ProgramId application_id) {
+            switch (reader.GetKey().type) {
+                case ncm::ContentMetaType::AddOnContent:
+                    return reader.GetExtendedHeader<ncm::AddOnContentMetaExtendedHeader>()->application_id.value == application_id.value;
+                case ncm::ContentMetaType::DataPatch: {
+                    if (reader.GetExtendedHeaderSize() < sizeof(DataPatchMetaExtendedHeader)) {
+                        return false;
+                    }
+                    /* Either field names the game: the application, or the DLC whose id derives from it. */
+                    const auto *header = reader.GetExtendedHeader<DataPatchMetaExtendedHeader>();
+                    return header->application_id.value == application_id.value || ((header->data_id.value - 0x1000) & ~TitleIdKindMask) == application_id.value;
+                }
+                default:
+                    return false;
+            }
+        }
+
         /* Each add-on content's meta names its application; those with every content and their ticket go into the application's record. */
         void RegisterAddOnContents(ContentStorageRecord *records, s32 *record_count, s32 max_records, bool *out_written, ncm::ContentMetaDatabase &db, ncm::ProgramId application_id, s32 drive) {
             /* Every add-on content on the drives; the ones of this application are picked below. */
@@ -392,26 +419,27 @@ namespace ams::mitm::usbl::content {
 
                 ncm::PackagedContentMetaReader reader(meta.Get(), meta.GetSize());
                 const auto key = reader.GetKey();
-                if (key.type != ncm::ContentMetaType::AddOnContent || reader.GetExtendedHeader<ncm::AddOnContentMetaExtendedHeader>()->application_id.value != application_id.value) {
+                if (!IsAddOnContentOf(reader, application_id)) {
                     continue;
                 }
+                const char *what = key.type == ncm::ContentMetaType::DataPatch ? "add-on content update" : "add-on content";
 
                 if (metas[i].drive != drive) {
-                    Log("register %016" PRIx64 ": add-on content not used, it is on drive %d and the game on drive %d", key.id, metas[i].drive, drive);
+                    Log("register %016" PRIx64 ": %s not used, it is on drive %d and the game on drive %d", key.id, what, metas[i].drive, drive);
                     continue;
                 }
                 if (!AreAllContentsIndexed(reader, drive)) {
-                    Log("register %016" PRIx64 ": add-on content skipped, not every content passed validation", key.id);
+                    Log("register %016" PRIx64 ": %s skipped, not every content passed validation", key.id, what);
                     continue;
                 }
                 if (R_FAILED(EnsureAddOnContentTicket(reader))) {
-                    Log("register %016" PRIx64 ": add-on content skipped, no ticket", key.id);
+                    Log("register %016" PRIx64 ": %s skipped, no ticket", key.id, what);
                     continue;
                 }
 
                 bool written = false;
                 if (const Result result = EnsureContentMeta(std::addressof(written), db, reader, metas[i]); R_FAILED(result)) {
-                    Log("register %016" PRIx64 ": add-on content meta not written 2%03d-%04d", key.id, result.GetModule(), result.GetDescription());
+                    Log("register %016" PRIx64 ": %s meta not written 2%03d-%04d", key.id, what, result.GetModule(), result.GetDescription());
                     continue;
                 }
 
@@ -443,9 +471,11 @@ namespace ams::mitm::usbl::content {
                 add_if_ours(key, ncm::ContentType::Program);
             }
             TemporaryArray<ncm::ContentMetaKey> add_ons(MaxAddOnContentCount);
-            const auto listed = db.ListContentMeta(add_ons.Get(), add_ons.Count(), ncm::ContentMetaType::AddOnContent, ncm::ApplicationId{ application_id.value });
-            for (s32 i = 0; i < std::min<s32>(listed.written, add_ons.Count()); ++i) {
-                add_if_ours(add_ons[i], ncm::ContentType::Data);
+            for (const auto type : { ncm::ContentMetaType::AddOnContent, ncm::ContentMetaType::DataPatch }) {
+                const auto listed = db.ListContentMeta(add_ons.Get(), add_ons.Count(), type, ncm::ApplicationId{ application_id.value });
+                for (s32 i = 0; i < std::min<s32>(listed.written, add_ons.Count()); ++i) {
+                    add_if_ours(add_ons[i], ncm::ContentType::Data);
+                }
             }
         }
 
@@ -458,7 +488,7 @@ namespace ams::mitm::usbl::content {
                 if (std::any_of(records, records + record_count, [&](const ContentStorageRecord &record) { return record.key == key; })) {
                     continue;
                 }
-                const char *what = key.type == ncm::ContentMetaType::Patch ? "update" : "add-on content";
+                const char *what = key.type == ncm::ContentMetaType::Patch ? "update" : key.type == ncm::ContentMetaType::DataPatch ? "add-on content update" : "add-on content";
                 if (const Result result = db.Remove(key); R_FAILED(result)) {
                     Log("register %016" PRIx64 ": %s v%u not removed 2%03d-%04d", key.id, what, key.version, result.GetModule(), result.GetDescription());
                     continue;
