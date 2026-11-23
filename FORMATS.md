@@ -17,7 +17,7 @@ sdmc:/usbloadernx/
 ├── themes/<name>/          Manager themes (manager/themes/README.md)
 ├── i18n/<locale>.json      notification texts that replace the built-in ones
 ├── logs/usbloadernx.log    the module's log, started again at every boot
-├── usb/                    virtual for homebrew: one folder per USB drive (its volume serial, A1B2-C3D4) with that drive's usbloadernx/usb/, read-only; empty on the card itself
+├── usb/                    virtual for homebrew, while a drive is plugged in: one folder per USB drive (its volume serial, A1B2-C3D4) with that drive's usbloadernx/usb/, read-only; not on the card itself
 └── games/                  reserved for playing from the SD card; not read yet
 ```
 

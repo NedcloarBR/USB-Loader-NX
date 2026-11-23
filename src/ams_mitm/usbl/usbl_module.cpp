@@ -95,11 +95,12 @@ namespace ams::mitm::usbl {
 
         MigrateLegacyFiles();
         LoadConfig();
-        if (IsConfigEnabled(ConfigKey::HomebrewAccess)) {
-            /* So file browsers show it; opening it lists the drives (fs_mitm). */
+        /* The usb folder homebrew see is virtual (fs_mitm lists it while a drive is plugged in); versions up to 1.1 created it
+         * empty on the SD card. Removed only when empty: anything put in it stays. */
+        {
             char path[ams::fs::EntryNameLengthMax + 1];
             util::SNPrintf(path, sizeof(path), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::HomebrewUsbDir);
-            R_DISCARD(ams::fs::CreateDirectory(path));
+            R_DISCARD(ams::fs::DeleteDirectory(path));
         }
         {
             char language[sizeof(::usbl::protocol::Language::locale)];

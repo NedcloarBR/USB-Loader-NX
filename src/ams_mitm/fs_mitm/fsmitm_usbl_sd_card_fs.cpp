@@ -76,7 +76,12 @@ namespace ams::mitm::fs {
                 ++rest;
             }
             if (*rest == '\x00') {
-                out->target = Target::DriveList;
+                /* Only while a drive is plugged in: without one the folder does not exist (or is whatever the SD card has). */
+                std::scoped_lock lk(GetVolumeLock());
+                s32 drives[usbl::MaxDrives];
+                if (usbl::ListMountedVolumes(drives, usbl::MaxDrives) > 0) {
+                    out->target = Target::DriveList;
+                }
                 R_SUCCEED();
             }
 
@@ -332,6 +337,56 @@ namespace ams::mitm::fs {
                 }
         };
 
+        /* /usbloadernx, which holds the usb folder (case does not matter, a trailing '/' either). */
+        bool IsUsbParent(const ams::fs::Path &path) {
+            const char *usb_dir = ::usbl::paths::HomebrewUsbDir;
+            const size_t parent_length = static_cast<size_t>(std::strrchr(usb_dir, '/') - usb_dir);
+            const char *str = path.GetString();
+            return util::Strnicmp(str, usb_dir, static_cast<int>(parent_length)) == 0 && (str[parent_length] == '\x00' || (str[parent_length] == '/' && str[parent_length + 1] == '\x00'));
+        }
+
+        bool AnyDriveMounted() {
+            std::scoped_lock lk(GetVolumeLock());
+            s32 drives[usbl::MaxDrives];
+            return usbl::ListMountedVolumes(drives, usbl::MaxDrives) > 0;
+        }
+
+        /* /usbloadernx as the SD card has it, plus the usb folder: it exists only while a drive is plugged in, nothing is
+         * written on the SD card for it. */
+        class UsbParentDirectory final : public ams::fs::fsa::IDirectory, public ams::fs::impl::Newable {
+            NON_COPYABLE(UsbParentDirectory);
+            NON_MOVEABLE(UsbParentDirectory);
+            private:
+                std::unique_ptr<ams::fs::fsa::IDirectory> m_base;
+                bool m_extra_pending;
+            public:
+                explicit UsbParentDirectory(std::unique_ptr<ams::fs::fsa::IDirectory> &&base) : m_base(std::move(base)), m_extra_pending(true) { /* ... */ }
+
+                virtual sf::cmif::DomainObjectId GetDomainObjectId() const override {
+                    return sf::cmif::InvalidDomainObjectId;
+                }
+            private:
+                virtual Result DoRead(s64 *out_count, ams::fs::DirectoryEntry *out_entries, s64 max_entries) override {
+                    s64 count = 0;
+                    R_TRY(m_base->Read(std::addressof(count), out_entries, max_entries));
+                    if (count < max_entries && m_extra_pending) {
+                        auto &entry = out_entries[count++];
+                        std::memset(std::addressof(entry), 0, sizeof(entry));
+                        util::Strlcpy(entry.name, std::strrchr(::usbl::paths::HomebrewUsbDir, '/') + 1, sizeof(entry.name));
+                        entry.type = ams::fs::DirectoryEntryType_Directory;
+                        m_extra_pending = false;
+                    }
+                    *out_count = count;
+                    R_SUCCEED();
+                }
+
+                virtual Result DoGetEntryCount(s64 *out) override {
+                    R_TRY(m_base->GetEntryCount(out));
+                    *out += 1;
+                    R_SUCCEED();
+                }
+        };
+
         Result ReadOnly() {
             R_THROW(ams::fs::ResultUnsupportedWriteForReadOnlyFileSystem());
         }
@@ -415,7 +470,18 @@ namespace ams::mitm::fs {
         Route route;
         R_TRY(Resolve(std::addressof(route), path));
         if (route.target == Target::SdCard) {
-            R_RETURN(m_base->OpenDirectory(out_dir, path, mode));
+            R_TRY(m_base->OpenDirectory(out_dir, path, mode));
+
+            /* Lists the usb folder among the others, unless the SD card has a real one of that name. */
+            ams::fs::DirectoryEntryType type;
+            ams::fs::Path usb_path;
+            if ((mode & ams::fs::OpenDirectoryMode_Directory) != 0 && IsUsbParent(path) && AnyDriveMounted() &&
+                R_SUCCEEDED(ams::fs::SetUpFixedPath(std::addressof(usb_path), ::usbl::paths::HomebrewUsbDir)) && R_FAILED(m_base->GetEntryType(std::addressof(type), usb_path))) {
+                auto dir = std::make_unique<UsbParentDirectory>(std::move(*out_dir));
+                R_UNLESS(dir != nullptr, ams::fs::ResultAllocationMemoryFailedNew());
+                *out_dir = std::move(dir);
+            }
+            R_SUCCEED();
         }
         if (route.target == Target::DriveList) {
             auto dir = std::make_unique<DriveListDirectory>(mode);
