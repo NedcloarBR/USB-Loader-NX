@@ -7,7 +7,7 @@
 		},
 		"Connected": {
 			"Title": "{{NAME}} connected",
-			"Contents": "• {{GAMES}} · {{UPDATES}} · {{DLCS}}",
+			"Contents": "• {{LIST}}",
 			"NoGames": "• No games in /usbloadernx/games",
 			"NoGamesFolder": "• No /usbloadernx/games folder",
 			"Volume": "• {{SIZE}} · {{FILESYSTEM}}",

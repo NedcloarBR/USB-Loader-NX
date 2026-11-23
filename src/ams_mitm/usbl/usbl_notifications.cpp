@@ -37,8 +37,8 @@ namespace ams::mitm::usbl {
 
         constexpr s32 DurationMs = 6000;
         constexpr s32 Priority   = 20;
-        /* No clock: Ultrahand draws it over the end of a long title. It shows a title and up to four lines; at its default size (24) a list line (the homebrew path, the longest) wraps and pushes the last one out. */
-        constexpr s32 FontSize   = 16;
+        /* No clock: Ultrahand draws it over the end of a long title. It shows a title and up to four lines; at its default size (24) a list line wraps and pushes the last one out; at 16 the homebrew path, the longest, was still cut. */
+        constexpr s32 FontSize   = 14;
         constexpr size_t TextSize = 512;
 
         /* bin2s symbols: <file>_rgba and <file>_rgba_end. */
@@ -220,17 +220,35 @@ namespace ams::mitm::usbl {
         char title[128];
         FormatTitle(title, sizeof(title), "Notifications.Connected.Title", drive.name);
 
+        /* Most important first: Ultrahand shows four lines, and a line too long for one takes two. */
         Lines lines;
         if (!drive.has_games_folder) {
             lines.Add("Notifications.Connected.NoGamesFolder");
         } else if (drive.games + drive.updates + drive.add_ons == 0) {
             lines.Add("Notifications.Connected.NoGames");
         } else {
-            char games[48], updates[48], add_ons[48];
-            FormatCount(games, sizeof(games), drive.games, "Notifications.Count.GameOne", "Notifications.Count.GameMany");
-            FormatCount(updates, sizeof(updates), drive.updates, "Notifications.Count.UpdateOne", "Notifications.Count.UpdateMany");
-            FormatCount(add_ons, sizeof(add_ons), drive.add_ons, "Notifications.Count.AddOnOne", "Notifications.Count.AddOnMany");
-            lines.Add("Notifications.Connected.Contents", { { "GAMES", games }, { "UPDATES", updates }, { "DLCS", add_ons } });
+            /* Only the kinds the drive has: "2 jogos · 1 DLC". */
+            char list[160] = {};
+            size_t length = 0;
+            const auto add = [&](size_t count, const char *one_key, const char *many_key) {
+                if (count == 0) {
+                    return;
+                }
+                char item[48];
+                FormatCount(item, sizeof(item), count, one_key, many_key);
+                length += util::SNPrintf(list + length, sizeof(list) - length, "%s%s", length != 0 ? " · " : "", item);
+                length = std::min(length, sizeof(list) - 1);
+            };
+            add(drive.games, "Notifications.Count.GameOne", "Notifications.Count.GameMany");
+            add(drive.updates, "Notifications.Count.UpdateOne", "Notifications.Count.UpdateMany");
+            add(drive.add_ons, "Notifications.Count.AddOnOne", "Notifications.Count.AddOnMany");
+            lines.Add("Notifications.Connected.Contents", { { "LIST", list } });
+        }
+
+        if (drive.left_out > 0) {
+            char number[16];
+            util::SNPrintf(number, sizeof(number), "%zu", drive.left_out);
+            lines.Add(drive.solid_compressed == drive.left_out ? "Notifications.Connected.SolidCompressed" : "Notifications.Connected.LeftOut", { { "COUNT", number } });
         }
 
         char size[32];
@@ -241,12 +259,6 @@ namespace ams::mitm::usbl {
             char serial[16];
             util::SNPrintf(serial, sizeof(serial), "%04X-%04X", static_cast<unsigned>(drive.volume_serial >> 16), static_cast<unsigned>(drive.volume_serial & 0xFFFF));
             lines.Add("Notifications.Connected.Homebrew", { { "SERIAL", serial } });
-        }
-
-        if (drive.left_out > 0) {
-            char number[16];
-            util::SNPrintf(number, sizeof(number), "%zu", drive.left_out);
-            lines.Add(drive.solid_compressed == drive.left_out ? "Notifications.Connected.SolidCompressed" : "Notifications.Connected.LeftOut", { { "COUNT", number } });
         }
 
         Post(drive.has_games_folder ? ConnectedIcon : RemovedIcon, title, lines.Get());
