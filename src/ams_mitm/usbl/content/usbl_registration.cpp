@@ -657,8 +657,8 @@ namespace ams::mitm::usbl::content {
             for (s32 i = 0; i < GetIndexedContentCount() && count < applications.Count(); ++i) {
                 IndexedContent content;
                 if (R_SUCCEEDED(GetIndexedContent(std::addressof(content), i)) && content.content_type == NcaContentType::Program &&
-                    std::find(applications.Get(), applications.Get() + count, content.program_id) == applications.Get() + count) {
-                    applications[count++] = content.program_id;
+                    std::find(applications.Get(), applications.Get() + count, GetApplicationIdOfProgram(content.program_id)) == applications.Get() + count) {
+                    applications[count++] = GetApplicationIdOfProgram(content.program_id);
                 }
             }
         }
