@@ -26,11 +26,16 @@ namespace ams::mitm::usbl::content {
             FIL *m_file;
             s64 m_header_offset;
             u64 m_package_id;
+            bool m_verify_hashes;
             Hfs0Partition m_root;
         public:
-            XciReader() : m_file(nullptr), m_header_offset(0), m_package_id(0), m_root() { /* ... */ }
+            XciReader() : m_file(nullptr), m_header_offset(0), m_package_id(0), m_verify_hashes(true), m_root() { /* ... */ }
 
-            Result Initialize(FIL *file);
+            /* An XCZ (an XCI compressed by the nsz tool) has partitions rebuilt without hashes, and its card header, which is
+             * signed, still holds the original root hash: verify_hashes false skips them. Each NCA's signature and hash
+             * layers still verify what is read. */
+            Result Initialize(FIL *file, bool verify_hashes);
+            bool VerifiesHashes() const { return m_verify_hashes; }
 
             const Hfs0Partition &GetRootPartition() const { return m_root; }
             Result OpenPartition(Hfs0Partition *out, const char *name) const;

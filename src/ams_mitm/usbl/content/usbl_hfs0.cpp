@@ -63,6 +63,9 @@ namespace ams::mitm::usbl::content {
         R_UNLESS(header.string_table_size <= MaxStringTableSize, usbl::ResultInvalidHfs0Header());
 
         const size_t header_size = sizeof(Hfs0Header) + header.entry_count * sizeof(Hfs0RawEntry) + header.string_table_size;
+        if (expected_hash == nullptr) {
+            hashed_size = 0;
+        }
         R_UNLESS(hashed_size <= MaxHashedRegionSize, usbl::ResultInvalidHfs0Header());
 
         /* The hashed region may include padding past the string table. */
@@ -72,7 +75,7 @@ namespace ams::mitm::usbl::content {
         R_TRY(ReadFileAt(file, offset, buffer.get(), read_size));
         buffer[read_size] = '\x00';
 
-        R_UNLESS(VerifySha256(buffer.get(), hashed_size, expected_hash), usbl::ResultHashMismatch());
+        R_UNLESS(expected_hash == nullptr || VerifySha256(buffer.get(), hashed_size, expected_hash), usbl::ResultHashMismatch());
 
         m_header            = std::move(buffer);
         m_header_size       = header_size;

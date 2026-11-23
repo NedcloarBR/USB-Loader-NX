@@ -203,7 +203,7 @@ namespace ams::mitm::usbl::content {
                 }
 
                 ++summary.nca_count;
-                if (R_FAILED(VerifyEntryHash(file, entry))) {
+                if (xci.VerifiesHashes() && R_FAILED(VerifyEntryHash(file, entry))) {
                     ++summary.hash_failure_count;
                     Log("    %s: HASH MISMATCH (file corrupted)", entry.name);
                     continue;
@@ -273,12 +273,16 @@ namespace ams::mitm::usbl::content {
         ON_SCOPE_EXIT { f_close(std::addressof(file)); };
         const s32 fragments = LogFragmentation(std::addressof(file));
 
+        /* "xcz" in any case. */
+        const size_t path_length = std::strlen(path);
+        const bool is_xcz = path_length >= 4 && (path[path_length - 1] | 0x20) == 'z' && (path[path_length - 2] | 0x20) == 'c' && (path[path_length - 3] | 0x20) == 'x' && path[path_length - 4] == '.';
+
         XciReader xci;
-        if (const Result result = xci.Initialize(std::addressof(file)); R_FAILED(result)) {
+        if (const Result result = xci.Initialize(std::addressof(file), !is_xcz); R_FAILED(result)) {
             Log("  invalid XCI: 2%03d-%04d", result.GetModule(), result.GetDescription());
             return;
         }
-        Log("  header at 0x%" PRIx64 ", package id %016" PRIx64 ", root hash ok", xci.GetHeaderOffset(), xci.GetPackageId());
+        Log("  header at 0x%" PRIx64 ", package id %016" PRIx64 ", %s", xci.GetHeaderOffset(), xci.GetPackageId(), is_xcz ? "XCZ: partitions without hashes" : "root hash ok");
 
         s32 container_index;
         if (const Result result = AddIndexedContainer(std::addressof(container_index), drive, path); R_FAILED(result)) {

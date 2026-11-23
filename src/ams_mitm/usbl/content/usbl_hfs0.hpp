@@ -45,7 +45,7 @@ namespace ams::mitm::usbl::content {
             Hfs0Partition(Hfs0Partition &&) = default;
             Hfs0Partition &operator=(Hfs0Partition &&) = default;
 
-            /* Verifies the first hashed_size bytes of the header against expected_hash. */
+            /* Verifies the first hashed_size bytes of the header against expected_hash; nullptr skips it (an XCZ has no hashes). */
             Result Initialize(FIL *file, s64 offset, const u8 *expected_hash, size_t hashed_size);
 
             s32 GetEntryCount() const { return m_entry_count; }

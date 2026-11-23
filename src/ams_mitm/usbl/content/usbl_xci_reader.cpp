@@ -51,7 +51,7 @@ namespace ams::mitm::usbl::content {
 
     }
 
-    Result XciReader::Initialize(FIL *file) {
+    Result XciReader::Initialize(FIL *file, bool verify_hashes) {
         GameCardHeader header;
         bool found = false;
         for (const s64 offset : HeaderOffsets) {
@@ -64,9 +64,10 @@ namespace ams::mitm::usbl::content {
         R_UNLESS(found, usbl::ResultInvalidXciHeader());
 
         const s64 root_offset = m_header_offset + static_cast<s64>(header.partition_fs_header_address);
-        R_TRY(m_root.Initialize(file, root_offset, header.partition_fs_header_hash, header.partition_fs_header_size));
+        R_TRY(m_root.Initialize(file, root_offset, verify_hashes ? header.partition_fs_header_hash : nullptr, header.partition_fs_header_size));
 
-        m_file       = file;
+        m_file          = file;
+        m_verify_hashes = verify_hashes;
         m_package_id = header.package_id;
         R_SUCCEED();
     }
@@ -76,7 +77,7 @@ namespace ams::mitm::usbl::content {
         R_TRY(m_root.FindEntry(std::addressof(entry), name));
 
         Hfs0Partition partition;
-        R_TRY(partition.Initialize(m_file, entry.offset, entry.hash, entry.hashed_region_size));
+        R_TRY(partition.Initialize(m_file, entry.offset, m_verify_hashes ? entry.hash : nullptr, entry.hashed_region_size));
 
         *out = std::move(partition);
         R_SUCCEED();
