@@ -41,6 +41,11 @@ namespace ams::mitm::fs::usbl_hooks {
     /* OpenDataStorageByCurrentProcess/ByProgramId/WithProgramIndex: the program's RomFS (with its update laid over).
      * With `allow_mods` (the client's override status, as Atmosphère decides it for installed games), romfs mods in
      * sd:/atmosphere/contents/<id>/ are laid over it with Atmosphère's LayeredFS. */
+    /* OpenDataStorageWithProgramIndex: an application's programs are its id plus their index (0 is the application). */
+    constexpr ncm::ProgramId GetProgramIdOfIndex(ncm::ProgramId client, u8 program_index) {
+        return { (client.value & ~static_cast<u64>(0xFF)) + program_index };
+    }
+
     Result OpenProgramDataStorage(StorageOut &out, Service *fwd, ncm::ProgramId program_id, bool allow_mods);
     /* OpenDataStorageByDataId: add-on content, with its romfs mods likewise. */
     Result OpenAddOnContentDataStorage(StorageOut &out, Service *fwd, ncm::DataId data_id, bool allow_mods);

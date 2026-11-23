@@ -31,6 +31,8 @@ namespace ams::mitm::usbl {
     constexpr bool IsAddOnContentTitleId(ncm::ProgramId id) { return !IsApplicationTitleId(id) && !IsPatchId(id); }
     constexpr ncm::ProgramId GetPatchId(ncm::ProgramId application_id) { return { application_id.value | PatchIdKind }; }
     constexpr ncm::ProgramId GetApplicationIdOfPatch(ncm::ProgramId patch_id) { return { patch_id.value & ~PatchIdKind }; }
+    /* An application can have several programs (a collection launching another): its id plus their index, up to 0xFF. */
+    constexpr ncm::ProgramId GetApplicationIdOfProgram(ncm::ProgramId program_id) { return { program_id.value & ~static_cast<u64>(0xFF) }; }
 
     /* An update's NCAs carry the application's program id: Current prefers the update's content, Base never returns it. */
     enum class ContentLayer {

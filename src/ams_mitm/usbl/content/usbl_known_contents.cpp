@@ -287,12 +287,12 @@ namespace ams::mitm::usbl {
 
     void ForgetKnownProgram(ncm::ProgramId program_id) {
         const ncm::ProgramId patch_id = GetPatchId(program_id);
-        ForgetKnownIf([program_id, patch_id](const KnownContent &known) { return known.program_id == program_id || known.program_id == patch_id; });
+        ForgetKnownIf([program_id, patch_id](const KnownContent &known) { return GetApplicationIdOfProgram(known.program_id) == program_id || known.program_id == patch_id; });
     }
 
     void ForgetKnownPatch(ncm::ProgramId program_id) {
         const ncm::ProgramId patch_id = GetPatchId(program_id);
-        ForgetKnownIf([program_id, patch_id](const KnownContent &known) { return known.is_patch && (known.program_id == program_id || known.program_id == patch_id); });
+        ForgetKnownIf([program_id, patch_id](const KnownContent &known) { return known.is_patch && (GetApplicationIdOfProgram(known.program_id) == program_id || known.program_id == patch_id); });
     }
 
     bool ForgetKnownContent(ncm::ContentId content_id) {

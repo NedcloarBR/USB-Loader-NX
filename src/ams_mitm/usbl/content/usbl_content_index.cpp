@@ -235,9 +235,10 @@ namespace ams::mitm::usbl {
     void RemoveIndexedProgram(ncm::ProgramId program_id) {
         AssertLocked();
 
+        /* Every program of the application (and of its update), not only the first. */
         const ncm::ProgramId patch_id = GetPatchId(program_id);
         g_contents.RemoveIf([program_id, patch_id](const IndexedContent &content) {
-            return content.program_id == program_id || content.program_id == patch_id;
+            return GetApplicationIdOfProgram(content.program_id) == program_id || content.program_id == patch_id;
         });
     }
 
@@ -246,7 +247,7 @@ namespace ams::mitm::usbl {
 
         const ncm::ProgramId patch_id = GetPatchId(program_id);
         g_contents.RemoveIf([program_id, patch_id](const IndexedContent &content) {
-            return content.is_patch && (content.program_id == program_id || content.program_id == patch_id);
+            return content.is_patch && (GetApplicationIdOfProgram(content.program_id) == program_id || content.program_id == patch_id);
         });
     }
 
@@ -258,10 +259,12 @@ namespace ams::mitm::usbl {
             if (count >= max_count) {
                 break;
             }
-            if (content.content_type != NcaContentType::Program || (drive >= 0 && content.drive != drive) || std::find(out, out + count, content.program_id) != out + count) {
+            /* The application once, whichever of its programs this is. */
+            const ncm::ProgramId application_id = GetApplicationIdOfProgram(content.program_id);
+            if (content.content_type != NcaContentType::Program || (drive >= 0 && content.drive != drive) || std::find(out, out + count, application_id) != out + count) {
                 continue;
             }
-            out[count++] = content.program_id;
+            out[count++] = application_id;
         }
         return count;
     }
