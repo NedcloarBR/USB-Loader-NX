@@ -19,6 +19,7 @@
 #include "usbl_content_meta.hpp"
 #include "usbl_xci_reader.hpp"
 #include "../nca/usbl_nca_filesystem.hpp"
+#include "../nca/usbl_ncz_storage.hpp"
 #include "../storage/usbl_usb_file_storage.hpp"
 #include "../storage/usbl_volume.hpp"
 #include "../usbl_log.hpp"
@@ -30,6 +31,8 @@ namespace ams::mitm::usbl::content {
 
         constexpr const char SecurePartitionName[] = "secure";
         constexpr const char NcaExtension[]         = ".nca";
+        /* An NCA compressed by the nsz tool (in an NSZ or XCZ). */
+        constexpr const char NczExtension[]         = ".ncz";
         constexpr const char MetaExtension[]        = ".cnmt.nca";
         constexpr const char TicketExtension[]      = ".tik";
         constexpr const char CertificateExtension[] = ".cert";
@@ -109,14 +112,41 @@ namespace ams::mitm::usbl::content {
             return added;
         }
 
+        /* Dumps with an NCZ that cannot be read in place (solid mode), counted once each since TakeUnsupportedNczCount. */
+        constinit s32 g_unsupported_ncz_dumps = 0;
+        constinit s32 g_last_unsupported_container = -1;
+
+        void NoteNotIndexed(s32 container_index, const Hfs0Entry &entry, Result result) {
+            if (usbl::ResultUnsupportedNcz::Includes(result)) {
+                Log("    %s: compressed in solid mode, which cannot be read without decompressing it all; compress it again in block mode", entry.name);
+                if (g_last_unsupported_container != container_index) {
+                    g_last_unsupported_container = container_index;
+                    ++g_unsupported_ncz_dumps;
+                }
+                return;
+            }
+            Log("    %s: not indexed 2%03d-%04d", entry.name, result.GetModule(), result.GetDescription());
+        }
+
         Result IndexNca(s32 drive, const char *container_path, s32 container_index, const Hfs0Entry &entry, ContentSource source) {
             /* NCA entries are named after their content id: "<32 hex chars>.nca" or "<32 hex chars>.cnmt.nca". */
             const auto content_id = ncm::GetContentIdFromString(entry.name, std::strlen(entry.name));
             R_UNLESS(content_id.has_value(), usbl::ResultInvalidHfs0Header());
 
-            auto storage = fs::AllocateShared<UsbFileStorage>();
-            R_UNLESS(storage != nullptr, fs::ResultAllocationMemoryFailedNew());
-            R_TRY(storage->Initialize(drive, container_path, entry.offset, entry.size));
+            auto file_storage = fs::AllocateShared<UsbFileStorage>();
+            R_UNLESS(file_storage != nullptr, fs::ResultAllocationMemoryFailedNew());
+            R_TRY(file_storage->Initialize(drive, container_path, entry.offset, entry.size));
+
+            const bool is_compressed = HasExtension(entry.name, NczExtension);
+            std::shared_ptr<fs::IStorage> storage = std::move(file_storage);
+            s64 nca_size = entry.size;
+            if (is_compressed) {
+                auto ncz = fs::AllocateShared<nca::NczStorage>();
+                R_UNLESS(ncz != nullptr, fs::ResultAllocationMemoryFailedNew());
+                R_TRY(ncz->Initialize(std::move(storage)));
+                nca_size = ncz->GetNcaSize();
+                storage = std::move(ncz);
+            }
 
             std::shared_ptr<fssystem::NcaReader> reader;
             bool is_resigned;
@@ -133,14 +163,16 @@ namespace ams::mitm::usbl::content {
                 .key_generation = reader->GetKeyGeneration(),
                 .source         = source,
                 .is_patch       = false,
+                .is_compressed  = is_compressed,
                 .drive          = drive,
-                .container_index      = container_index,
+                .container_index = container_index,
                 .offset         = entry.offset,
-                .size           = entry.size,
+                .size           = nca_size,
+                .stored_size    = entry.size,
             };
             R_TRY(AddIndexedContent(content));
 
-            Log("    %s: %-7s program=%016" PRIx64 " keygen=%u dist=%s rights=%s sign1=%s size=%" PRIu64 "MB",
+            Log("    %s: %-7s program=%016" PRIx64 " keygen=%u dist=%s rights=%s sign1=%s size=%" PRIu64 "MB%s",
                 entry.name,
                 GetContentTypeName(content.content_type),
                 content.program_id.value,
@@ -148,7 +180,8 @@ namespace ams::mitm::usbl::content {
                 reader->GetDistributionType() == fssystem::NcaHeader::DistributionType::GameCard ? "gamecard" : "download",
                 rights_id != fs::InvalidRightsId ? "titlekey" : "none",
                 is_resigned ? "resigned" : "ok",
-                static_cast<u64>(content.size) / 1_MB);
+                static_cast<u64>(content.size) / 1_MB,
+                is_compressed ? " (compressed)" : "");
             R_SUCCEED();
         }
 
@@ -165,7 +198,7 @@ namespace ams::mitm::usbl::content {
                 if (R_FAILED(secure.GetEntry(std::addressof(entry), i))) {
                     continue;
                 }
-                if (!HasExtension(entry.name, NcaExtension)) {
+                if (!HasExtension(entry.name, NcaExtension) && !HasExtension(entry.name, NczExtension)) {
                     continue;
                 }
 
@@ -177,7 +210,7 @@ namespace ams::mitm::usbl::content {
                 }
 
                 if (const Result result = IndexNca(drive, container_path, container_index, entry, ContentSource::Xci); R_FAILED(result)) {
-                    Log("    %s: not indexed 2%03d-%04d", entry.name, result.GetModule(), result.GetDescription());
+                    NoteNotIndexed(container_index, entry, result);
                     continue;
                 }
                 ++summary.indexed_count;
@@ -379,7 +412,7 @@ namespace ams::mitm::usbl::content {
             }
 
             const Hfs0Entry entry = { .offset = data_offset + pfs_entry.offset, .size = pfs_entry.size, .hashed_region_size = 0, .hash = {}, .name = strings + pfs_entry.name_offset };
-            if (!HasExtension(entry.name, NcaExtension)) {
+            if (!HasExtension(entry.name, NcaExtension) && !HasExtension(entry.name, NczExtension)) {
                 continue;
             }
 
@@ -390,7 +423,7 @@ namespace ams::mitm::usbl::content {
             }
 
             if (const Result result = IndexNca(drive, path, container_index, entry, ContentSource::Nsp); R_FAILED(result)) {
-                Log("    %s: not indexed 2%03d-%04d", entry.name, result.GetModule(), result.GetDescription());
+                NoteNotIndexed(container_index, entry, result);
                 continue;
             }
             ++summary.indexed_count;
@@ -410,6 +443,13 @@ namespace ams::mitm::usbl::content {
 
         *out_count = count;
         return true;
+    }
+
+    s32 TakeUnsupportedNczCount() {
+        const s32 count = g_unsupported_ncz_dumps;
+        g_unsupported_ncz_dumps = 0;
+        g_last_unsupported_container = -1;
+        return count;
     }
 
     void SelfTestContentIndex() {

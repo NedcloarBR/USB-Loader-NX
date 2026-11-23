@@ -32,6 +32,9 @@ namespace ams::mitm::usbl::content {
      * still verify every read. False when the NSP was not indexed. Requires the volume lock. */
     bool IndexNsp(s32 drive, const char *path, TitleCount *out_count);
 
+    /* NSZ and XCZ dumps left out since the last call (an NCZ in solid mode), which resets it. */
+    s32 TakeUnsupportedNczCount();
+
     /* Opens each indexed NCA through the same path IPC clients use and re-validates its header. */
     void SelfTestContentIndex();
 

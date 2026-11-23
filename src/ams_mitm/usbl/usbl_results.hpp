@@ -40,5 +40,8 @@ namespace ams::mitm::usbl {
     R_DEFINE_ERROR_RESULT(DriveNotConnected,    18);
     R_DEFINE_ERROR_RESULT(TransferTimedOut,     19);
     R_DEFINE_ERROR_RESULT(NewerFormat,          20);
+    R_DEFINE_ERROR_RESULT(InvalidNczHeader,     21);
+    R_DEFINE_ERROR_RESULT(UnsupportedNcz,       22);
+    R_DEFINE_ERROR_RESULT(DecompressionFailed,  23);
 
 }

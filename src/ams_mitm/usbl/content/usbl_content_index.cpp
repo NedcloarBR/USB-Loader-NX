@@ -19,6 +19,7 @@
 #include "../storage/usbl_volume.hpp"
 #include "../usbl_results.hpp"
 #include "../usbl_growable_array.hpp"
+#include "../nca/usbl_ncz_storage.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -74,9 +75,16 @@ namespace ams::mitm::usbl {
         Result OpenContentStorage(std::shared_ptr<fs::IStorage> *out, const IndexedContent &content, const char *container_path) {
             auto storage = fs::AllocateShared<UsbFileStorage>();
             R_UNLESS(storage != nullptr, fs::ResultAllocationMemoryFailedNew());
-            R_TRY(storage->Initialize(content.drive, container_path, content.offset, content.size));
+            R_TRY(storage->Initialize(content.drive, container_path, content.offset, content.stored_size));
+            if (!content.is_compressed) {
+                *out = std::move(storage);
+                R_SUCCEED();
+            }
 
-            *out = std::move(storage);
+            auto ncz = fs::AllocateShared<nca::NczStorage>();
+            R_UNLESS(ncz != nullptr, fs::ResultAllocationMemoryFailedNew());
+            R_TRY(ncz->Initialize(std::move(storage)));
+            *out = std::move(ncz);
             R_SUCCEED();
         }
 

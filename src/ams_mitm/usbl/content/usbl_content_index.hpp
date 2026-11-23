@@ -46,10 +46,15 @@ namespace ams::mitm::usbl {
         u8 key_generation;
         ContentSource source;
         bool is_patch;
+        /* An NCZ (from an NSZ or XCZ): stored_size bytes at offset hold the NCA compressed. */
+        bool is_compressed;
         s32 drive;
         s32 container_index;
         s64 offset;
+        /* The NCA's size, which ncm and fs see. */
         s64 size;
+        /* What the NCA takes in its container: size, or less for an NCZ. */
+        s64 stored_size;
     };
 
     /* Only NCAs that passed hash and signature validation are ever added. All functions below require the volume lock. */

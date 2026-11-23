@@ -121,7 +121,7 @@ namespace ams::mitm::usbl {
             util::SNPrintf(dst, dst_size, "%d:", drive);
         }
 
-        /* Case-insensitive match of a 3-letter extension such as "xci". */
+        /* Case-insensitive match of a 3-letter extension such as "xci" (and "xcz", "nsp", "nsz"). */
         bool HasExtension(const char *name, const char *ext) {
             const size_t len = std::strlen(name);
             if (len < 4 || name[len - 4] != '.') {
@@ -145,7 +145,7 @@ namespace ams::mitm::usbl {
         };
 
         bool IsDumpName(const char *name) {
-            return HasExtension(name, "xci") || HasExtension(name, "nsp");
+            return HasExtension(name, "xci") || HasExtension(name, "xcz") || HasExtension(name, "nsp") || HasExtension(name, "nsz");
         }
 
         void IndexGameFolder(s32 drive, const char *folder, int depth, GameFileCount *count) {
@@ -176,10 +176,10 @@ namespace ams::mitm::usbl {
                         Log("left out %s: only two levels of folders inside games are read", path);
                         ++count->left_out;
                     }
-                } else if (HasExtension(info.fname, "xci")) {
+                } else if (HasExtension(info.fname, "xci") || HasExtension(info.fname, "xcz")) {
                     ++count->games;
                     content::IndexXci(drive, path);
-                } else if (HasExtension(info.fname, "nsp")) {
+                } else if (HasExtension(info.fname, "nsp") || HasExtension(info.fname, "nsz")) {
                     if (content::TitleCount titles; content::IndexNsp(drive, path, std::addressof(titles))) {
                         count->games   += titles.games;
                         count->updates += titles.updates;
