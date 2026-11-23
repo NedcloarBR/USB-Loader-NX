@@ -30,14 +30,19 @@ namespace ams::mitm::usbl {
             std::unique_ptr<char[]> path;
             s32 drive = 0;
             bool used = false;
-            bool has_ticket = false;
-            ContainerTicket ticket = {};
             s32 fragments = 1;
+        };
+
+        struct StoredTicket {
+            s32 drive;
+            s32 container_index;
+            ContainerTicket ticket;
         };
 
         /* As many as the drives hold (and the heap allows): no fixed limit. */
         constinit GrowableArray<Container> g_containers;
         constinit GrowableArray<IndexedContent> g_contents;
+        constinit GrowableArray<StoredTicket> g_tickets;
 
         /* Files left (wholly or partly) out of the index because it was full, since TakeIndexFullCount. */
         constinit s32 g_index_full_files = 0;
@@ -81,6 +86,7 @@ namespace ams::mitm::usbl {
         AssertLocked();
 
         g_contents.RemoveIf([drive](const IndexedContent &content) { return content.drive == drive; });
+        g_tickets.RemoveIf([drive](const StoredTicket &stored) { return stored.drive == drive; });
 
         bool any_used = false;
         for (auto &container : g_containers) {
@@ -95,6 +101,7 @@ namespace ams::mitm::usbl {
         if (!any_used) {
             g_containers.Release();
             g_contents.Release();
+            g_tickets.Release();
         }
     }
 
@@ -125,7 +132,7 @@ namespace ams::mitm::usbl {
         }
 
         Container &container = g_containers[index];
-        container = { .path = std::move(path_copy), .drive = drive, .used = true, .has_ticket = false, .ticket = {}, .fragments = 1 };
+        container = { .path = std::move(path_copy), .drive = drive, .used = true, .fragments = 1 };
         *out_index = index;
         R_SUCCEED();
     }
@@ -154,12 +161,11 @@ namespace ams::mitm::usbl {
         }
     }
 
-    Result SetContainerTicket(s32 container_index, const ContainerTicket &ticket) {
+    Result AddContainerTicket(s32 container_index, const ContainerTicket &ticket) {
         AssertLocked();
         R_UNLESS(IsValidContainer(container_index), usbl::ResultOutOfRange());
 
-        g_containers[container_index].ticket     = ticket;
-        g_containers[container_index].has_ticket = true;
+        R_UNLESS(g_tickets.PushBack({ .drive = g_containers[container_index].drive, .container_index = container_index, .ticket = ticket }), usbl::ResultIndexFull());
         R_SUCCEED();
     }
 
@@ -186,19 +192,35 @@ namespace ams::mitm::usbl {
         const char *path;
         R_TRY(FindIndexedContent(std::addressof(content), std::addressof(path), content_id));
 
-        const Container &container = g_containers[content.container_index];
-        R_UNLESS(container.has_ticket, usbl::ResultContentNotFound());
-        R_UNLESS(0 < container.ticket.ticket_size && container.ticket.ticket_size <= static_cast<s64>(sizeof(out->ticket)), usbl::ResultOutOfRange());
-        R_UNLESS(0 < container.ticket.cert_size   && container.ticket.cert_size   <= static_cast<s64>(sizeof(out->cert)),   usbl::ResultOutOfRange());
+        /* The ticket named after the content's rights id; a container with a single ticket is taken whatever its name. */
+        const ContainerTicket *match = nullptr;
+        s32 in_container = 0;
+        const ContainerTicket *only = nullptr;
+        for (const auto &stored : g_tickets) {
+            if (stored.container_index != content.container_index) {
+                continue;
+            }
+            ++in_container;
+            only = std::addressof(stored.ticket);
+            if (std::memcmp(std::addressof(stored.ticket.rights_id), std::addressof(content.rights_id), sizeof(content.rights_id)) == 0) {
+                match = std::addressof(stored.ticket);
+            }
+        }
+        if (match == nullptr && in_container == 1) {
+            match = only;
+        }
+        R_UNLESS(match != nullptr, usbl::ResultContentNotFound());
+        R_UNLESS(0 < match->ticket_size && match->ticket_size <= static_cast<s64>(sizeof(out->ticket)), usbl::ResultOutOfRange());
+        R_UNLESS(0 < match->cert_size   && match->cert_size   <= static_cast<s64>(sizeof(out->cert)),   usbl::ResultOutOfRange());
 
         FIL file;
         R_TRY(ConvertFatFsResult(f_open(std::addressof(file), path, FA_READ)));
         ON_SCOPE_EXIT { f_close(std::addressof(file)); };
 
-        R_TRY(ReadFileAt(std::addressof(file), container.ticket.ticket_offset, out->ticket, container.ticket.ticket_size));
-        R_TRY(ReadFileAt(std::addressof(file), container.ticket.cert_offset,   out->cert,   container.ticket.cert_size));
-        out->ticket_size = container.ticket.ticket_size;
-        out->cert_size   = container.ticket.cert_size;
+        R_TRY(ReadFileAt(std::addressof(file), match->ticket_offset, out->ticket, match->ticket_size));
+        R_TRY(ReadFileAt(std::addressof(file), match->cert_offset,   out->cert,   match->cert_size));
+        out->ticket_size = match->ticket_size;
+        out->cert_size   = match->cert_size;
         R_SUCCEED();
     }
 

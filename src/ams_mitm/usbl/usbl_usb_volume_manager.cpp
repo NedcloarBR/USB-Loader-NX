@@ -180,11 +180,10 @@ namespace ams::mitm::usbl {
                     ++count->games;
                     content::IndexXci(drive, path);
                 } else if (HasExtension(info.fname, "nsp")) {
-                    switch (content::IndexNsp(drive, path)) {
-                        case content::NspKind::Application:  ++count->games;   break;
-                        case content::NspKind::Patch:        ++count->updates; break;
-                        case content::NspKind::AddOnContent: ++count->add_ons; break;
-                        case content::NspKind::Unknown:                        break;
+                    if (content::TitleCount titles; content::IndexNsp(drive, path, std::addressof(titles))) {
+                        count->games   += titles.games;
+                        count->updates += titles.updates;
+                        count->add_ons += titles.add_ons;
                     }
                 }
             }

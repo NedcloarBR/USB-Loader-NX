@@ -58,6 +58,57 @@ namespace ams::mitm::usbl::content {
             return name_len >= ext_len && std::strcmp(name + name_len - ext_len, ext) == 0;
         }
 
+        /* Tickets are named after their rights id: "<32 hex chars>.tik". Zero when the name is something else. */
+        fs::RightsId GetRightsIdFromName(const char *name) {
+            fs::RightsId rights_id = {};
+            if (const auto id = ncm::GetContentIdFromString(name, std::strlen(name)); id.has_value()) {
+                static_assert(sizeof(*id) == sizeof(rights_id));
+                std::memcpy(std::addressof(rights_id), std::addressof(*id), sizeof(rights_id));
+            }
+            return rights_id;
+        }
+
+        /* Each .tik with the .cert of the same name, or else the container's first .cert: one per eShop title it holds (a
+         * game, its update and each DLC). Returns how many were added. */
+        template<typename GetEntry>
+        s32 AddContainerTickets(s32 container_index, s32 entry_count, GetEntry get_entry) {
+            Hfs0Entry fallback_cert = {};
+            for (s32 i = 0; i < entry_count; ++i) {
+                if (get_entry(std::addressof(fallback_cert), i) && HasExtension(fallback_cert.name, CertificateExtension)) {
+                    break;
+                }
+                fallback_cert = {};
+            }
+            if (fallback_cert.size <= 0) {
+                return 0;
+            }
+
+            s32 added = 0;
+            for (s32 i = 0; i < entry_count; ++i) {
+                Hfs0Entry ticket;
+                if (!get_entry(std::addressof(ticket), i) || !HasExtension(ticket.name, TicketExtension)) {
+                    continue;
+                }
+
+                const size_t stem_length = std::strlen(ticket.name) - std::strlen(TicketExtension);
+                Hfs0Entry cert = fallback_cert;
+                for (s32 j = 0; j < entry_count; ++j) {
+                    Hfs0Entry candidate;
+                    if (get_entry(std::addressof(candidate), j) && HasExtension(candidate.name, CertificateExtension) &&
+                        std::strlen(candidate.name) == stem_length + std::strlen(CertificateExtension) && std::strncmp(candidate.name, ticket.name, stem_length) == 0) {
+                        cert = candidate;
+                        break;
+                    }
+                }
+
+                const ContainerTicket stored = { .rights_id = GetRightsIdFromName(ticket.name), .ticket_offset = ticket.offset, .ticket_size = ticket.size, .cert_offset = cert.offset, .cert_size = cert.size };
+                if (R_SUCCEEDED(AddContainerTicket(container_index, stored))) {
+                    ++added;
+                }
+            }
+            return added;
+        }
+
         Result IndexNca(s32 drive, const char *container_path, s32 container_index, const Hfs0Entry &entry, ContentSource source) {
             /* NCA entries are named after their content id: "<32 hex chars>.nca" or "<32 hex chars>.cnmt.nca". */
             const auto content_id = ncm::GetContentIdFromString(entry.name, std::strlen(entry.name));
@@ -109,22 +160,9 @@ namespace ams::mitm::usbl::content {
             }
 
             Summary summary = {};
-            ContainerTicket ticket = {};
             for (s32 i = 0; i < secure.GetEntryCount(); ++i) {
                 Hfs0Entry entry;
                 if (R_FAILED(secure.GetEntry(std::addressof(entry), i))) {
-                    continue;
-                }
-
-                /* An update merged into the XCI is eShop content: its ticket comes along. */
-                if (HasExtension(entry.name, TicketExtension)) {
-                    ticket.ticket_offset = entry.offset;
-                    ticket.ticket_size   = entry.size;
-                    continue;
-                }
-                if (HasExtension(entry.name, CertificateExtension)) {
-                    ticket.cert_offset = entry.offset;
-                    ticket.cert_size   = entry.size;
                     continue;
                 }
                 if (!HasExtension(entry.name, NcaExtension)) {
@@ -145,11 +183,10 @@ namespace ams::mitm::usbl::content {
                 ++summary.indexed_count;
             }
 
-            if (ticket.ticket_size > 0 && ticket.cert_size > 0) {
-                R_DISCARD(SetContainerTicket(container_index, ticket));
-            }
+            /* An update merged into the XCI is eShop content: its ticket comes along. */
+            const s32 tickets = AddContainerTickets(container_index, secure.GetEntryCount(), [&secure](Hfs0Entry *out, s32 index) { return R_SUCCEEDED(secure.GetEntry(out, index)); });
 
-            Log("  secure: %d NCAs, %d indexed, %d hash failures%s", summary.nca_count, summary.indexed_count, summary.hash_failure_count, ticket.ticket_size > 0 ? ", ticket included" : "");
+            Log("  secure: %d NCAs, %d indexed, %d hash failures, %d tickets", summary.nca_count, summary.indexed_count, summary.hash_failure_count, tickets);
         }
 
         /* An update's NCAs reuse the application's program id; only the update's own meta (id ending in 800) tells them apart. */
@@ -247,12 +284,12 @@ namespace ams::mitm::usbl::content {
 
     namespace {
 
-        /* Title id of the NSP's own meta: applications end in 000, their updates in 800 and add-on content in 1xxx. */
-        NspKind GetNspKind(ncm::ProgramId meta_id) {
+        /* A meta's title id: applications end in 000, their updates in 800 and add-on content in 1xxx. */
+        void CountTitle(TitleCount *count, ncm::ProgramId meta_id) {
             switch (meta_id.value & TitleIdKindMask) {
-                case 0x000:       return NspKind::Application;
-                case PatchIdKind: return NspKind::Patch;
-                default:          return NspKind::AddOnContent;
+                case 0x000:       ++count->games;   break;
+                case PatchIdKind: ++count->updates; break;
+                default:          ++count->add_ons; break;
             }
         }
 
@@ -270,14 +307,14 @@ namespace ams::mitm::usbl::content {
 
     }
 
-    NspKind IndexNsp(s32 drive, const char *path) {
+    bool IndexNsp(s32 drive, const char *path, TitleCount *out_count) {
         AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
         Log("indexing %s", path);
 
         FIL file;
         if (const FRESULT res = f_open(std::addressof(file), path, FA_READ); res != FR_OK) {
             Log("  f_open failed: %d", static_cast<int>(res));
-            return NspKind::Unknown;
+            return false;
         }
         ON_SCOPE_EXIT { f_close(std::addressof(file)); };
         const s32 fragments = LogFragmentation(std::addressof(file));
@@ -285,19 +322,19 @@ namespace ams::mitm::usbl::content {
         Pfs0Header header;
         if (R_FAILED(ReadFileAt(std::addressof(file), 0, std::addressof(header), sizeof(header))) || header.magic != Pfs0Magic || header.entry_count > MaxPfs0EntryCount) {
             Log("  invalid NSP header");
-            return NspKind::Unknown;
+            return false;
         }
 
         const size_t table_size = header.entry_count * sizeof(Pfs0Entry) + header.string_table_size;
         if (table_size > MaxPfs0HeaderSize) {
             Log("  invalid NSP header (table 0x%zx)", table_size);
-            return NspKind::Unknown;
+            return false;
         }
 
         auto table = std::unique_ptr<u8[]>(new (std::nothrow) u8[table_size + 1]);
         if (table == nullptr || R_FAILED(ReadFileAt(std::addressof(file), sizeof(header), table.get(), table_size))) {
             Log("  cannot read NSP file table");
-            return NspKind::Unknown;
+            return false;
         }
         table[table_size] = '\x00';
 
@@ -306,7 +343,7 @@ namespace ams::mitm::usbl::content {
         const s64 data_offset = sizeof(header) + table_size;
         const s64 file_size = static_cast<s64>(f_size(std::addressof(file)));
 
-        NspKind kind = NspKind::Application;
+        TitleCount count = {};
         for (u32 i = 0; i < header.entry_count; ++i) {
             const Pfs0Entry &pfs_entry = entries[i];
             const char *name = pfs_entry.name_offset < header.string_table_size ? strings + pfs_entry.name_offset : "";
@@ -318,21 +355,23 @@ namespace ams::mitm::usbl::content {
             ncm::ProgramId meta_id = ncm::InvalidProgramId;
             if (const Result result = ReadNcaProgramId(std::addressof(meta_id), drive, path, meta_entry); R_FAILED(result)) {
                 Log("  meta unreadable 2%03d-%04d, NSP skipped", result.GetModule(), result.GetDescription());
-                return NspKind::Unknown;
+                return false;
             }
-            kind = GetNspKind(meta_id);
-            break;
+            CountTitle(std::addressof(count), meta_id);
+        }
+        /* Without a meta it cannot be registered; it still counts as what it was taken for before. */
+        if (count.games + count.updates + count.add_ons == 0) {
+            count.games = 1;
         }
 
         s32 container_index;
         if (const Result result = AddIndexedContainer(std::addressof(container_index), drive, path); R_FAILED(result)) {
             Log("  not indexed: 2%03d-%04d", result.GetModule(), result.GetDescription());
-            return NspKind::Unknown;
+            return false;
         }
         R_DISCARD(SetContainerFragments(container_index, fragments));
 
         Summary summary = {};
-        ContainerTicket ticket = {};
         for (u32 i = 0; i < header.entry_count; ++i) {
             const Pfs0Entry &pfs_entry = entries[i];
             if (pfs_entry.name_offset >= header.string_table_size) {
@@ -340,16 +379,6 @@ namespace ams::mitm::usbl::content {
             }
 
             const Hfs0Entry entry = { .offset = data_offset + pfs_entry.offset, .size = pfs_entry.size, .hashed_region_size = 0, .hash = {}, .name = strings + pfs_entry.name_offset };
-            if (HasExtension(entry.name, TicketExtension)) {
-                ticket.ticket_offset = entry.offset;
-                ticket.ticket_size   = entry.size;
-                continue;
-            }
-            if (HasExtension(entry.name, CertificateExtension)) {
-                ticket.cert_offset = entry.offset;
-                ticket.cert_size   = entry.size;
-                continue;
-            }
             if (!HasExtension(entry.name, NcaExtension)) {
                 continue;
             }
@@ -367,14 +396,20 @@ namespace ams::mitm::usbl::content {
             ++summary.indexed_count;
         }
 
-        if (ticket.ticket_size > 0 && ticket.cert_size > 0) {
-            R_DISCARD(SetContainerTicket(container_index, ticket));
-        }
+        const s32 tickets = AddContainerTickets(container_index, static_cast<s32>(header.entry_count), [&](Hfs0Entry *out, s32 index) {
+            const Pfs0Entry &pfs_entry = entries[index];
+            if (pfs_entry.name_offset >= header.string_table_size || pfs_entry.offset < 0 || pfs_entry.size <= 0 || data_offset + pfs_entry.offset + pfs_entry.size > file_size) {
+                return false;
+            }
+            *out = { .offset = data_offset + pfs_entry.offset, .size = pfs_entry.size, .hashed_region_size = 0, .hash = {}, .name = strings + pfs_entry.name_offset };
+            return true;
+        });
 
-        Log("  nsp: %d NCAs, %d indexed%s", summary.nca_count, summary.indexed_count, ticket.ticket_size > 0 ? ", ticket included" : "");
+        Log("  nsp: %d NCAs, %d indexed, %d tickets; %d games, %d updates, %d add-ons", summary.nca_count, summary.indexed_count, tickets, count.games, count.updates, count.add_ons);
         MarkPatchContents(container_index);
 
-        return kind;
+        *out_count = count;
+        return true;
     }
 
     void SelfTestContentIndex() {

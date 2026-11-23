@@ -62,15 +62,17 @@ namespace ams::mitm::usbl {
     /* Flags a content as belonging to an update (listed in its meta); unknown ids are ignored. */
     void MarkIndexedPatchContent(ncm::ContentId content_id);
 
-    /* NSPs carry the ticket (.tik) and certificate chain (.cert) eShop content needs. */
+    /* NSPs carry a ticket (.tik) and certificate chain (.cert) for each eShop title in them, named after its rights id; an
+     * NSP with a game, its update and DLC holds one per title. */
     struct ContainerTicket {
+        fs::RightsId rights_id;
         s64 ticket_offset;
         s64 ticket_size;
         s64 cert_offset;
         s64 cert_size;
     };
 
-    Result SetContainerTicket(s32 container_index, const ContainerTicket &ticket);
+    Result AddContainerTicket(s32 container_index, const ContainerTicket &ticket);
 
     /* Pieces the container file is split in on the drive (1 = contiguous), or negative when too fragmented to map. */
     Result SetContainerFragments(s32 container_index, s32 fragments);
@@ -89,7 +91,8 @@ namespace ams::mitm::usbl {
         size_t cert_size;
     };
 
-    /* Reads the ticket shipped in the container of an indexed content. Takes the volume lock itself. */
+    /* Reads the ticket for an indexed content's rights id from its container (the only one, when the names say nothing).
+     * Takes the volume lock itself. */
     Result ReadContentTicket(TicketData *out, ncm::ContentId content_id);
 
     /* Drops every content of one application and of its update (a copy installed on the console or SD card takes precedence). */
