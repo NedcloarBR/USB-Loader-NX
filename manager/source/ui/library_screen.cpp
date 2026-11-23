@@ -667,7 +667,12 @@ namespace ui {
 
     void LibraryScreen::AddDrivesWindow() {
         constexpr double X = 200, W = 880, Pad = 40, CardX = X + Pad, CardW = W - 2 * Pad, CardGap = 12;
-        const auto card_height = [](const usbl::DriveStatus &drive) { return DriveUsage(drive) >= 0.9 ? 140.0 : 114.0; };
+        /* Name and space; a row of tags; the usage bar once the free space is known; the warning when almost full. */
+        const auto card_height = [](const usbl::DriveStatus &drive) {
+            return (drive.free_space != 0 ? 124.0 : 96.0) + (DriveUsage(drive) >= 0.9 ? 28.0 : 0.0);
+        };
+        usbl::ConfigValue homebrew_access = {};
+        const bool show_homebrew_path = R_SUCCEEDED(usbl::GetConfigValue(&homebrew_access, usbl::ConfigKey::HomebrewAccess)) && homebrew_access.enabled;
         double cards_h = 0;
         for (const auto &drive : this->drives) {
             cards_h += card_height(drive) + CardGap;
@@ -706,44 +711,85 @@ namespace ui {
                 draw::RoundRect(CardX + 24, card_y + 20, 48, 48, 14, color::Ground);
                 draw::IconUsbStick(CardX + 48, card_y + 44, 26, color::TextSoft);
                 if (has_space) {
-                    draw::UsageBar(BarX, card_y + 84, BarW, 12, usage);
+                    draw::UsageBar(BarX, card_y + 94, BarW, 12, usage);
                 }
             });
             const std::string space = has_space                    ? strings::Format(Id::FreeOf, { { "FREE", strings::Size(drive.free_space) }, { "TOTAL", strings::Size(drive.capacity) } })
                                     : drive.is_counting_free_space ? strings::Get(Id::CountingSpace)
                                                                    : std::string();
             const double space_w = space.empty() ? 0 : TextWidth(space, 17) + 24;
-            this->Slide(AddText(*this, CardX + 88, card_y + 20, drive.name, 19, color::Text, Align::Left, CardW - 112 - space_w));
+            this->Slide(AddText(*this, CardX + 88, card_y + 18, drive.name, 19, color::Text, Align::Left, CardW - 112 - space_w));
             if (!space.empty()) {
-                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 22, space, 17, has_space ? color::Text : color::Muted, Align::Right));
-                if (has_space) {
-                    this->Slide(AddText(*this, CardX + CardW - 24, card_y + 79, std::to_string(static_cast<s32>(std::lround(usage * 100))) + "%", 14, almost_full ? color::ErrorText : color::Text, Align::Right));
-                }
+                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 20, space, 17, has_space ? color::Text : color::Muted, Align::Right));
+            }
+            if (has_space) {
+                this->Slide(AddText(*this, CardX + CardW - 24, card_y + 89, std::to_string(static_cast<s32>(std::lround(usage * 100))) + "%", 14, almost_full ? color::ErrorText : color::Text, Align::Right));
             }
 
-            std::string detail;
+            /* One tag per fact, in place of a sentence: what is on it first, then where homebrew read it. */
+            struct Tag {
+                std::string text;
+                pu::ui::Color fill;
+                pu::ui::Color ink;
+            };
+            std::vector<Tag> tags;
+            const auto fact  = [&](std::string text) { tags.push_back({ std::move(text), color::Ground, color::TextSoft }); };
+            const auto alert = [&](std::string text) { tags.push_back({ std::move(text), color::AlertSurface, color::AlertText }); };
             switch (drive.state) {
-                case usbl::DriveState::Ready:
-                    detail = (drive.is_exfat ? "exFAT, " : "FAT32, ") + strings::Count(drive.game_count, Id::GameOne, Id::GameMany) + ", " +
-                             strings::Count(drive.update_count, Id::UpdateOne, Id::UpdateMany) + ", " + strings::Count(drive.add_on_count, Id::AddOnOne, Id::AddOnMany);
+                case usbl::DriveState::Reading:
+                    tags.push_back({ strings::Get(Id::DriveReading), color::Ground, color::Info });
                     break;
-                case usbl::DriveState::NoGamesFolder: detail = strings::Get(Id::DriveNoGamesFolder); break;
-                case usbl::DriveState::Reading:       detail = strings::Get(Id::DriveReading);       break;
-                default:                              detail = strings::Get(Id::DriveUnreadable);    break;
+                case usbl::DriveState::Unreadable:
+                    alert(strings::Get(Id::DriveUnreadable));
+                    break;
+                case usbl::DriveState::NoGamesFolder:
+                    fact(drive.is_exfat ? "exFAT" : "FAT32");
+                    alert(strings::Get(Id::DriveNoGamesFolder));
+                    break;
+                case usbl::DriveState::Ready:
+                    fact(drive.is_exfat ? "exFAT" : "FAT32");
+                    if (drive.game_count + drive.update_count + drive.add_on_count == 0) {
+                        tags.push_back({ strings::Get(Id::DriveNoGames), color::Ground, color::Muted });
+                    }
+                    if (drive.game_count != 0) {
+                        fact(strings::Count(drive.game_count, Id::GameOne, Id::GameMany));
+                    }
+                    if (drive.update_count != 0) {
+                        fact(strings::Count(drive.update_count, Id::UpdateOne, Id::UpdateMany));
+                    }
+                    if (drive.add_on_count != 0) {
+                        fact(strings::Count(drive.add_on_count, Id::AddOnOne, Id::AddOnMany));
+                    }
+                    break;
             }
-            /* Where homebrew read it (protocol 1.1; 0 from an older module). */
-            if (drive.volume_serial != 0) {
-                char path[48];
-                std::snprintf(path, sizeof(path), "sdmc:/usbloadernx/usb/%04X-%04X/", static_cast<unsigned>(drive.volume_serial >> 16), static_cast<unsigned>(drive.volume_serial & 0xFFFF));
-                detail += ", " + std::string(path);
+            /* Protocol 1.1; 0 from an older module, and only while homebrew_access is on. */
+            if (drive.volume_serial != 0 && drive.state != usbl::DriveState::Reading && show_homebrew_path) {
+                char path[40];
+                std::snprintf(path, sizeof(path), "/usbloadernx/usb/%04X-%04X", static_cast<unsigned>(drive.volume_serial >> 16), static_cast<unsigned>(drive.volume_serial & 0xFFFF));
+                tags.push_back({ strings::Format(Id::DriveHomebrewPath, { { "PATH", path } }), color::Ground, color::Info });
             }
-            this->Slide(AddText(*this, CardX + 88, card_y + 47, detail, 14, color::Muted, Align::Left, CardW - 112));
+
+            constexpr double TagH = 28, TagPad = 12, TagGap = 8, TagRight = CardX + CardW - 24;
+            double tag_x = CardX + 88;
+            const double tag_y = card_y + 50;
+            for (const auto &tag : tags) {
+                const double tag_w = std::min(TextWidth(tag.text, 14) + 2 * TagPad, TagRight - tag_x);
+                if (tag_w < 2 * TagPad + 24) {
+                    break;
+                }
+                AddPaint(*this, [this, tag_x, tag_y, tag_w, fill = tag.fill]() {
+                    draw::Translate rise(0, this->WindowOffset());
+                    draw::RoundRect(tag_x, tag_y, tag_w, TagH, TagH / 2, fill);
+                });
+                this->Slide(AddText(*this, tag_x + TagPad, tag_y + 5, tag.text, 14, tag.ink, Align::Left, tag_w - 2 * TagPad));
+                tag_x += tag_w + TagGap;
+            }
             if (almost_full) {
                 AddPaint(*this, [this, card_y]() {
                     draw::Translate rise(0, this->WindowOffset());
-                    draw::IconWarning(CardX + 32, card_y + 118, 16, color::ErrorText);
+                    draw::IconWarning(CardX + 32, card_y + 140, 16, color::ErrorText);
                 });
-                this->Slide(AddText(*this, CardX + 48, card_y + 108, strings::Get(Id::AlmostFull), 14, color::ErrorText, Align::Left, CardW - 72));
+                this->Slide(AddText(*this, CardX + 48, card_y + 130, strings::Get(Id::AlmostFull), 14, color::ErrorText, Align::Left, CardW - 72));
             }
             card_y += card_h + CardGap;
         }

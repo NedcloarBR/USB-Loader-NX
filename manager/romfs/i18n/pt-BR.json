@@ -63,11 +63,13 @@
 	},
 	"Drives": {
 		"Title": "Dispositivos USB",
-		"NoGamesFolder": "Pasta usbloadernx/games não encontrada.",
-		"Unreadable": "Não foi possível ler. Use exFAT ou FAT32.",
+		"NoGamesFolder": "Sem a pasta /usbloadernx/games",
+		"Unreadable": "Não foi possível ler: use exFAT ou FAT32",
 		"Reading": "Lendo o dispositivo…",
 		"CountingSpace": "Calculando o espaço livre…",
-		"AlmostFull": "Quase cheio. Libere espaço antes de copiar mais jogos.",
+		"NoGames": "Nenhum jogo",
+		"HomebrewPath": "Homebrew: {{PATH}}",
+		"AlmostFull": "Quase cheio. Libere espaço antes de copiar mais conteúdos.",
 		"Total": "Total: {{FREE}} livres de {{TOTAL}}, {{GAMES}}"
 	},
 	"Settings": {

@@ -55,6 +55,8 @@ namespace strings {
             "Drives.Unreadable",
             "Drives.Reading",
             "Drives.CountingSpace",
+            "Drives.NoGames",
+            "Drives.HomebrewPath",
             "Drives.AlmostFull",
             "Drives.Total",
             "Settings.Title",

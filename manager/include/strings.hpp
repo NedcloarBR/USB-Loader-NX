@@ -57,6 +57,8 @@ namespace strings {
         DriveUnreadable,
         DriveReading,
         CountingSpace,
+        DriveNoGames,
+        DriveHomebrewPath,
         AlmostFull,
         Total,
         SettingsTitle,
