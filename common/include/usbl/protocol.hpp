@@ -28,7 +28,7 @@ namespace usbl::protocol {
      * version; changing what an existing command takes or returns raises the major one, and a Manager refuses to write
      * through a module of another major version. */
     constexpr std::uint16_t VersionMajor = 1;
-    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading. */
+    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading, GetLanguage and SetLanguage. */
     constexpr std::uint16_t VersionMinor = 1;
 
     enum class CommandId : std::uint32_t {
@@ -54,6 +54,9 @@ namespace usbl::protocol {
         /* The Manager is closing: games taken off HOME by a badge change come back now, so HOME fetches their new icons. */
         FinishHomeRefresh    = 19,
         GetVersion           = 20,
+        /* 1.1: the language of the notifications and of the Manager (config.ini `language`). */
+        GetLanguage          = 21,
+        SetLanguage          = 22,
     };
 
     enum VersionFlag : std::uint32_t {
@@ -165,6 +168,20 @@ namespace usbl::protocol {
         std::uint8_t reserved[5];
     };
     static_assert(sizeof(SetConfigValueInput) == 0x8);
+
+    /* A locale ("en-US", "pt-BR"), or empty for the console's language. */
+    struct Language {
+        char locale[0x10];
+    };
+    static_assert(sizeof(Language) == 0x10);
+
+    struct SetLanguageInput {
+        Language language;
+        /* As in SetConfigValueInput. */
+        bool overwrite;
+        std::uint8_t reserved[7];
+    };
+    static_assert(sizeof(SetLanguageInput) == 0x18);
 
     struct SetGameHiddenInput {
         std::uint64_t application_id;

@@ -70,7 +70,9 @@ namespace ams::mitm::usbl::i18n {
         constinit Table g_fallback_table = {};
         constinit Table g_locale_table = {};
         /* setGetLanguageCode packs the code ("pt-BR", "en-US", "zh-Hans") into a u64. */
-        constinit char g_locale[sizeof(u64) + 1] = {};
+        constinit char g_locale[0x10] = {};
+        /* Format runs on the notification threads while the Manager can switch the language. */
+        constinit os::SdkMutex g_lock;
         constinit char g_sd_file_buffer[MaxSdLocaleFileSize];
 
         /* Accepts nested objects of strings, the subset the locale files use. */
@@ -278,8 +280,15 @@ namespace ams::mitm::usbl::i18n {
 
     }
 
-    void Initialize() {
-        ReadSystemLocale();
+    void Initialize(const char *locale) {
+        std::scoped_lock lk(g_lock);
+        g_fallback_table.count = 0;
+        g_locale_table.count   = 0;
+        if (locale != nullptr && locale[0] != '\x00') {
+            util::Strlcpy(g_locale, locale, sizeof(g_locale));
+        } else {
+            ReadSystemLocale();
+        }
 
         if (!LoadEmbedded(std::addressof(g_fallback_table), *FindEmbeddedLocale(FallbackLocale, false))) {
             Log("i18n: embedded %s failed to parse", FallbackLocale);
@@ -308,6 +317,7 @@ namespace ams::mitm::usbl::i18n {
     }
 
     void Format(char *dst, size_t dst_size, const char *key, std::initializer_list<Argument> args) {
+        std::scoped_lock lk(g_lock);
         const char *src = g_locale_table.Find(key);
         if (src == nullptr) {
             src = g_fallback_table.Find(key);

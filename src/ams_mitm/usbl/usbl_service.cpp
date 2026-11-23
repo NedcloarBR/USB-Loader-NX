@@ -23,6 +23,7 @@
 #include "xci/usbl_registration.hpp"
 #include "storage/usbl_volume.hpp"
 #include "usbl_content_api.hpp"
+#include "i18n/usbl_i18n.hpp"
 #include "usbl_results.hpp"
 #include "usbl_log.hpp"
 #include "usbl_notifications.hpp"
@@ -84,6 +85,24 @@ namespace ams::mitm::usbl {
 
     Result Service::ReloadConfig() {
         LoadConfig();
+        char language[sizeof(::usbl::protocol::Language::locale)];
+        usbl::GetLanguage(language, sizeof(language));
+        i18n::Initialize(language);
+        R_SUCCEED();
+    }
+
+    Result Service::GetLanguage(sf::Out<::usbl::protocol::Language> out) {
+        ::usbl::protocol::Language language = {};
+        usbl::GetLanguage(language.locale, sizeof(language.locale));
+        out.SetValue(language);
+        R_SUCCEED();
+    }
+
+    Result Service::SetLanguage(const ::usbl::protocol::SetLanguageInput &input) {
+        char locale[sizeof(input.language.locale) + 1] = {};
+        std::memcpy(locale, input.language.locale, sizeof(input.language.locale));
+        R_TRY(usbl::SetLanguage(locale, input.overwrite));
+        i18n::Initialize(locale);
         R_SUCCEED();
     }
 

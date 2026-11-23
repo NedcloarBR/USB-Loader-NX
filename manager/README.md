@@ -50,6 +50,7 @@ When a game was already played with an update that is no longer on its drive, th
 | HOME Menu | Homebrew access to each USB drive's `usbloadernx/usb/` (read-only, at `sdmc:/usbloadernx/usb/<volume serial>/`); needs USB Loader NX 1.1 | the module's `config.ini` |
 | HOME Menu | USB badge on icons (HOME shows the change as soon as it comes to the front) | the module's `config.ini` |
 | HOME Menu | Notifications (Ultrahand) | the module's `config.ini` |
+| Manager | Language of the Manager and of the notifications: the system's, English or Português (Brasil); needs USB Loader NX 1.1 | the module's `config.ini` (`language`) |
 | Manager | Sound effects | `manager.ini` |
 | Manager | Theme, picked from a row of previews | `manager.ini` |
 | Manager | Theme music, and its volume (0 to 100 %) | `manager.ini` |

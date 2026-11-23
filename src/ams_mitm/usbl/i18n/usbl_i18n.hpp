@@ -26,7 +26,8 @@ namespace ams::mitm::usbl::i18n {
         const char *value;
     };
 
-    void Initialize();
+    /* (Re)loads the strings: the given locale (config.ini `language`), or the console's language when it is empty. */
+    void Initialize(const char *locale);
     const char *GetLocale();
 
     /* Writes the translated string with its placeholders replaced; a missing key yields the key itself. */

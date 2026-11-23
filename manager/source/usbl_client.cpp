@@ -101,6 +101,21 @@ namespace usbl {
         return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::SetConfigValue), in);
     }
 
+    Result GetLanguage(std::string *out) {
+        protocol::Language language = {};
+        const Result rc = serviceDispatchOut(&g_service, ToCommand(protocol::CommandId::GetLanguage), language);
+        if (R_SUCCEEDED(rc)) {
+            *out = std::string(language.locale, strnlen(language.locale, sizeof(language.locale)));
+        }
+        return rc;
+    }
+
+    Result SetLanguage(const std::string &locale) {
+        protocol::SetLanguageInput in = { .language = {}, .overwrite = g_overwrite_newer_config, .reserved = {} };
+        std::memcpy(in.language.locale, locale.data(), std::min(locale.size(), sizeof(in.language.locale) - 1));
+        return serviceDispatchIn(&g_service, ToCommand(protocol::CommandId::SetLanguage), in);
+    }
+
     void SetOverwriteNewerConfig(bool overwrite) {
         g_overwrite_newer_config = overwrite;
     }

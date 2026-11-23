@@ -101,7 +101,11 @@ namespace ams::mitm::usbl {
             util::SNPrintf(path, sizeof(path), "%s:%s", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::HomebrewUsbDir);
             R_DISCARD(ams::fs::CreateDirectory(path));
         }
-        i18n::Initialize();
+        {
+            char language[sizeof(::usbl::protocol::Language::locale)];
+            GetLanguage(language, sizeof(language));
+            i18n::Initialize(language);
+        }
         InitializeNotifications();
         LoadKnownContents();
         LoadHiddenGames();

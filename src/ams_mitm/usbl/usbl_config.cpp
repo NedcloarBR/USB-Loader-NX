@@ -45,6 +45,10 @@ namespace ams::mitm::usbl {
 
         constinit os::SdkMutex g_config_lock;
         constinit util::optional<bool> g_file_values[util::size(ConfigKeys)] = {};
+        /* `language`: empty for the console's language. */
+        constexpr const char LanguageKey[] = "language";
+        constexpr const char SystemLanguage[] = "system";
+        constinit char g_language[sizeof(::usbl::protocol::Language::locale)] = {};
         constinit int g_file_version = ::usbl::formats::Config;
 
         /* Keys this version does not know (from a newer version, or added by hand), written back as they were. */
@@ -65,6 +69,15 @@ namespace ams::mitm::usbl {
                 return false;
             }
             return util::nullopt;
+        }
+
+        /* "en-US", "pt-BR", "ja": letters, digits and '-', short enough for the wire format. */
+        bool IsValidLocale(const char *locale) {
+            const size_t len = std::strlen(locale);
+            if (len == 0 || len >= sizeof(g_language)) {
+                return false;
+            }
+            return std::all_of(locale, locale + len, [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-'; });
         }
 
         void KeepUnknownLine(const char *section, const char *name, const char *value) {
@@ -94,6 +107,16 @@ namespace ams::mitm::usbl {
             }
 
             if (std::strcmp(section, SettingsSection) == 0) {
+                if (std::strcmp(name, LanguageKey) == 0) {
+                    if (std::strcmp(value, SystemLanguage) == 0 || value[0] == '\x00') {
+                        g_language[0] = '\x00';
+                    } else if (IsValidLocale(value)) {
+                        util::Strlcpy(g_language, value, sizeof(g_language));
+                    } else {
+                        Log("config: %s = '%s' ignored (use %s or a locale like en-US)", name, value, SystemLanguage);
+                    }
+                    return 1;
+                }
                 for (size_t i = 0; i < util::size(ConfigKeys); ++i) {
                     if (std::strcmp(name, ConfigKeys[i].name) != 0) {
                         continue;
@@ -116,11 +139,15 @@ namespace ams::mitm::usbl {
         }
 
         /* Rewrites the whole file: created on first boot with the defaults, then by the Manager. Requires g_config_lock. */
-        Result WriteConfigFile(const char *path, const bool *values) {
+        Result WriteConfigFile(const char *path, const bool *values, const char *language) {
             char text[MaxConfigFileSize];
             size_t len = util::SNPrintf(text, sizeof(text), "[%s]\n%s = %d\n\n[%s]\n; 0 = Disabled, 1 = Enabled\n", ::usbl::formats::FormatSection, ::usbl::formats::VersionKey, ::usbl::formats::Config, SettingsSection);
             for (size_t i = 0; i < util::size(ConfigKeys) && len < sizeof(text); ++i) {
                 len += util::SNPrintf(text + len, sizeof(text) - len, "; %s\n%s = %d\n", ConfigKeys[i].description, ConfigKeys[i].name, values[i] ? 1 : 0);
+            }
+            if (len < sizeof(text)) {
+                len += util::SNPrintf(text + len, sizeof(text) - len, "; Language of the notifications and the Manager: %s (the console's), en-US or pt-BR.\n%s = %s\n",
+                                      SystemLanguage, LanguageKey, language[0] != '\x00' ? language : SystemLanguage);
             }
 
             /* Unknown keys of [usbloadernx] were recorded without a header of their own; the others carry theirs. */
@@ -161,6 +188,7 @@ namespace ams::mitm::usbl {
             value = util::nullopt;
         }
         g_file_version       = ::usbl::formats::Config;
+        g_language[0]        = '\x00';
         g_unknown_length     = 0;
         g_unknown_lines[0]   = '\x00';
         g_unknown_section[0] = '\x00';
@@ -174,7 +202,7 @@ namespace ams::mitm::usbl {
             for (size_t i = 0; i < util::size(ConfigKeys); ++i) {
                 defaults[i] = ConfigKeys[i].default_enabled;
             }
-            if (const Result result = WriteConfigFile(path, defaults); R_FAILED(result)) {
+            if (const Result result = WriteConfigFile(path, defaults, ""); R_FAILED(result)) {
                 Log("config: config.ini not created 2%03d-%04d, using defaults", result.GetModule(), result.GetDescription());
                 return;
             }
@@ -237,7 +265,7 @@ namespace ams::mitm::usbl {
 
         char path[ams::fs::EntryNameLengthMax + 1];
         FormatConfigPath(path, sizeof(path));
-        R_TRY(WriteConfigFile(path, values));
+        R_TRY(WriteConfigFile(path, values, g_language));
 
         /* Every key is now in the file, in this version's format. */
         for (size_t i = 0; i < util::size(ConfigKeys); ++i) {
@@ -253,6 +281,35 @@ namespace ams::mitm::usbl {
 
     bool IsConfigEnabled(ConfigKey key) {
         return GetConfigValue(key).enabled;
+    }
+
+    void GetLanguage(char *dst, size_t dst_size) {
+        std::scoped_lock lk(g_config_lock);
+        util::Strlcpy(dst, g_language, dst_size);
+    }
+
+    Result SetLanguage(const char *locale, bool overwrite) {
+        R_UNLESS(locale[0] == '\x00' || IsValidLocale(locale), ams::fs::ResultInvalidArgument());
+
+        std::scoped_lock lk(g_config_lock);
+        R_UNLESS(g_file_version <= ::usbl::formats::Config || overwrite, usbl::ResultNewerFormat());
+
+        bool values[util::size(ConfigKeys)];
+        for (size_t i = 0; i < util::size(ConfigKeys); ++i) {
+            values[i] = GetEffectiveValueLocked(i);
+        }
+
+        char path[ams::fs::EntryNameLengthMax + 1];
+        FormatConfigPath(path, sizeof(path));
+        R_TRY(WriteConfigFile(path, values, locale));
+
+        for (size_t i = 0; i < util::size(ConfigKeys); ++i) {
+            g_file_values[i] = values[i];
+        }
+        g_file_version = ::usbl::formats::Config;
+        util::Strlcpy(g_language, locale, sizeof(g_language));
+        Log("config: %s = %s (set by the Manager)", LanguageKey, locale[0] != '\x00' ? locale : SystemLanguage);
+        R_SUCCEED();
     }
 
 }

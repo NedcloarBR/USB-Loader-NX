@@ -153,6 +153,9 @@ namespace strings {
             "System.WriteAnyway",
             "Common.Close",
             "Settings.ThemeFromNewerVersion",
+            "Settings.Language",
+            "Settings.LanguageHelp",
+            "Settings.LanguageSystem",
         };
         static_assert(std::size(Keys) == static_cast<size_t>(Id::Count));
 
@@ -180,13 +183,13 @@ namespace strings {
 
     }
 
-    void Initialize() {
+    void Initialize(const std::string &chosen_locale) {
         /* Each file is merged whole or not at all, so a broken translation cannot leave half its keys. */
         json::Table table;
         json::ReadFlatFile(&table, std::string("romfs:/i18n/") + DefaultLocale + ".json");
 
         /* The console's language, else its language family ("pt" falls back to pt-BR, the one we ship). */
-        const std::string locale = GetConsoleLocale();
+        const std::string locale = chosen_locale.empty() ? GetConsoleLocale() : chosen_locale;
         if (locale != DefaultLocale && !json::ReadFlatFile(&table, "romfs:/i18n/" + locale + ".json") && locale.rfind("pt", 0) == 0) {
             json::ReadFlatFile(&table, "romfs:/i18n/pt-BR.json");
         }

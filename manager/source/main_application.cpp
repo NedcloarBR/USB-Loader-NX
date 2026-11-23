@@ -123,6 +123,10 @@ namespace ui {
 
         this->system = system_check::Run();
         this->service_available = this->system.state == system_check::State::Ready;
+        /* The language chosen in the settings (protocol 1.1), kept in config.ini with the module's. */
+        if (std::string language; this->service_available && usbl::GetModuleMinorVersion() >= 1 && R_SUCCEEDED(usbl::GetLanguage(&language)) && !language.empty()) {
+            strings::Initialize(language);
+        }
         this->ShowLibrary();
         this->library_screen->Enter();
         this->ShowSystemNotice();

@@ -156,12 +156,16 @@ namespace strings {
         Close,
         ThemeFromNewerVersion,
 
+        SettingLanguage,
+        SettingLanguageHelp,
+        SettingLanguageSystem,
         Count,
     };
 
     using Argument = std::pair<std::string_view, std::string>;
 
-    void Initialize();
+    /* Loads the strings of a locale ("pt-BR"), or of the console's language when it is empty. */
+    void Initialize(const std::string &locale = {});
     const std::string &Get(Id id);
 
     /* Replaces each {{NAME}} with its argument. */

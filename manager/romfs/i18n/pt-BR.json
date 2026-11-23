@@ -95,14 +95,17 @@
 		"MusicHelp": "Toca a música de fundo do tema, abaixo dos efeitos sonoros.",
 		"MusicUnavailable": "O tema escolhido não tem música.",
 		"SectionHomeHelp": "Como os jogos do pendrive aparecem no console.",
-		"SectionManagerHelp": "Sons, música e aparência do Manager.",
+		"SectionManagerHelp": "Idioma, sons, música e aparência do Manager.",
 		"ThemeInUse": "Em uso",
 		"MusicVolume": "Volume da música",
 		"MusicVolumeHelp": "Esquerda e Direita ajustam; os efeitos sonoros continuam iguais.",
 		"ThemeFromNewerVersion": "feito para uma versão mais nova",
 		"HomebrewAccess": "Acesso dos homebrews ao USB",
 		"HomebrewAccessHelp": "Os homebrews leem a pasta usbloadernx/usb de cada dispositivo USB (só leitura) em sdmc:/usbloadernx/usb/<serial do volume>/. Os jogos não são afetados.",
-		"NeedsNewerModule": "Precisa do USB Loader NX 1.1 ou mais novo no Atmosphère."
+		"NeedsNewerModule": "Precisa do USB Loader NX 1.1 ou mais novo no Atmosphère.",
+		"Language": "Idioma",
+		"LanguageHelp": "Do Manager e das notificações.",
+		"LanguageSystem": "Do sistema"
 	},
 	"About": {
 		"Version": "Versão {{VERSION}}",

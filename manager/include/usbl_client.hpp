@@ -44,6 +44,10 @@ namespace usbl {
     /* A config.ini from a newer version is only rewritten after SetOverwriteNewerConfig(true) (the user said so). */
     Result SetConfigValue(ConfigKey key, bool enabled);
     void SetOverwriteNewerConfig(bool overwrite);
+    /* Protocol 1.1: config.ini `language`, a locale ("pt-BR") or empty for the console's; the module switches its
+     * notifications to it at once. */
+    Result GetLanguage(std::string *out);
+    Result SetLanguage(const std::string &locale);
     Result ListDrives(std::vector<DriveStatus> *out);
     Result ListGames(std::vector<GameStatus> *out);
     Result SetGameHidden(u64 application_id, bool hidden);

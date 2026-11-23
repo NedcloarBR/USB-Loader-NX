@@ -34,4 +34,9 @@ namespace ams::mitm::usbl {
     bool IsConfigFromNewerVersion();
     bool IsConfigEnabled(ConfigKey key);
 
+    /* `language` in config.ini: a locale ("pt-BR"), or empty for the console's language. */
+    void GetLanguage(char *dst, size_t dst_size);
+    /* Rewrites config.ini like SetConfigValue; the caller reloads the strings (i18n::Initialize). */
+    Result SetLanguage(const char *locale, bool overwrite);
+
 }

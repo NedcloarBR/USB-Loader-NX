@@ -69,7 +69,41 @@ namespace ui {
               nullptr, Id::SettingNeedsNewerModule },
         };
 
+        /* Empty: the console's language. Each language is named in itself. */
+        struct LanguageChoice {
+            const char *locale;
+            const char *name;
+        };
+        constexpr LanguageChoice Languages[] = { { "", nullptr }, { "en-US", "English" }, { "pt-BR", "Português (Brasil)" } };
+
+        size_t CurrentLanguage() {
+            std::string locale;
+            if (R_FAILED(usbl::GetLanguage(&locale))) {
+                return 0;
+            }
+            const auto found = std::find_if(std::begin(Languages), std::end(Languages), [&](const LanguageChoice &choice) { return locale == choice.locale; });
+            return found != std::end(Languages) ? static_cast<size_t>(found - std::begin(Languages)) : 0;
+        }
+
+        std::string LanguageName() {
+            const auto &choice = Languages[CurrentLanguage()];
+            return choice.name != nullptr ? choice.name : strings::Get(Id::SettingLanguageSystem);
+        }
+
+        /* The module writes config.ini and switches its notifications; the Manager reloads its own strings. */
+        bool NextLanguage() {
+            const std::string next = Languages[(CurrentLanguage() + 1) % std::size(Languages)].locale;
+            if (R_FAILED(usbl::SetLanguage(next))) {
+                return false;
+            }
+            strings::Initialize(next);
+            return true;
+        }
+
         constexpr SettingOption ManagerOptions[] = {
+            /* Protocol 1.1. */
+            { Id::SettingLanguage, Id::SettingLanguageHelp, [] { return false; }, [](bool) { return NextLanguage(); }, [] { return usbl::GetModuleMinorVersion() >= 1; },
+              LanguageName, Id::SettingNeedsNewerModule },
             { Id::SettingSounds, Id::SettingSoundsHelp, sound::IsEnabled, sound::SetEnabled, [] { return true; } },
             { Id::SettingTheme, Id::SettingThemeHelp, [] { return false; }, [](bool) { return true; }, [] { return true; },
               [] { return theme::Current().empty() ? strings::Get(Id::SettingThemeDefault) : theme::DisplayName(); } },
