@@ -17,6 +17,33 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 
 Every release of USB Loader NX, newest first.
 
+## v1.1.0 — 2026-11-22
+
+### ✨ Features
+
+- **usbl:** Name each drive by its volume serial, add homebrew_access ([`3c37fba`](https://github.com/NedcloarBR/USB-Loader-NX/commit/3c37fba9cda6fe04b0dfb8591336998e094dc63c) by @NedcloarBR)
+- **manager:** Homebrew access option and each drive's folder ([`bc39c43`](https://github.com/NedcloarBR/USB-Loader-NX/commit/bc39c43c1a8ee2c2f18cc850548869e39b94c7a6) by @NedcloarBR)
+- **fs_mitm:** Let homebrew read the drives at sdmc:/usbloadernx/usb ([`c245a02`](https://github.com/NedcloarBR/USB-Loader-NX/commit/c245a02744b0c4f7163d83206fa6f554bb35538b) by @NedcloarBR)
+- **usbl:** List a drive while it is being read ([`5121b00`](https://github.com/NedcloarBR/USB-Loader-NX/commit/5121b007694352212b4c2a17625045933ca2851c) by @NedcloarBR)
+- **usbl:** Notifications as a title and a short list ([`8d59e8b`](https://github.com/NedcloarBR/USB-Loader-NX/commit/8d59e8bd8d66ad373c6ca5c8091a3311da5ee250) by @NedcloarBR)
+- **manager:** Show each drive's details as tags ([`cbc4b60`](https://github.com/NedcloarBR/USB-Loader-NX/commit/cbc4b6070c4f01eaad51debd5a9b154c1307aae4) by @NedcloarBR)
+- Choose the language of the Manager and the notifications ([`abba816`](https://github.com/NedcloarBR/USB-Loader-NX/commit/abba8168e839c9dd373f67a6a3edecfe037d9981) by @NedcloarBR)
+
+### 🐛 Fixes
+
+- **usbl:** Size a drive by its mounted volume ([`9102f35`](https://github.com/NedcloarBR/USB-Loader-NX/commit/9102f35eadfeee002a3e4d9edc0e4e677ea6ef35) by @NedcloarBR)
+- **usbl:** Wait for hard drives to spin up ([`9a9601f`](https://github.com/NedcloarBR/USB-Loader-NX/commit/9a9601f34b745b7a7dc1cbe506c480c1a4f0b90c) by @NedcloarBR)
+
+### ⚡ Performance
+
+- **usbl:** Take the FAT32 free space from FSInfo ([`38db127`](https://github.com/NedcloarBR/USB-Loader-NX/commit/38db1275e1c77667886efcc06a4093d073619837) by @NedcloarBR)
+
+### 📝 Documentation
+
+- Homebrew access to the USB drives ([`b7fc08c`](https://github.com/NedcloarBR/USB-Loader-NX/commit/b7fc08c771ce0f24fc058731f311e61dfe5daa82) by @NedcloarBR)
+
+**Full changelog:** [v1.0.0...v1.1.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v1.0.0...v1.1.0)
+
 ## v1.0.0 — 2026-11-21
 
 ### ✨ Features
