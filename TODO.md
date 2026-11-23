@@ -37,6 +37,7 @@ A desktop app to manage a drive's dumps and installs from the computer, written 
 ## Game formats
 
 - [ ] Compressed dumps: NSZ, and XCZ in block mode (random access, needed to play without installing)
+- [ ] NSPs with several titles (game, update and DLC in one file): keep and import every ticket, not only the last one, and count each content meta by its kind instead of the first one's
 - [ ] Data patches for DLC (DLC with their own updates)
 - [ ] Applications with more than one program (only program index 0 is served today)
 
