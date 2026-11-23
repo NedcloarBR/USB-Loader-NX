@@ -72,7 +72,8 @@ namespace ams::mitm::usbl {
     AMS_SF_METHOD_INFO(C, H, 19, Result, FinishHomeRefresh,      (),                                                                                                        ())               \
     AMS_SF_METHOD_INFO(C, H, 20, Result, GetVersion,             (sf::Out<::usbl::protocol::VersionInfo> out),                                                              (out))               \
     AMS_SF_METHOD_INFO(C, H, 21, Result, GetLanguage,            (sf::Out<::usbl::protocol::Language> out),                                                                 (out))               \
-    AMS_SF_METHOD_INFO(C, H, 22, Result, SetLanguage,            (const ::usbl::protocol::SetLanguageInput &input),                                                         (input))
+    AMS_SF_METHOD_INFO(C, H, 22, Result, SetLanguage,            (const ::usbl::protocol::SetLanguageInput &input),                                                         (input))             \
+    AMS_SF_METHOD_INFO(C, H, 23, Result, ListLeftOutFiles,       (sf::Out<s32> out_count, const sf::OutArray<::usbl::protocol::LeftOutFile> &out),                          (out_count, out))
 
 AMS_SF_DEFINE_INTERFACE(ams::mitm::usbl::impl, IService, AMS_USBL_I_SERVICE_INTERFACE_INFO, 0x00000000)
 
@@ -102,6 +103,8 @@ namespace ams::mitm::usbl {
             /* 1.1: config.ini `language`; setting it switches the notifications' language at once. */
             Result GetLanguage(sf::Out<::usbl::protocol::Language> out);
             Result SetLanguage(const ::usbl::protocol::SetLanguageInput &input);
+            /* 1.2: the dumps and folders the indexing left out, and why. */
+            Result ListLeftOutFiles(sf::Out<s32> out_count, const sf::OutArray<::usbl::protocol::LeftOutFile> &out);
         private:
             ServedContentInfo FindContent(ncm::ContentId content_id);
             Result ReadCachedContent(ncm::ContentId content_id, s64 offset, void *dst, size_t size);

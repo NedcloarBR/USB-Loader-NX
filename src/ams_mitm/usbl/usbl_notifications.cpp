@@ -246,7 +246,7 @@ namespace ams::mitm::usbl {
         if (drive.left_out > 0) {
             char number[16];
             util::SNPrintf(number, sizeof(number), "%zu", drive.left_out);
-            lines.Add("Notifications.Connected.LeftOut", { { "COUNT", number } });
+            lines.Add(drive.solid_compressed == drive.left_out ? "Notifications.Connected.SolidCompressed" : "Notifications.Connected.LeftOut", { { "COUNT", number } });
         }
 
         Post(drive.has_games_folder ? ConnectedIcon : RemovedIcon, title, lines.Get());

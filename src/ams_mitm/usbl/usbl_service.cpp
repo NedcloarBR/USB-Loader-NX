@@ -137,6 +137,11 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
+    Result Service::ListLeftOutFiles(sf::Out<s32> out_count, const sf::OutArray<::usbl::protocol::LeftOutFile> &out) {
+        out_count.SetValue(GetLeftOutFiles(out.GetPointer(), static_cast<s32>(out.GetSize())));
+        R_SUCCEED();
+    }
+
     Result Service::ListGames(sf::Out<s32> out_count, const sf::OutArray<content::GameStatus> &out) {
         out_count.SetValue(content::GetGameStatuses(out.GetPointer(), static_cast<s32>(out.GetSize())));
         R_SUCCEED();

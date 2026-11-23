@@ -12,7 +12,8 @@
 			"NoGamesFolder": "• No /usbloadernx/games folder",
 			"Volume": "• {{SIZE}} · {{FILESYSTEM}}",
 			"Homebrew": "• Homebrew: /usbloadernx/usb/{{SERIAL}}",
-			"LeftOut": "• {{COUNT}} item(s) not read, see the log"
+			"LeftOut": "• {{COUNT}} item(s) not read, see the Manager",
+			"SolidCompressed": "• {{COUNT}} NSZ/XCZ in solid mode, not read"
 		},
 		"Count": {
 			"GameOne": "1 game",

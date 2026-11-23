@@ -28,8 +28,9 @@ namespace usbl::protocol {
      * version; changing what an existing command takes or returns raises the major one, and a Manager refuses to write
      * through a module of another major version. */
     constexpr std::uint16_t VersionMajor = 1;
-    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading, GetLanguage and SetLanguage. */
-    constexpr std::uint16_t VersionMinor = 1;
+    /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading, GetLanguage and SetLanguage.
+     * 1.2: ListLeftOutFiles. */
+    constexpr std::uint16_t VersionMinor = 2;
 
     enum class CommandId : std::uint32_t {
         IsServedProgram      = 0,  /* loader */
@@ -57,6 +58,8 @@ namespace usbl::protocol {
         /* 1.1: the language of the notifications and of the Manager (config.ini `language`). */
         GetLanguage          = 21,
         SetLanguage          = 22,
+        /* 1.2: the dumps and folders the drives' indexing left out, and why. */
+        ListLeftOutFiles     = 23,
     };
 
     enum VersionFlag : std::uint32_t {
@@ -190,6 +193,26 @@ namespace usbl::protocol {
     };
     static_assert(sizeof(SetGameHiddenInput) == 0x10);
 
+    enum class LeftOutReason : std::uint8_t {
+        PathTooLong      = 0,
+        FolderTooDeep    = 1,
+        TooManyEntries   = 2,
+        /* No memory left for the index; path is empty. */
+        IndexFull        = 3,
+        /* An NSZ or XCZ compressed in solid mode, which cannot be read without decompressing it all. */
+        SolidCompression = 4,
+    };
+
+    struct LeftOutFile {
+        std::int32_t drive;
+        LeftOutReason reason;
+        std::uint8_t reserved[3];
+        /* Inside the drive's usbloadernx/games ("RPG/Game.nsz"); a long one keeps its end, after "...". */
+        char path[0x100];
+    };
+    static_assert(sizeof(LeftOutFile) == 0x108);
+
+    static_assert(std::is_trivially_copyable_v<LeftOutFile>);
     static_assert(std::is_trivially_copyable_v<ConfigValue> && std::is_trivially_copyable_v<VersionInfo> && std::is_trivially_copyable_v<DriveStatus> && std::is_trivially_copyable_v<GameStatus>);
 
 }

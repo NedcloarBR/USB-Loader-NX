@@ -24,9 +24,14 @@ namespace ams::mitm::usbl {
 
     using DriveState  = ::usbl::protocol::DriveState;
     using DriveStatus = ::usbl::protocol::DriveStatus;
+    using LeftOutReason = ::usbl::protocol::LeftOutReason;
+    using LeftOutFile = ::usbl::protocol::LeftOutFile;
 
     /* Drives plugged in and attached right now. */
     s32 GetDriveStatuses(DriveStatus *out, s32 max_count);
+
+    /* What the indexing of the drives plugged in left out, and why. */
+    s32 GetLeftOutFiles(LeftOutFile *out, s32 max_count);
 
     /* Capacity and free space measured at mount. Requires the volume lock. */
     bool GetDriveSpace(s32 drive, u64 *out_free, u64 *out_total);

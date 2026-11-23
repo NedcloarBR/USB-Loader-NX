@@ -32,8 +32,10 @@ namespace ams::mitm::usbl {
         size_t games;
         size_t updates;
         size_t add_ons;
-        /* Dumps or folders not read; the log says which and why. */
+        /* Dumps or folders not read; the Manager and the log say which and why. */
         size_t left_out;
+        /* Of those, the NSZ and XCZ compressed in solid mode. */
+        size_t solid_compressed;
     };
 
     /* Each one is a title and a short list. */

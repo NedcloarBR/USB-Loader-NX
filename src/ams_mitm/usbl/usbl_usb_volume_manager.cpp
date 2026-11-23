@@ -80,6 +80,16 @@ namespace ams::mitm::usbl {
          * the Manager can list a drive that is still being read. Taken inside the volume lock, never around it. */
         constinit os::SdkMutex g_status_lock;
 
+        /* Dumps and folders the indexing left out, and why, for the Manager. Written by this thread under g_status_lock. */
+        constexpr s32 MaxLeftOutFiles = 64;
+        constinit LeftOutFile g_left_out[MaxLeftOutFiles] = {};
+        constinit s32 g_left_out_count = 0;
+
+        void ForgetLeftOut(s32 drive) {
+            std::scoped_lock lk(g_status_lock);
+            g_left_out_count = static_cast<s32>(std::remove_if(g_left_out, g_left_out + g_left_out_count, [drive](const LeftOutFile &file) { return file.drive == drive; }) - g_left_out);
+        }
+
         /* Drives that dropped off the bus because the console went to sleep; their return is not announced. */
         constinit DriveIdentity g_sleeping_drives[MaxDrives] = {};
         constinit s32 g_sleeping_drive_count = 0;
@@ -140,9 +150,38 @@ namespace ams::mitm::usbl {
             size_t games;
             size_t updates;
             size_t add_ons;
-            /* Dumps and folders not read: path too long, folder too deep, too many entries, index full. */
+            /* Dumps and folders not read: path too long, folder too deep, too many entries, index full, solid NSZ/XCZ. */
             size_t left_out;
+            /* Of those, the NSZ and XCZ compressed in solid mode. */
+            size_t solid_compressed;
         };
+
+        /* Counts it and keeps it (with the path inside games) for the Manager. */
+        void NoteLeftOut(GameFileCount *count, s32 drive, LeftOutReason reason, const char *path) {
+            ++count->left_out;
+            if (reason == LeftOutReason::SolidCompression) {
+                ++count->solid_compressed;
+            }
+
+            char prefix[VolumePathLength + sizeof(GamesFolderPath) + 1];
+            const size_t prefix_length = util::SNPrintf(prefix, sizeof(prefix), "%d:%s/", drive, GamesFolderPath);
+            if (std::strncmp(path, prefix, prefix_length) == 0) {
+                path += prefix_length;
+            }
+
+            std::scoped_lock lk(g_status_lock);
+            if (g_left_out_count >= MaxLeftOutFiles) {
+                return;
+            }
+            LeftOutFile &file = g_left_out[g_left_out_count++];
+            file = { .drive = drive, .reason = reason, .reserved = {}, .path = {} };
+            const size_t length = std::strlen(path);
+            if (length < sizeof(file.path)) {
+                util::Strlcpy(file.path, path, sizeof(file.path));
+            } else {
+                util::SNPrintf(file.path, sizeof(file.path), "...%s", path + length - (sizeof(file.path) - 4));
+            }
+        }
 
         bool IsDumpName(const char *name) {
             return HasExtension(name, "xci") || HasExtension(name, "xcz") || HasExtension(name, "nsp") || HasExtension(name, "nsz");
@@ -164,7 +203,7 @@ namespace ams::mitm::usbl {
                 if (static_cast<size_t>(util::SNPrintf(path, sizeof(path), "%s/%s", folder, info.fname)) >= sizeof(path)) {
                     if (is_folder || IsDumpName(info.fname)) {
                         Log("left out %s/%s: the path is longer than %zu bytes", folder, info.fname, MaxPathLength - 1);
-                        ++count->left_out;
+                        NoteLeftOut(count, drive, LeftOutReason::PathTooLong, info.fname);
                     }
                     continue;
                 }
@@ -174,7 +213,7 @@ namespace ams::mitm::usbl {
                         IndexGameFolder(drive, path, depth + 1, count);
                     } else {
                         Log("left out %s: only two levels of folders inside games are read", path);
-                        ++count->left_out;
+                        NoteLeftOut(count, drive, LeftOutReason::FolderTooDeep, path);
                     }
                 } else if (HasExtension(info.fname, "xci") || HasExtension(info.fname, "xcz")) {
                     ++count->games;
@@ -186,11 +225,15 @@ namespace ams::mitm::usbl {
                         count->add_ons += titles.add_ons;
                     }
                 }
+                if (content::TakeUnsupportedNczCount() > 0) {
+                    Log("left out %s: compressed in solid mode (compress it again in block mode)", path);
+                    NoteLeftOut(count, drive, LeftOutReason::SolidCompression, path);
+                }
             }
 
             if (entries == MaxListedEntries && f_readdir(std::addressof(dir), std::addressof(info)) == FR_OK && info.fname[0] != '\x00') {
                 Log("left out: %s has more than %zu entries, the rest is not read", folder, MaxListedEntries);
-                ++count->left_out;
+                NoteLeftOut(count, drive, LeftOutReason::TooManyEntries, folder);
             }
         }
 
@@ -206,11 +249,14 @@ namespace ams::mitm::usbl {
             }
 
             GameFileCount count = {};
+            ForgetLeftOut(drive);
             R_DISCARD(TakeIndexFullCount());
+            R_DISCARD(content::TakeUnsupportedNczCount());
             IndexGameFolder(drive, folder, 0, std::addressof(count));
             if (const s32 full = TakeIndexFullCount(); full > 0) {
                 Log("left out %d files: no memory left for the index", full);
-                count.left_out += full;
+                NoteLeftOut(std::addressof(count), drive, LeftOutReason::IndexFull, "");
+                count.left_out += full - 1;
             }
             Log("drive %d: %zu games, %zu updates, %zu add-ons, %d contents indexed in total", drive, count.games, count.updates, count.add_ons, GetIndexedContentCount());
             if (count.left_out > 0) {
@@ -410,6 +456,7 @@ namespace ams::mitm::usbl {
                     .updates          = game_files.updates,
                     .add_ons          = game_files.add_ons,
                     .left_out         = game_files.left_out,
+                    .solid_compressed = game_files.solid_compressed,
                 });
             }
 
@@ -474,6 +521,8 @@ namespace ams::mitm::usbl {
                 std::scoped_lock status_lk(g_status_lock);
                 slot.is_listed = false;
             }
+
+            ForgetLeftOut(drive);
 
             /* A drive the console unpowers for sleep comes right back; its games stay on HOME. */
             if (!by_sleep) {
@@ -567,6 +616,14 @@ namespace ams::mitm::usbl {
                 out[count++] = g_slots[drive].status;
             }
         }
+        return count;
+    }
+
+    s32 GetLeftOutFiles(LeftOutFile *out, s32 max_count) {
+        std::scoped_lock lk(g_status_lock);
+
+        const s32 count = std::min(max_count, g_left_out_count);
+        std::copy(g_left_out, g_left_out + count, out);
         return count;
     }
 
