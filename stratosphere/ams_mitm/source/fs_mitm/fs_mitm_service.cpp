@@ -408,8 +408,8 @@ namespace ams::mitm::fs {
     }
 
     Result FsMitmService::OpenDataStorageWithProgramIndex(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorage>> out, u8 program_index) {
-        /* USB Loader NX only serves single-program applications: index 0 is the client itself. */
-        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
+        /* USB Loader NX: any program of the client's application (several in a collection). */
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), usbl_hooks::GetProgramIdOfIndex(m_client_info.program_id, program_index), m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
@@ -513,8 +513,8 @@ namespace ams::mitm::fs {
     }
     
     Result FsMitmService::OpenDataStorageWithProgramIndexForBatchRead(sf::Out<sf::SharedPointer<ams::fssrv::sf::IStorageForBatchRead>> out, u8 program_index) {
-        /* USB Loader NX only serves single-program applications: index 0 is the client itself. */
-        if (const Result usbl_result = program_index == 0 ? usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), m_client_info.program_id, m_client_info.override_status.IsProgramSpecific()) : sm::mitm::ResultShouldForwardToSession(); usbl_hooks::IsHandled(usbl_result)) {
+        /* USB Loader NX: any program of the client's application (several in a collection). */
+        if (const Result usbl_result = usbl_hooks::OpenProgramDataStorage(out, m_forward_service.get(), usbl_hooks::GetProgramIdOfIndex(m_client_info.program_id, program_index), m_client_info.override_status.IsProgramSpecific()); usbl_hooks::IsHandled(usbl_result)) {
             R_RETURN(usbl_result);
         }
 
