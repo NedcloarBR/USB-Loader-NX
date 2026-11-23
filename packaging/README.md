@@ -1,6 +1,6 @@
 # USB Loader NX {{VERSION}}
 
-Play your Nintendo Switch games (`.xci` and `.nsp` files) straight from a USB drive or external hard drive, without taking space on the SD card.
+Play your Nintendo Switch games (`.xci` and `.nsp` files, or `.nsz` and `.xcz` compressed in block mode) straight from a USB drive or external hard drive, without taking space on the SD card.
 
 ## Before you start
 

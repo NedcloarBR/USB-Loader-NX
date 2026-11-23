@@ -21,7 +21,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 
 | | |
 |---|---|
-| **Formats** | XCI (game card dumps) and NSP (eShop), with their updates and DLC, from exFAT or FAT32 drives |
+| **Formats** | XCI (game card dumps) and NSP (eShop), with their updates, DLC and DLC updates, also NSZ and XCZ compressed in block mode and NSPs that hold several titles (game, update and DLC in one file); games with several programs (collections); from exFAT or FAT32 drives |
 | **HOME menu** | Games show up like installed ones, with a badge marking where they come from |
 | **eShop content** | Titlekeys come from the console's own `es` service, no `prod.keys` needed |
 | **Newer games** | The firmware a game asks for is dropped on registration, like DBI does |
@@ -77,7 +77,7 @@ Everything USB Loader NX and its Manager keep is in `usbloadernx/` on the SD car
 | The Manager says USB Loader NX is off | It names the file the boot option in use reads and offers **Turn on and restart**. Packs such as CNX copy `cfw_system_settings.ini` over `system_settings.ini` at every boot, so a change made only in `system_settings.ini` is undone |
 | The Manager says this Atmosphère does not have USB Loader NX, or that it and the Manager do not match | Copy the `SD` folder of one package over the SD card (merging folders, never replacing `atmosphere/` as a whole) and restart |
 | A mod or translation does not show up | Most are made for the game's latest update: put the update on the same drive as the game. Holding L while the game starts turns mods off |
-| A notification says files on the drive were not read | The log lists each one with the reason (`left out ...`): a path longer than 767 bytes, a folder more than two levels inside `games`, more than 4096 entries in a folder, or no memory left for the index (it has no fixed limit, but always leaves 3 MB of ams.mitm's memory free) |
+| A notification says files on the drive were not read | The log lists each one with the reason (`left out ...`): a path longer than 767 bytes, a folder more than two levels inside `games`, more than 4096 entries in a folder, no memory left for the index (it has no fixed limit, but always leaves 3 MB of ams.mitm's memory free), or an NSZ or XCZ compressed in solid mode, which cannot be read without decompressing it all: compress it again in block mode |
 | HOME asks to update a game, or will not start it | The game was played with an update that is no longer on its drive: put the update back next to the game. If HOME offers to download it, choose Cancel |
 | A `2505-xxxx` error | See the table below |
 
@@ -94,6 +94,7 @@ To report a problem, send `usbloadernx/logs/usbloadernx.log` from the SD card, w
 | `2505-0018` | The game's drive is not plugged in |
 | `2505-0019` | The drive stopped answering for 20 s and was reset |
 | `2505-0020` | A file was written by a newer version of USB Loader NX and is left as it is |
+| `2505-0021` to `2505-0023` | An NSZ or XCZ that cannot be read: a damaged header, solid mode (compress it again in block mode), or a damaged block |
 
 ## Building
 

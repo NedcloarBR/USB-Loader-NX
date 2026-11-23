@@ -34,13 +34,6 @@ A desktop app to manage a drive's dumps and installs from the computer, written 
 - [ ] Theme editor: build a Manager theme on the PC (colors, layout by dragging, images, sounds) with a live preview of the Manager's screens, and export it to the drive or SD card
 - [ ] Windows, Linux and macOS builds
 
-## Game formats
-
-- [ ] Compressed dumps: NSZ, and XCZ in block mode (random access, needed to play without installing)
-- [ ] NSPs with several titles (game, update and DLC in one file): keep and import every ticket, not only the last one, and count each content meta by its kind instead of the first one's
-- [ ] Data patches for DLC (DLC with their own updates)
-- [ ] Applications with more than one program (only program index 0 is served today)
-
 ## Storage
 
 - [ ] Install to USB: copy NSP/XCI content to the drive (needs write support in FatFs)
