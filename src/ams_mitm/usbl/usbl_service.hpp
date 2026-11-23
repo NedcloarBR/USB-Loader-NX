@@ -17,7 +17,7 @@
 #include <stratosphere.hpp>
 #include "usbl_config.hpp"
 #include "usbl_usb_volume_manager.hpp"
-#include "xci/usbl_registration.hpp"
+#include "content/usbl_registration.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -63,7 +63,7 @@ namespace ams::mitm::usbl {
     AMS_SF_METHOD_INFO(C, H, 10, Result, GetConfigValue,         (sf::Out<ams::mitm::usbl::ConfigValue> out, u8 key),                                                       (out, key))       \
     AMS_SF_METHOD_INFO(C, H, 11, Result, SetConfigValue,         (const ::usbl::protocol::SetConfigValueInput &input),                                                      (input))          \
     AMS_SF_METHOD_INFO(C, H, 12, Result, ListDrives,             (sf::Out<s32> out_count, const sf::OutArray<ams::mitm::usbl::DriveStatus> &out),                           (out_count, out)) \
-    AMS_SF_METHOD_INFO(C, H, 13, Result, ListGames,              (sf::Out<s32> out_count, const sf::OutArray<ams::mitm::usbl::xci::GameStatus> &out),                       (out_count, out)) \
+    AMS_SF_METHOD_INFO(C, H, 13, Result, ListGames,              (sf::Out<s32> out_count, const sf::OutArray<ams::mitm::usbl::content::GameStatus> &out),                       (out_count, out)) \
     AMS_SF_METHOD_INFO(C, H, 14, Result, SetGameHidden,          (const ::usbl::protocol::SetGameHiddenInput &input),                                                       (input))          \
     AMS_SF_METHOD_INFO(C, H, 15, Result, ShowGameForLaunch,      (ncm::ApplicationId application_id),                                                                       (application_id)) \
     AMS_SF_METHOD_INFO(C, H, 16, Result, ApplyHomeVisibility,    (),                                                                                                        ())               \
@@ -90,7 +90,7 @@ namespace ams::mitm::usbl {
             Result GetConfigValue(sf::Out<ConfigValue> out, u8 key);
             Result SetConfigValue(const ::usbl::protocol::SetConfigValueInput &input);
             Result ListDrives(sf::Out<s32> out_count, const sf::OutArray<DriveStatus> &out);
-            Result ListGames(sf::Out<s32> out_count, const sf::OutArray<xci::GameStatus> &out);
+            Result ListGames(sf::Out<s32> out_count, const sf::OutArray<content::GameStatus> &out);
             Result SetGameHidden(const ::usbl::protocol::SetGameHiddenInput &input);
             Result ShowGameForLaunch(ncm::ApplicationId application_id);
             Result FinishHomeRefresh();

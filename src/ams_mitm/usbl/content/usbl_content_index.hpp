@@ -47,7 +47,7 @@ namespace ams::mitm::usbl {
         ContentSource source;
         bool is_patch;
         s32 drive;
-        s32 xci_index;
+        s32 container_index;
         s64 offset;
         s64 size;
     };
@@ -56,8 +56,8 @@ namespace ams::mitm::usbl {
 
     /* Forgets every container and content of one drive; the other drives' entries stay. */
     void ClearContentIndex(s32 drive);
-    /* XCI and NSP files share this container table; xci_index refers to either. path includes the volume prefix. */
-    Result AddIndexedXci(s32 *out_index, s32 drive, const char *path);
+    /* XCI and NSP files share this container table; container_index refers to either. path includes the volume prefix. */
+    Result AddIndexedContainer(s32 *out_index, s32 drive, const char *path);
     Result AddIndexedContent(const IndexedContent &content);
     /* Flags a content as belonging to an update (listed in its meta); unknown ids are ignored. */
     void MarkIndexedPatchContent(ncm::ContentId content_id);
@@ -70,17 +70,17 @@ namespace ams::mitm::usbl {
         s64 cert_size;
     };
 
-    Result SetContainerTicket(s32 xci_index, const ContainerTicket &ticket);
+    Result SetContainerTicket(s32 container_index, const ContainerTicket &ticket);
 
     /* Pieces the container file is split in on the drive (1 = contiguous), or negative when too fragmented to map. */
-    Result SetContainerFragments(s32 xci_index, s32 fragments);
+    Result SetContainerFragments(s32 container_index, s32 fragments);
 
     struct ContainerInfo {
         const char *path;
         s32 fragments;
     };
 
-    Result GetContainerInfo(ContainerInfo *out, s32 xci_index);
+    Result GetContainerInfo(ContainerInfo *out, s32 container_index);
 
     struct TicketData {
         u8 ticket[0x400];
@@ -105,8 +105,8 @@ namespace ams::mitm::usbl {
     s32 TakeIndexFullCount();
     Result GetIndexedContent(IndexedContent *out, s32 index);
     bool IsIndexedProgram(ncm::ProgramId program_id);
-    Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer);
-    Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ContentId content_id);
+    Result FindIndexedContent(IndexedContent *out, const char **out_container_path, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer);
+    Result FindIndexedContent(IndexedContent *out, const char **out_container_path, ncm::ContentId content_id);
 
     /* Takes the volume lock itself. Returns the raw (still encrypted) NCA bytes. */
     Result OpenIndexedContentStorage(std::shared_ptr<fs::IStorage> *out, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer);

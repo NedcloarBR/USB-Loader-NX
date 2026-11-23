@@ -15,8 +15,8 @@
  */
 #include <stratosphere.hpp>
 #include "usbl_content_api.hpp"
-#include "xci/usbl_content_index.hpp"
-#include "xci/usbl_known_contents.hpp"
+#include "content/usbl_content_index.hpp"
+#include "content/usbl_known_contents.hpp"
 #include "storage/usbl_volume.hpp"
 #include "usbl_results.hpp"
 

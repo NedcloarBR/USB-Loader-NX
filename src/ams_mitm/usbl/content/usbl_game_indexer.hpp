@@ -16,7 +16,7 @@
 #pragma once
 #include <stratosphere.hpp>
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     /* Validates the XCI and adds every verified NCA of its secure partition to the content index. Requires the volume lock. */
     void IndexXci(s32 drive, const char *path);

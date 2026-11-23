@@ -18,7 +18,7 @@
 #include "../storage/usbl_usb_file_storage.hpp"
 #include "../usbl_results.hpp"
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     namespace {
 

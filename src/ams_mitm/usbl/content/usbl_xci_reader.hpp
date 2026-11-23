@@ -17,7 +17,7 @@
 #include <stratosphere.hpp>
 #include "usbl_hfs0.hpp"
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     class XciReader {
         NON_COPYABLE(XciReader);

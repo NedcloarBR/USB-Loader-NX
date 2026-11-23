@@ -16,7 +16,7 @@
 #pragma once
 #include <stratosphere.hpp>
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     /* Routes ncm's content meta mounting to the USB content index. */
     void InitializeContentMetaReader();

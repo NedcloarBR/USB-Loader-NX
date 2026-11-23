@@ -18,11 +18,11 @@
 #include "usb/usb_host.hpp"
 #include "usb/usb_mass_storage_device.hpp"
 #include "storage/usbl_volume.hpp"
-#include "xci/usbl_content_index.hpp"
-#include "xci/usbl_content_meta.hpp"
-#include "xci/usbl_known_contents.hpp"
-#include "xci/usbl_registration.hpp"
-#include "xci/usbl_xci_indexer.hpp"
+#include "content/usbl_content_index.hpp"
+#include "content/usbl_content_meta.hpp"
+#include "content/usbl_known_contents.hpp"
+#include "content/usbl_registration.hpp"
+#include "content/usbl_game_indexer.hpp"
 #include "usbl_config.hpp"
 #include "usbl_disk_io.hpp"
 #include "usbl_log.hpp"
@@ -178,13 +178,13 @@ namespace ams::mitm::usbl {
                     }
                 } else if (HasExtension(info.fname, "xci")) {
                     ++count->games;
-                    xci::IndexXci(drive, path);
+                    content::IndexXci(drive, path);
                 } else if (HasExtension(info.fname, "nsp")) {
-                    switch (xci::IndexNsp(drive, path)) {
-                        case xci::NspKind::Application:  ++count->games;   break;
-                        case xci::NspKind::Patch:        ++count->updates; break;
-                        case xci::NspKind::AddOnContent: ++count->add_ons; break;
-                        case xci::NspKind::Unknown:                        break;
+                    switch (content::IndexNsp(drive, path)) {
+                        case content::NspKind::Application:  ++count->games;   break;
+                        case content::NspKind::Patch:        ++count->updates; break;
+                        case content::NspKind::AddOnContent: ++count->add_ons; break;
+                        case content::NspKind::Unknown:                        break;
                     }
                 }
             }
@@ -416,16 +416,16 @@ namespace ams::mitm::usbl {
 
             switch (state) {
                 case DriveState::Ready:
-                    xci::ExcludeInstalledApplications();
+                    content::ExcludeInstalledApplications();
                     if (IsDebugEnabled()) {
-                        xci::SelfTestContentIndex();
-                        xci::LogIndexedContentMetas();
+                        content::SelfTestContentIndex();
+                        content::LogIndexedContentMetas();
                     }
                     RememberIndexedContents();
                     perf::LogHeap("after indexing");
                     {
                         perf::ScopedStep step("registered", drive);
-                        xci::RegisterIndexedApplicationsIfEnabled();
+                        content::RegisterIndexedApplicationsIfEnabled();
                     }
                     if (IsConfigEnabled(ConfigKey::AutoRegister)) {
                         ForgetDeletedGameParts();
@@ -478,7 +478,7 @@ namespace ams::mitm::usbl {
 
             /* A drive the console unpowers for sleep comes right back; its games stay on HOME. */
             if (!by_sleep) {
-                xci::HideUnpluggedApplications(applications, application_count);
+                content::HideUnpluggedApplications(applications, application_count);
             }
         }
 
@@ -527,7 +527,7 @@ namespace ams::mitm::usbl {
             /* Titles installed since their drive was last plugged in. */
             {
                 perf::ScopedStep step("boot: installed titles checked", -1);
-                xci::ExcludeInstalledApplications();
+                content::ExcludeInstalledApplications();
             }
 
             while (true) {
@@ -537,7 +537,7 @@ namespace ams::mitm::usbl {
                 if (boot_hide_pending && os::GetSystemTick() >= boot_hide_tick) {
                     boot_hide_pending = false;
                     Log("boot: putting HOME in line with the options");
-                    xci::ApplyHomeVisibility();
+                    content::ApplyHomeVisibility();
                     /* ns deleted the contents of games without a record (hidden ones) while it finished booting; they are
                      * still on the drive, so they are known again. */
                     RememberIndexedContents();

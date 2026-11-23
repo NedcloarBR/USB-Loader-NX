@@ -17,7 +17,7 @@
 #include <stratosphere.hpp>
 #include <usbl/protocol.hpp>
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     /* Writes the content meta of every indexed application to the SD card ncm database and pushes its ns
      * application record, exactly like an installer would (without copying any NCA). With usbloadernx!auto_register

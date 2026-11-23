@@ -18,8 +18,8 @@
 #include "i18n/usbl_i18n.hpp"
 #include "nca/usbl_nca_crypto.hpp"
 #include "nca/usbl_nca_filesystem.hpp"
-#include "xci/usbl_content_meta.hpp"
-#include "xci/usbl_registration.hpp"
+#include "content/usbl_content_meta.hpp"
+#include "content/usbl_registration.hpp"
 #include "usbl_log.hpp"
 #include "usbl_perf.hpp"
 #include "usbl_module.hpp"
@@ -30,8 +30,8 @@
 #include "usbl_service.hpp"
 #include "usbl_power_state.hpp"
 #include "usbl_usb_volume_manager.hpp"
-#include "xci/usbl_hidden_games.hpp"
-#include "xci/usbl_known_contents.hpp"
+#include "content/usbl_hidden_games.hpp"
+#include "content/usbl_known_contents.hpp"
 
 namespace ams::mitm::usbl {
 
@@ -90,7 +90,7 @@ namespace ams::mitm::usbl {
 
         nca::InitializeCrypto();
         nca::InitializeFileSystem();
-        xci::InitializeContentMetaReader();
+        content::InitializeContentMetaReader();
         Log("nca crypto ready");
 
         MigrateLegacyFiles();
@@ -112,8 +112,8 @@ namespace ams::mitm::usbl {
 
         StartPowerStateMonitor();
         StartUsbVolumeManager();
-        xci::StartLaunchWatch();
-        xci::StartHomeRefreshThread();
+        content::StartLaunchWatch();
+        content::StartHomeRefreshThread();
 
         R_ABORT_UNLESS(g_server_manager.RegisterObjectForServer(g_service_object.GetShared(), ServiceName, MaxServiceSessions));
         Log("service usbl registered");

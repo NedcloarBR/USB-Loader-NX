@@ -17,7 +17,7 @@
 #include <usbl/paths.hpp>
 #include "usbl_migration.hpp"
 #include "usbl_log.hpp"
-#include "xci/usbl_hidden_games.hpp"
+#include "content/usbl_hidden_games.hpp"
 
 namespace ams::mitm::usbl {
 

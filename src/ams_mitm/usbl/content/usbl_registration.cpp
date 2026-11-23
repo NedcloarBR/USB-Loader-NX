@@ -28,7 +28,7 @@
 #include "../usbl_log.hpp"
 #include "../usbl_results.hpp"
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     namespace {
 
@@ -120,13 +120,13 @@ namespace ams::mitm::usbl::xci {
 
             for (size_t i = 0; i < reader.GetContentCount(); ++i) {
                 IndexedContent content;
-                const char *xci_path;
+                const char *container_path;
                 /* An update's delta fragments only serve to build it from the previous version; ncm drops them from the meta. */
                 const auto *info = reader.GetContentInfo(i);
                 if (info->GetType() == ncm::ContentType::DeltaFragment) {
                     continue;
                 }
-                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(xci_path), info->GetId())) || (drive >= 0 && content.drive != drive)) {
+                if (R_FAILED(FindIndexedContent(std::addressof(content), std::addressof(container_path), info->GetId())) || (drive >= 0 && content.drive != drive)) {
                     return false;
                 }
             }
@@ -1049,7 +1049,7 @@ namespace ams::mitm::usbl::xci {
 
         s32 GetContainerFragments(const IndexedContent &content) {
             ContainerInfo info;
-            return R_SUCCEEDED(GetContainerInfo(std::addressof(info), content.xci_index)) ? info.fragments : 1;
+            return R_SUCCEEDED(GetContainerInfo(std::addressof(info), content.container_index)) ? info.fragments : 1;
         }
 
         /* Worst of two counts: any unmappable file (negative) wins, then the most pieces. */

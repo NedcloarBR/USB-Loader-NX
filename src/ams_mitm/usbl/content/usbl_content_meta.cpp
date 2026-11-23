@@ -21,7 +21,7 @@
 #include "../usbl_log.hpp"
 #include "../usbl_results.hpp"
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     namespace {
 

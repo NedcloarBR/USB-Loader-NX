@@ -20,7 +20,7 @@ extern "C" {
 #include "../fatfs/ff.h"
 }
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     constexpr size_t Sha256HashSize = crypto::Sha256Generator::HashSize;
 

@@ -18,16 +18,16 @@
 #include "usbl_service.hpp"
 #include "nca/usbl_external_keys.hpp"
 #include "nca/usbl_nca_filesystem.hpp"
-#include "xci/usbl_content_index.hpp"
-#include "xci/usbl_known_contents.hpp"
-#include "xci/usbl_registration.hpp"
+#include "content/usbl_content_index.hpp"
+#include "content/usbl_known_contents.hpp"
+#include "content/usbl_registration.hpp"
 #include "storage/usbl_volume.hpp"
 #include "usbl_content_api.hpp"
 #include "i18n/usbl_i18n.hpp"
 #include "usbl_results.hpp"
 #include "usbl_log.hpp"
 #include "usbl_notifications.hpp"
-#include "xci/usbl_hidden_games.hpp"
+#include "content/usbl_hidden_games.hpp"
 #include <usbl/version.hpp>
 
 namespace ams::mitm::usbl {
@@ -121,10 +121,10 @@ namespace ams::mitm::usbl {
         switch (input.key) {
             case ConfigKey::AutoRegister:
             case ConfigKey::HideWhenRemoved:
-                xci::ApplyHomeVisibility();
+                content::ApplyHomeVisibility();
                 break;
             case ConfigKey::Badge:
-                xci::RefreshApplicationRecords();
+                content::RefreshApplicationRecords();
                 break;
             default:
                 break;
@@ -137,26 +137,26 @@ namespace ams::mitm::usbl {
         R_SUCCEED();
     }
 
-    Result Service::ListGames(sf::Out<s32> out_count, const sf::OutArray<xci::GameStatus> &out) {
-        out_count.SetValue(xci::GetGameStatuses(out.GetPointer(), static_cast<s32>(out.GetSize())));
+    Result Service::ListGames(sf::Out<s32> out_count, const sf::OutArray<content::GameStatus> &out) {
+        out_count.SetValue(content::GetGameStatuses(out.GetPointer(), static_cast<s32>(out.GetSize())));
         R_SUCCEED();
     }
 
     Result Service::SetGameHidden(const ::usbl::protocol::SetGameHiddenInput &input) {
-        R_RETURN(xci::SetGameHidden({ input.application_id }, input.hidden));
+        R_RETURN(content::SetGameHidden({ input.application_id }, input.hidden));
     }
 
     Result Service::FinishHomeRefresh() {
-        xci::FinishHomeRefresh();
+        content::FinishHomeRefresh();
         R_SUCCEED();
     }
 
     Result Service::ShowGameForLaunch(ncm::ApplicationId application_id) {
-        R_RETURN(xci::ShowGameForLaunch(application_id));
+        R_RETURN(content::ShowGameForLaunch(application_id));
     }
 
     Result Service::ApplyHomeVisibility() {
-        xci::ApplyHomeVisibility();
+        content::ApplyHomeVisibility();
         R_SUCCEED();
     }
 

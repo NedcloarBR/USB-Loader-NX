@@ -14,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stratosphere.hpp>
-#include "usbl_xci_indexer.hpp"
+#include "usbl_game_indexer.hpp"
 #include "usbl_content_index.hpp"
 #include "usbl_content_meta.hpp"
 #include "usbl_xci_reader.hpp"
@@ -24,7 +24,7 @@
 #include "../usbl_log.hpp"
 #include "../usbl_results.hpp"
 
-namespace ams::mitm::usbl::xci {
+namespace ams::mitm::usbl::content {
 
     namespace {
 
@@ -58,14 +58,14 @@ namespace ams::mitm::usbl::xci {
             return name_len >= ext_len && std::strcmp(name + name_len - ext_len, ext) == 0;
         }
 
-        Result IndexNca(s32 drive, const char *xci_path, s32 xci_index, const Hfs0Entry &entry, ContentSource source) {
+        Result IndexNca(s32 drive, const char *container_path, s32 container_index, const Hfs0Entry &entry, ContentSource source) {
             /* NCA entries are named after their content id: "<32 hex chars>.nca" or "<32 hex chars>.cnmt.nca". */
             const auto content_id = ncm::GetContentIdFromString(entry.name, std::strlen(entry.name));
             R_UNLESS(content_id.has_value(), usbl::ResultInvalidHfs0Header());
 
             auto storage = fs::AllocateShared<UsbFileStorage>();
             R_UNLESS(storage != nullptr, fs::ResultAllocationMemoryFailedNew());
-            R_TRY(storage->Initialize(drive, xci_path, entry.offset, entry.size));
+            R_TRY(storage->Initialize(drive, container_path, entry.offset, entry.size));
 
             std::shared_ptr<fssystem::NcaReader> reader;
             bool is_resigned;
@@ -83,7 +83,7 @@ namespace ams::mitm::usbl::xci {
                 .source         = source,
                 .is_patch       = false,
                 .drive          = drive,
-                .xci_index      = xci_index,
+                .container_index      = container_index,
                 .offset         = entry.offset,
                 .size           = entry.size,
             };
@@ -101,7 +101,7 @@ namespace ams::mitm::usbl::xci {
             R_SUCCEED();
         }
 
-        void IndexSecurePartition(s32 drive, const char *xci_path, s32 xci_index, FIL *file, const XciReader &xci) {
+        void IndexSecurePartition(s32 drive, const char *container_path, s32 container_index, FIL *file, const XciReader &xci) {
             Hfs0Partition secure;
             if (const Result result = xci.OpenPartition(std::addressof(secure), SecurePartitionName); R_FAILED(result)) {
                 Log("  secure partition invalid: 2%03d-%04d", result.GetModule(), result.GetDescription());
@@ -138,7 +138,7 @@ namespace ams::mitm::usbl::xci {
                     continue;
                 }
 
-                if (const Result result = IndexNca(drive, xci_path, xci_index, entry, ContentSource::Xci); R_FAILED(result)) {
+                if (const Result result = IndexNca(drive, container_path, container_index, entry, ContentSource::Xci); R_FAILED(result)) {
                     Log("    %s: not indexed 2%03d-%04d", entry.name, result.GetModule(), result.GetDescription());
                     continue;
                 }
@@ -146,17 +146,17 @@ namespace ams::mitm::usbl::xci {
             }
 
             if (ticket.ticket_size > 0 && ticket.cert_size > 0) {
-                R_DISCARD(SetContainerTicket(xci_index, ticket));
+                R_DISCARD(SetContainerTicket(container_index, ticket));
             }
 
             Log("  secure: %d NCAs, %d indexed, %d hash failures%s", summary.nca_count, summary.indexed_count, summary.hash_failure_count, ticket.ticket_size > 0 ? ", ticket included" : "");
         }
 
         /* An update's NCAs reuse the application's program id; only the update's own meta (id ending in 800) tells them apart. */
-        void MarkPatchContents(s32 xci_index) {
+        void MarkPatchContents(s32 container_index) {
             for (s32 i = 0; i < GetIndexedContentCount(); ++i) {
                 IndexedContent meta;
-                if (R_FAILED(GetIndexedContent(std::addressof(meta), i)) || meta.xci_index != xci_index || meta.content_type != NcaContentType::Meta || !IsPatchId(meta.program_id)) {
+                if (R_FAILED(GetIndexedContent(std::addressof(meta), i)) || meta.container_index != container_index || meta.content_type != NcaContentType::Meta || !IsPatchId(meta.program_id)) {
                     continue;
                 }
 
@@ -210,15 +210,15 @@ namespace ams::mitm::usbl::xci {
         }
         Log("  header at 0x%" PRIx64 ", package id %016" PRIx64 ", root hash ok", xci.GetHeaderOffset(), xci.GetPackageId());
 
-        s32 xci_index;
-        if (const Result result = AddIndexedXci(std::addressof(xci_index), drive, path); R_FAILED(result)) {
+        s32 container_index;
+        if (const Result result = AddIndexedContainer(std::addressof(container_index), drive, path); R_FAILED(result)) {
             Log("  not indexed: 2%03d-%04d", result.GetModule(), result.GetDescription());
             return;
         }
-        R_DISCARD(SetContainerFragments(xci_index, fragments));
+        R_DISCARD(SetContainerFragments(container_index, fragments));
 
-        IndexSecurePartition(drive, path, xci_index, std::addressof(file), xci);
-        MarkPatchContents(xci_index);
+        IndexSecurePartition(drive, path, container_index, std::addressof(file), xci);
+        MarkPatchContents(container_index);
     }
 
     namespace {
@@ -325,7 +325,7 @@ namespace ams::mitm::usbl::xci {
         }
 
         s32 container_index;
-        if (const Result result = AddIndexedXci(std::addressof(container_index), drive, path); R_FAILED(result)) {
+        if (const Result result = AddIndexedContainer(std::addressof(container_index), drive, path); R_FAILED(result)) {
             Log("  not indexed: 2%03d-%04d", result.GetModule(), result.GetDescription());
             return NspKind::Unknown;
         }

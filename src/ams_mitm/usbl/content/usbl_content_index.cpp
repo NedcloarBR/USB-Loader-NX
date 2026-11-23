@@ -47,18 +47,18 @@ namespace ams::mitm::usbl {
             AMS_ASSERT(GetVolumeLock().IsLockedByCurrentThread());
         }
 
-        bool IsValidContainer(s32 xci_index) {
-            return 0 <= xci_index && static_cast<size_t>(xci_index) < g_containers.size() && g_containers[xci_index].used;
+        bool IsValidContainer(s32 container_index) {
+            return 0 <= container_index && static_cast<size_t>(container_index) < g_containers.size() && g_containers[container_index].used;
         }
 
         template<typename Predicate>
-        Result FindIndexedContentIf(IndexedContent *out, const char **out_xci_path, Predicate predicate) {
+        Result FindIndexedContentIf(IndexedContent *out, const char **out_container_path, Predicate predicate) {
             AssertLocked();
 
             for (const auto &content : g_contents) {
                 if (predicate(content)) {
                     *out          = content;
-                    *out_xci_path = g_containers[content.xci_index].path.get();
+                    *out_container_path = g_containers[content.container_index].path.get();
                     R_SUCCEED();
                 }
             }
@@ -66,10 +66,10 @@ namespace ams::mitm::usbl {
             R_THROW(usbl::ResultContentNotFound());
         }
 
-        Result OpenContentStorage(std::shared_ptr<fs::IStorage> *out, const IndexedContent &content, const char *xci_path) {
+        Result OpenContentStorage(std::shared_ptr<fs::IStorage> *out, const IndexedContent &content, const char *container_path) {
             auto storage = fs::AllocateShared<UsbFileStorage>();
             R_UNLESS(storage != nullptr, fs::ResultAllocationMemoryFailedNew());
-            R_TRY(storage->Initialize(content.drive, xci_path, content.offset, content.size));
+            R_TRY(storage->Initialize(content.drive, container_path, content.offset, content.size));
 
             *out = std::move(storage);
             R_SUCCEED();
@@ -98,7 +98,7 @@ namespace ams::mitm::usbl {
         }
     }
 
-    Result AddIndexedXci(s32 *out_index, s32 drive, const char *path) {
+    Result AddIndexedContainer(s32 *out_index, s32 drive, const char *path) {
         AssertLocked();
 
         const size_t path_size = std::strlen(path) + 1;
@@ -132,11 +132,11 @@ namespace ams::mitm::usbl {
 
     Result AddIndexedContent(const IndexedContent &content) {
         AssertLocked();
-        AMS_ASSERT(IsValidContainer(content.xci_index));
-        AMS_ASSERT(g_containers[content.xci_index].drive == content.drive);
+        AMS_ASSERT(IsValidContainer(content.container_index));
+        AMS_ASSERT(g_containers[content.container_index].drive == content.drive);
         if (!g_contents.PushBack(content)) {
-            if (g_last_full_container != content.xci_index) {
-                g_last_full_container = content.xci_index;
+            if (g_last_full_container != content.container_index) {
+                g_last_full_container = content.container_index;
                 ++g_index_full_files;
             }
             R_THROW(usbl::ResultIndexFull());
@@ -154,28 +154,28 @@ namespace ams::mitm::usbl {
         }
     }
 
-    Result SetContainerTicket(s32 xci_index, const ContainerTicket &ticket) {
+    Result SetContainerTicket(s32 container_index, const ContainerTicket &ticket) {
         AssertLocked();
-        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(container_index), usbl::ResultOutOfRange());
 
-        g_containers[xci_index].ticket     = ticket;
-        g_containers[xci_index].has_ticket = true;
+        g_containers[container_index].ticket     = ticket;
+        g_containers[container_index].has_ticket = true;
         R_SUCCEED();
     }
 
-    Result SetContainerFragments(s32 xci_index, s32 fragments) {
+    Result SetContainerFragments(s32 container_index, s32 fragments) {
         AssertLocked();
-        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(container_index), usbl::ResultOutOfRange());
 
-        g_containers[xci_index].fragments = fragments;
+        g_containers[container_index].fragments = fragments;
         R_SUCCEED();
     }
 
-    Result GetContainerInfo(ContainerInfo *out, s32 xci_index) {
+    Result GetContainerInfo(ContainerInfo *out, s32 container_index) {
         AssertLocked();
-        R_UNLESS(IsValidContainer(xci_index), usbl::ResultOutOfRange());
+        R_UNLESS(IsValidContainer(container_index), usbl::ResultOutOfRange());
 
-        *out = { .path = g_containers[xci_index].path.get(), .fragments = g_containers[xci_index].fragments };
+        *out = { .path = g_containers[container_index].path.get(), .fragments = g_containers[container_index].fragments };
         R_SUCCEED();
     }
 
@@ -186,7 +186,7 @@ namespace ams::mitm::usbl {
         const char *path;
         R_TRY(FindIndexedContent(std::addressof(content), std::addressof(path), content_id));
 
-        const Container &container = g_containers[content.xci_index];
+        const Container &container = g_containers[content.container_index];
         R_UNLESS(container.has_ticket, usbl::ResultContentNotFound());
         R_UNLESS(0 < container.ticket.ticket_size && container.ticket.ticket_size <= static_cast<s64>(sizeof(out->ticket)), usbl::ResultOutOfRange());
         R_UNLESS(0 < container.ticket.cert_size   && container.ticket.cert_size   <= static_cast<s64>(sizeof(out->cert)),   usbl::ResultOutOfRange());
@@ -264,12 +264,12 @@ namespace ams::mitm::usbl {
         });
     }
 
-    Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer) {
+    Result FindIndexedContent(IndexedContent *out, const char **out_container_path, ncm::ProgramId program_id, NcaContentType content_type, ContentLayer layer) {
         const auto matches = [&](const IndexedContent &content, bool is_patch) {
             return content.program_id == program_id && content.content_type == content_type && content.is_patch == is_patch;
         };
 
-        const Result base = FindIndexedContentIf(out, out_xci_path, [&](const IndexedContent &content) { return matches(content, false); });
+        const Result base = FindIndexedContentIf(out, out_container_path, [&](const IndexedContent &content) { return matches(content, false); });
         if (layer == ContentLayer::Current) {
             /* An update is only used from the game's own drive; alone (no base game indexed) it is used as it is. */
             IndexedContent patch;
@@ -277,15 +277,15 @@ namespace ams::mitm::usbl {
             if (R_SUCCEEDED(FindIndexedContentIf(std::addressof(patch), std::addressof(patch_path), [&](const IndexedContent &content) { return matches(content, true); })) &&
                 (R_FAILED(base) || patch.drive == out->drive)) {
                 *out = patch;
-                *out_xci_path = patch_path;
+                *out_container_path = patch_path;
                 R_SUCCEED();
             }
         }
         R_RETURN(base);
     }
 
-    Result FindIndexedContent(IndexedContent *out, const char **out_xci_path, ncm::ContentId content_id) {
-        R_RETURN(FindIndexedContentIf(out, out_xci_path, [&](const IndexedContent &content) {
+    Result FindIndexedContent(IndexedContent *out, const char **out_container_path, ncm::ContentId content_id) {
+        R_RETURN(FindIndexedContentIf(out, out_container_path, [&](const IndexedContent &content) {
             return content.content_id == content_id;
         }));
     }
@@ -294,18 +294,18 @@ namespace ams::mitm::usbl {
         std::scoped_lock lk(GetVolumeLock());
 
         IndexedContent content;
-        const char *xci_path;
-        R_TRY(FindIndexedContent(std::addressof(content), std::addressof(xci_path), program_id, content_type, layer));
-        R_RETURN(OpenContentStorage(out, content, xci_path));
+        const char *container_path;
+        R_TRY(FindIndexedContent(std::addressof(content), std::addressof(container_path), program_id, content_type, layer));
+        R_RETURN(OpenContentStorage(out, content, container_path));
     }
 
     Result OpenIndexedContentStorage(std::shared_ptr<fs::IStorage> *out, ncm::ContentId content_id) {
         std::scoped_lock lk(GetVolumeLock());
 
         IndexedContent content;
-        const char *xci_path;
-        R_TRY(FindIndexedContent(std::addressof(content), std::addressof(xci_path), content_id));
-        R_RETURN(OpenContentStorage(out, content, xci_path));
+        const char *container_path;
+        R_TRY(FindIndexedContent(std::addressof(content), std::addressof(container_path), content_id));
+        R_RETURN(OpenContentStorage(out, content, container_path));
     }
 
 }
