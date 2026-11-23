@@ -29,6 +29,8 @@ namespace usbl {
     using protocol::GameSource;
     using protocol::GameStatus;
     using protocol::VersionInfo;
+    using protocol::LeftOutFile;
+    using protocol::LeftOutReason;
 
     /* Fails right away (without waiting for the service) when USB Loader NX is disabled ([usbloadernx] enable), did not
      * start, or this is not the USB Loader NX build of Atmosphère. */
@@ -49,6 +51,8 @@ namespace usbl {
     Result GetLanguage(std::string *out);
     Result SetLanguage(const std::string &locale);
     Result ListDrives(std::vector<DriveStatus> *out);
+    /* Protocol 1.2: the dumps and folders the drives' indexing left out, and why. */
+    Result ListLeftOutFiles(std::vector<LeftOutFile> *out);
     Result ListGames(std::vector<GameStatus> *out);
     Result SetGameHidden(u64 application_id, bool hidden);
     Result ShowGameForLaunch(u64 application_id);

@@ -31,6 +31,7 @@ namespace ui {
             enum class Section {
                 Home,
                 Manager,
+                Diagnostics,
                 About,
 
                 Count,
@@ -74,6 +75,7 @@ namespace ui {
             std::span<const SettingOption> GetOptions() const;
             void AddOptions();
             void AddAboutSection();
+            void AddDiagnosticsSection();
             void AddFooter();
             void AddThemePicker();
             void OpenThemePicker();
@@ -83,12 +85,17 @@ namespace ui {
             void SelectCard(s32 index);
             void ToggleSelected();
 
+            /* What the Diagnostics section shows, to rebuild it only when the module's list changes. */
+            std::string diagnostics_snapshot;
+
         public:
             explicit SettingsScreen(std::function<void()> on_back);
             PU_SMART_CTOR(SettingsScreen)
 
             void Show();
             void OnInput(u64 keys_down);
+            /* Called every few seconds while the screen is shown: Diagnostics follows drives plugged in or removed. */
+            void Poll();
     };
 
 }

@@ -69,6 +69,12 @@
 		"CountingSpace": "Calculando o espaço livre…",
 		"NoGames": "Nenhum jogo",
 		"HomebrewPath": "Homebrew: {{PATH}}",
+		"LeftOutMore": "+{{COUNT}} não lido(s), veja usbloadernx/logs/usbloadernx.log",
+		"LeftOutPathTooLong": "Caminho longo demais",
+		"LeftOutTooDeep": "Mais de dois níveis de pastas dentro de games",
+		"LeftOutTooManyEntries": "Mais de 4096 itens nesta pasta",
+		"LeftOutIndexFull": "Sem memória para indexar tudo",
+		"LeftOutSolid": "{{EXT}} em modo sólido, comprima novamente em modo bloco.",
 		"AlmostFull": "Quase cheio. Libere espaço antes de copiar mais conteúdos.",
 		"Total": "Total: {{FREE}} livres de {{TOTAL}}, {{GAMES}}"
 	},
@@ -103,6 +109,10 @@
 		"HomebrewAccess": "Acesso dos homebrews ao USB",
 		"HomebrewAccessHelp": "Os homebrews leem a pasta usbloadernx/usb de cada dispositivo USB (só leitura) em sdmc:/usbloadernx/usb/<serial do volume>/. Os jogos não são afetados.",
 		"NeedsNewerModule": "Precisa do USB Loader NX 1.1 ou mais novo no Atmosphère.",
+		"SectionDiagnostics": "Diagnóstico",
+		"SectionDiagnosticsHelp": "Arquivos dos dispositivos USB que não foram lidos, e por quê.",
+		"DiagnosticsNone": "Todos os arquivos dos dispositivos USB foram lidos.",
+		"DiagnosticsNeedsNewerModule": "Precisa do USB Loader NX 1.2 ou mais novo no Atmosphère.",
 		"Language": "Idioma",
 		"LanguageHelp": "Do Manager e das notificações.",
 		"LanguageSystem": "Do sistema"

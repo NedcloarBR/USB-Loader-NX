@@ -23,6 +23,7 @@ namespace usbl {
 
         constexpr size_t MaxDrives = 8;
         constexpr size_t MaxGames  = 4096;
+        constexpr size_t MaxLeftOutFiles = 64;
 
         Service g_service;
         bool g_overwrite_newer_config = false;
@@ -122,6 +123,10 @@ namespace usbl {
 
     Result ListDrives(std::vector<DriveStatus> *out) {
         return List(out, protocol::CommandId::ListDrives, MaxDrives);
+    }
+
+    Result ListLeftOutFiles(std::vector<LeftOutFile> *out) {
+        return List(out, protocol::CommandId::ListLeftOutFiles, MaxLeftOutFiles);
     }
 
     Result ListGames(std::vector<GameStatus> *out) {

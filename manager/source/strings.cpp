@@ -156,6 +156,16 @@ namespace strings {
             "Settings.Language",
             "Settings.LanguageHelp",
             "Settings.LanguageSystem",
+            "Drives.LeftOutMore",
+            "Drives.LeftOutPathTooLong",
+            "Drives.LeftOutTooDeep",
+            "Drives.LeftOutTooManyEntries",
+            "Drives.LeftOutIndexFull",
+            "Drives.LeftOutSolid",
+            "Settings.SectionDiagnostics",
+            "Settings.SectionDiagnosticsHelp",
+            "Settings.DiagnosticsNone",
+            "Settings.DiagnosticsNeedsNewerModule",
         };
         static_assert(std::size(Keys) == static_cast<size_t>(Id::Count));
 

@@ -69,6 +69,12 @@
 		"CountingSpace": "Counting free space…",
 		"NoGames": "No games",
 		"HomebrewPath": "Homebrew: {{PATH}}",
+		"LeftOutMore": "+{{COUNT}} not read, see usbloadernx/logs/usbloadernx.log",
+		"LeftOutPathTooLong": "Path too long",
+		"LeftOutTooDeep": "More than two levels of folders inside games",
+		"LeftOutTooManyEntries": "More than 4096 entries in this folder",
+		"LeftOutIndexFull": "No memory left to index everything",
+		"LeftOutSolid": "{{EXT}} in solid mode, compress it again in block mode.",
 		"AlmostFull": "Almost full. Free some space before copying more content.",
 		"Total": "Total: {{FREE}} free of {{TOTAL}}, {{GAMES}}"
 	},
@@ -103,6 +109,10 @@
 		"HomebrewAccess": "Homebrew access to USB",
 		"HomebrewAccessHelp": "Homebrew read the usbloadernx/usb folder of each USB drive (read only) at sdmc:/usbloadernx/usb/<volume serial>/. Games are not affected.",
 		"NeedsNewerModule": "Needs USB Loader NX 1.1 or newer in Atmosphère.",
+		"SectionDiagnostics": "Diagnostics",
+		"SectionDiagnosticsHelp": "Files on the USB drives that were not read, and why.",
+		"DiagnosticsNone": "Every file on the USB drives was read.",
+		"DiagnosticsNeedsNewerModule": "Needs USB Loader NX 1.2 or newer in Atmosphère.",
 		"Language": "Language",
 		"LanguageHelp": "Of the Manager and of the notifications.",
 		"LanguageSystem": "System"

@@ -178,10 +178,17 @@ namespace ui {
     }
 
     void MainApplication::PollLibrary() {
-        if (!this->service_available || this->screen != Screen::Library || armGetSystemTick() < this->next_poll_tick) {
+        if (!this->service_available || armGetSystemTick() < this->next_poll_tick) {
             return;
         }
         this->next_poll_tick = armGetSystemTick() + armNsToTicks(PollIntervalNs);
+        if (this->screen == Screen::Settings) {
+            this->settings_screen->Poll();
+            return;
+        }
+        if (this->screen != Screen::Library) {
+            return;
+        }
         if (TakeSnapshot() != this->library_snapshot) {
             const size_t drive_count = this->library_drive_count;
             this->ShowLibrary();

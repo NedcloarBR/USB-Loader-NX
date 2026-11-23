@@ -15,6 +15,7 @@
  */
 #include <ui/settings_screen.hpp>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <iterator>
 #include <span>
@@ -114,8 +115,30 @@ namespace ui {
               sound::GetMusicVolume, sound::SetMusicVolume },
         };
 
-        constexpr Id SectionNames[] = { Id::SectionHome, Id::SectionManager, Id::SectionAbout };
-        constexpr Id SectionHelps[] = { Id::SectionHomeHelp, Id::SectionManagerHelp, Id::Count };
+        constexpr Id SectionNames[] = { Id::SectionHome, Id::SectionManager, Id::SectionDiagnostics, Id::SectionAbout };
+        constexpr Id SectionHelps[] = { Id::SectionHomeHelp, Id::SectionManagerHelp, Id::SectionDiagnosticsHelp, Id::Count };
+
+        /* "NSZ" for "games/RPG/Game.nsz": the extension in capitals, or NSZ/XCZ when the name has none. */
+        std::string ExtensionOf(const std::string &path) {
+            const size_t dot = path.rfind('.');
+            if (dot == std::string::npos || dot + 1 == path.size() || path.find('/', dot) != std::string::npos) {
+                return "NSZ/XCZ";
+            }
+            std::string extension = path.substr(dot + 1);
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            return extension;
+        }
+
+        std::string LeftOutReasonText(usbl::LeftOutReason reason, const std::string &path) {
+            switch (reason) {
+                case usbl::LeftOutReason::PathTooLong:      return strings::Get(Id::DriveLeftOutPathTooLong);
+                case usbl::LeftOutReason::FolderTooDeep:    return strings::Get(Id::DriveLeftOutTooDeep);
+                case usbl::LeftOutReason::TooManyEntries:   return strings::Get(Id::DriveLeftOutTooManyEntries);
+                case usbl::LeftOutReason::IndexFull:        return strings::Get(Id::DriveLeftOutIndexFull);
+                case usbl::LeftOutReason::SolidCompression: return strings::Format(Id::DriveLeftOutSolid, { { "EXT", ExtensionOf(path) } });
+            }
+            return {};
+        }
 
         /* A column of sections on the left, the section's cards on the right, the button hints at the bottom. */
         constexpr double RailW = 360, SectionsX = 32, SectionsW = RailW - 64, SectionH = 60, SectionStep = 66, SectionsY = 112;
@@ -182,6 +205,8 @@ namespace ui {
         }
         if (!this->GetOptions().empty()) {
             this->AddOptions();
+        } else if (this->section == Section::Diagnostics) {
+            this->AddDiagnosticsSection();
         } else {
             this->AddAboutSection();
         }
@@ -255,6 +280,59 @@ namespace ui {
 
         if (content_focused) {
             AddPaint(*this, [this]() { draw::FocusRing(ContentX, this->focus_glide.Between(this->focus_from_y, CardY(this->selected)), ContentW, CardH, 18, 4); });
+        }
+    }
+
+    /* What the drives' indexing left out (protocol 1.2), one card each: the file, why, and on which drive. */
+    void SettingsScreen::AddDiagnosticsSection() {
+        constexpr double ItemH = 92, ItemGap = 10, ListBottom = DesignHeight - 76;
+        if (usbl::GetModuleMinorVersion() < 2) {
+            AddText(*this, ContentX + 4, CardsY, strings::Get(Id::DiagnosticsNeedsNewerModule), 17, color::Muted, Align::Left, ContentW - 8);
+            return;
+        }
+
+        std::vector<usbl::LeftOutFile> files;
+        std::vector<usbl::DriveStatus> drives;
+        usbl::ListLeftOutFiles(&files);
+        usbl::ListDrives(&drives);
+        this->diagnostics_snapshot.assign(reinterpret_cast<const char *>(files.data()), files.size() * sizeof(usbl::LeftOutFile));
+        if (files.empty()) {
+            AddText(*this, ContentX + 4, CardsY, strings::Get(Id::DiagnosticsNone), 17, color::Muted, Align::Left, ContentW - 8);
+            return;
+        }
+
+        const s32 fits = static_cast<s32>((ListBottom - CardsY + ItemGap) / (ItemH + ItemGap));
+        const s32 shown = static_cast<s32>(files.size()) > fits ? fits - 1 : static_cast<s32>(files.size());
+        for (s32 i = 0; i < shown; ++i) {
+            const auto &file = files[i];
+            const double y = CardsY + i * (ItemH + ItemGap);
+            AddPaint(*this, [y]() {
+                draw::RoundRect(ContentX, y, ContentW, ItemH, 18, color::Panel);
+                draw::IconWarning(ContentX + 30, y + ItemH / 2, 18, color::Alert);
+            });
+
+            /* The file's full path on the drive, then the drive, then why. */
+            const std::string path(file.path, strnlen(file.path, sizeof(file.path)));
+            const std::string full_path = path.empty() ? std::string() : "/usbloadernx/games/" + path;
+            const auto drive = std::find_if(drives.begin(), drives.end(), [&](const usbl::DriveStatus &status) { return status.drive == file.drive; });
+            const std::string where = drive != drives.end() ? std::string(drive->name, strnlen(drive->name, sizeof(drive->name))) : std::string();
+            AddText(*this, ContentX + 56, y + 12, full_path.empty() ? where : full_path, 17, color::Text, Align::Left, ContentW - 80);
+            AddText(*this, ContentX + 56, y + 38, full_path.empty() ? std::string() : where, 14, color::Muted, Align::Left, ContentW - 80);
+            AddText(*this, ContentX + 56, y + 62, LeftOutReasonText(file.reason, path), 14, color::AlertText, Align::Left, ContentW - 80);
+        }
+        if (shown < static_cast<s32>(files.size())) {
+            AddText(*this, ContentX + 4, CardsY + shown * (ItemH + ItemGap) + 12, strings::Format(Id::DriveLeftOutMore, { { "COUNT", std::to_string(files.size() - shown) } }), 15, color::Muted, Align::Left, ContentW - 8);
+        }
+    }
+
+    void SettingsScreen::Poll() {
+        if (this->section != Section::Diagnostics || this->focus == Focus::ThemePicker || usbl::GetModuleMinorVersion() < 2) {
+            return;
+        }
+        std::vector<usbl::LeftOutFile> files;
+        usbl::ListLeftOutFiles(&files);
+        if (std::string(reinterpret_cast<const char *>(files.data()), files.size() * sizeof(usbl::LeftOutFile)) != this->diagnostics_snapshot) {
+            this->Rebuild();
         }
     }
 

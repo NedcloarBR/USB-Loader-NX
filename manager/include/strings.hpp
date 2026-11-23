@@ -159,6 +159,16 @@ namespace strings {
         SettingLanguage,
         SettingLanguageHelp,
         SettingLanguageSystem,
+        DriveLeftOutMore,
+        DriveLeftOutPathTooLong,
+        DriveLeftOutTooDeep,
+        DriveLeftOutTooManyEntries,
+        DriveLeftOutIndexFull,
+        DriveLeftOutSolid,
+        SectionDiagnostics,
+        SectionDiagnosticsHelp,
+        DiagnosticsNone,
+        DiagnosticsNeedsNewerModule,
         Count,
     };
 
