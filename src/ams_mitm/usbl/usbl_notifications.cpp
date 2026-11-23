@@ -35,8 +35,11 @@ namespace ams::mitm::usbl {
         /* Ultrahand reads the app name up to the first '-' (suppression flag) and the icon name up to the last '-'. */
         constexpr const char AppName[] = "usbloadernx";
 
-        constexpr s32 DurationMs = 5000;
+        constexpr s32 DurationMs = 6000;
         constexpr s32 Priority   = 20;
+        /* No clock: Ultrahand draws it over the end of a long title. It shows a title and up to four lines; at its default size (24) a list line (the homebrew path, the longest) wraps and pushes the last one out. */
+        constexpr s32 FontSize   = 16;
+        constexpr size_t TextSize = 512;
 
         /* bin2s symbols: <file>_rgba and <file>_rgba_end. */
         struct NotificationIcon {
@@ -119,22 +122,19 @@ namespace ams::mitm::usbl {
             return len;
         }
 
-        void Post(const NotificationIcon &icon, const char *text) {
+        void Post(const NotificationIcon &icon, const char *title, const char *text) {
             if (!g_enabled || !IsConfigEnabled(ConfigKey::Notifications)) {
                 return;
             }
 
             std::scoped_lock lk(g_lock);
 
-            char title[128];
-            i18n::Format(title, sizeof(title), "Notifications.Title");
-
-            char json[1024];
+            char json[1536];
             size_t len = util::SNPrintf(json, sizeof(json), "{\n  \"title\": ");
             len = AppendJsonString(json, sizeof(json), len, title);
             len += util::SNPrintf(json + len, sizeof(json) - len, ",\n  \"text\": ");
             len = AppendJsonString(json, sizeof(json), len, text);
-            len += util::SNPrintf(json + len, sizeof(json) - len, ",\n  \"duration\": %d,\n  \"priority\": %d\n}\n", DurationMs, Priority);
+            len += util::SNPrintf(json + len, sizeof(json) - len, ",\n  \"font_size\": %d,\n  \"show_time\": \"false\",\n  \"duration\": %d,\n  \"priority\": %d\n}\n", FontSize, DurationMs, Priority);
             len = std::min(len, sizeof(json) - 1);
 
             char path[ams::fs::EntryNameLengthMax + 1];
@@ -144,6 +144,37 @@ namespace ams::mitm::usbl {
             if (const Result result = WriteNewFile(path, json, len); R_FAILED(result)) {
                 Log("notify: cannot write %s 2%03d-%04d", icon.state, result.GetModule(), result.GetDescription());
             }
+        }
+
+        /* A list in the notification: one "• ..." line per call. */
+        class Lines {
+            private:
+                char m_text[TextSize] = {};
+                size_t m_len = 0;
+            public:
+                void Add(const char *key, std::initializer_list<i18n::Argument> args = {}) {
+                    char line[256];
+                    i18n::Format(line, sizeof(line), key, args);
+                    m_len += util::SNPrintf(m_text + m_len, sizeof(m_text) - m_len, "%s%s", m_len != 0 ? "\n" : "", line);
+                    m_len = std::min(m_len, sizeof(m_text) - 1);
+                }
+
+                const char *Get() const { return m_text; }
+        };
+
+        void FormatTitle(char *dst, size_t dst_size, const char *key, const char *name) {
+            char fallback[64];
+            if (name == nullptr || name[0] == '\x00') {
+                i18n::Format(fallback, sizeof(fallback), "Notifications.DriveFallbackName");
+                name = fallback;
+            }
+            i18n::Format(dst, dst_size, key, { { "NAME", name } });
+        }
+
+        void FormatCount(char *dst, size_t dst_size, size_t count, const char *one_key, const char *many_key) {
+            char number[16];
+            util::SNPrintf(number, sizeof(number), "%zu", count);
+            i18n::Format(dst, dst_size, count == 1 ? one_key : many_key, { { "COUNT", number } });
         }
 
         void FormatCapacity(char *dst, size_t dst_size, u64 capacity_bytes) {
@@ -178,33 +209,55 @@ namespace ams::mitm::usbl {
     }
 
     void NotifyDriveReading() {
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveReading");
-        Post(ConnectedIcon, text);
+        char title[128];
+        i18n::Format(title, sizeof(title), "Notifications.Reading.Title");
+        Lines lines;
+        lines.Add("Notifications.Reading.Wait");
+        Post(ConnectedIcon, title, lines.Get());
     }
 
-    void NotifyDriveConnected(u64 capacity_bytes, size_t game_count, size_t update_count, size_t add_on_count) {
-        char size[32], games[16], updates[16], add_ons[16], text[256];
-        FormatCapacity(size, sizeof(size), capacity_bytes);
-        util::SNPrintf(games, sizeof(games), "%zu", game_count);
-        util::SNPrintf(updates, sizeof(updates), "%zu", update_count);
-        util::SNPrintf(add_ons, sizeof(add_ons), "%zu", add_on_count);
+    void NotifyDriveConnected(const DriveSummary &drive) {
+        char title[128];
+        FormatTitle(title, sizeof(title), "Notifications.Connected.Title", drive.name);
 
-        i18n::Format(text, sizeof(text), "Notifications.DriveConnected", { { "SIZE", size }, { "GAME_COUNT", games }, { "UPDATE_COUNT", updates }, { "DLC_COUNT", add_ons } });
-        Post(ConnectedIcon, text);
+        Lines lines;
+        if (!drive.has_games_folder) {
+            lines.Add("Notifications.Connected.NoGamesFolder");
+        } else if (drive.games + drive.updates + drive.add_ons == 0) {
+            lines.Add("Notifications.Connected.NoGames");
+        } else {
+            char games[48], updates[48], add_ons[48];
+            FormatCount(games, sizeof(games), drive.games, "Notifications.Count.GameOne", "Notifications.Count.GameMany");
+            FormatCount(updates, sizeof(updates), drive.updates, "Notifications.Count.UpdateOne", "Notifications.Count.UpdateMany");
+            FormatCount(add_ons, sizeof(add_ons), drive.add_ons, "Notifications.Count.AddOnOne", "Notifications.Count.AddOnMany");
+            lines.Add("Notifications.Connected.Contents", { { "GAMES", games }, { "UPDATES", updates }, { "DLCS", add_ons } });
+        }
+
+        char size[32];
+        FormatCapacity(size, sizeof(size), drive.capacity);
+        lines.Add("Notifications.Connected.Volume", { { "SIZE", size }, { "FILESYSTEM", drive.is_exfat ? "exFAT" : "FAT32" } });
+
+        if (drive.volume_serial != 0 && IsConfigEnabled(ConfigKey::HomebrewAccess)) {
+            char serial[16];
+            util::SNPrintf(serial, sizeof(serial), "%04X-%04X", static_cast<unsigned>(drive.volume_serial >> 16), static_cast<unsigned>(drive.volume_serial & 0xFFFF));
+            lines.Add("Notifications.Connected.Homebrew", { { "SERIAL", serial } });
+        }
+
+        if (drive.left_out > 0) {
+            char number[16];
+            util::SNPrintf(number, sizeof(number), "%zu", drive.left_out);
+            lines.Add("Notifications.Connected.LeftOut", { { "COUNT", number } });
+        }
+
+        Post(drive.has_games_folder ? ConnectedIcon : RemovedIcon, title, lines.Get());
     }
 
-    void NotifyFilesLeftOut(size_t count) {
-        char number[16], text[256];
-        util::SNPrintf(number, sizeof(number), "%zu", count);
-        i18n::Format(text, sizeof(text), "Notifications.FilesLeftOut", { { "COUNT", number } });
-        Post(RemovedIcon, text);
-    }
-
-    void NotifyDriveRemoved() {
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveRemoved");
-        Post(RemovedIcon, text);
+    void NotifyDriveRemoved(const char *name) {
+        char title[128];
+        FormatTitle(title, sizeof(title), "Notifications.Removed.Title", name);
+        Lines lines;
+        lines.Add("Notifications.Removed.Games");
+        Post(RemovedIcon, title, lines.Get());
     }
 
     void NotifyDriveRequired() {
@@ -217,27 +270,29 @@ namespace ams::mitm::usbl {
         }
         s_last_tick = now;
 
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveRequired");
-        Post(RemovedIcon, text);
-    }
-
-    void NotifyDriveWithoutGamesFolder() {
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveWithoutGamesFolder");
-        Post(RemovedIcon, text);
+        char title[128];
+        i18n::Format(title, sizeof(title), "Notifications.Required.Title");
+        Lines lines;
+        lines.Add("Notifications.Required.Connect");
+        Post(RemovedIcon, title, lines.Get());
     }
 
     void NotifyDriveNotOpened() {
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveNotOpened");
-        Post(UnreadableIcon, text);
+        char title[128];
+        i18n::Format(title, sizeof(title), "Notifications.NotOpened.Title");
+        Lines lines;
+        lines.Add("Notifications.NotOpened.Power");
+        lines.Add("Notifications.NotOpened.Again");
+        Post(UnreadableIcon, title, lines.Get());
     }
 
-    void NotifyDriveUnreadable() {
-        char text[256];
-        i18n::Format(text, sizeof(text), "Notifications.DriveUnreadable");
-        Post(UnreadableIcon, text);
+    void NotifyDriveUnreadable(const char *name) {
+        char title[128];
+        FormatTitle(title, sizeof(title), "Notifications.Unreadable.Title", name);
+        Lines lines;
+        lines.Add("Notifications.Unreadable.FileSystem");
+        lines.Add("Notifications.Unreadable.Format");
+        Post(UnreadableIcon, title, lines.Get());
     }
 
 }

@@ -22,16 +22,30 @@ namespace ams::mitm::usbl {
      * Only written when Ultrahand is installed and usbloadernx!notifications is enabled. */
     void InitializeNotifications();
 
-    /* A drive was found and is being read; a large one can take a while before NotifyDriveConnected. */
+    /* What the module learned about a drive by indexing it. */
+    struct DriveSummary {
+        const char *name;
+        u64 capacity;
+        bool is_exfat;
+        bool has_games_folder;
+        u32 volume_serial;
+        size_t games;
+        size_t updates;
+        size_t add_ons;
+        /* Dumps or folders not read; the log says which and why. */
+        size_t left_out;
+    };
+
+    /* Each one is a title and a short list. */
+
+    /* A drive was found and is being read; a hard drive can take a while to spin up, a large drive to index. */
     void NotifyDriveReading();
-    void NotifyDriveConnected(u64 capacity_bytes, size_t game_count, size_t update_count, size_t add_on_count);
-    void NotifyDriveRemoved();
-    /* Some dumps or folders on the drive were not read; the log says which and why. */
-    void NotifyFilesLeftOut(size_t count);
-    void NotifyDriveUnreadable();
+    void NotifyDriveConnected(const DriveSummary &drive);
+    void NotifyDriveRemoved(const char *name);
+    /* The file system is neither exFAT nor FAT32. */
+    void NotifyDriveUnreadable(const char *name);
     /* The drive never answered (a hard drive without enough power, usually); it is skipped until plugged in again. */
     void NotifyDriveNotOpened();
-    void NotifyDriveWithoutGamesFolder();
 
     /* A title on an unplugged drive was launched; rate-limited, since loader mounts the ExeFS several times per launch. */
     void NotifyDriveRequired();

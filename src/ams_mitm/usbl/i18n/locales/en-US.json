@@ -1,13 +1,44 @@
 {
 	"Notifications": {
-		"Title": "USB Loader NX",
-		"DriveReading": "USB storage found. Reading its games…",
-		"DriveConnected": "USB storage connected · {{SIZE}} · Games: {{GAME_COUNT}} · Updates: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
-		"DriveRemoved": "USB storage removed. Its games are unavailable until it is reconnected.",
-		"FilesLeftOut": "{{COUNT}} file(s) or folder(s) on the USB storage were not read (path too long, folder too deep or not enough memory). See usbloadernx/logs/usbloadernx.log.",
-		"DriveRequired": "Connect the USB storage device with this game to play it.",
-		"DriveWithoutGamesFolder": "USB storage connected, but it has no /usbloadernx/games folder.",
-		"DriveNotOpened": "The USB storage device did not answer. If it is a hard drive, give it more power (a Y cable or its own supply) and plug it in again.",
-		"DriveUnreadable": "Could not read the USB storage device: unsupported file system."
+		"DriveFallbackName": "USB storage",
+		"Reading": {
+			"Title": "USB storage found",
+			"Wait": "• Reading the drive, please wait"
+		},
+		"Connected": {
+			"Title": "{{NAME}} connected",
+			"Contents": "• {{GAMES}} · {{UPDATES}} · {{DLCS}}",
+			"NoGames": "• No games in /usbloadernx/games",
+			"NoGamesFolder": "• No /usbloadernx/games folder",
+			"Volume": "• {{SIZE}} · {{FILESYSTEM}}",
+			"Homebrew": "• Homebrew: /usbloadernx/usb/{{SERIAL}}",
+			"LeftOut": "• {{COUNT}} item(s) not read, see the log"
+		},
+		"Count": {
+			"GameOne": "1 game",
+			"GameMany": "{{COUNT}} games",
+			"UpdateOne": "1 update",
+			"UpdateMany": "{{COUNT}} updates",
+			"AddOnOne": "1 DLC",
+			"AddOnMany": "{{COUNT}} DLCs"
+		},
+		"Removed": {
+			"Title": "{{NAME}} removed",
+			"Games": "• Content unavailable until plugged in again"
+		},
+		"Required": {
+			"Title": "This game is on USB",
+			"Connect": "• Plug in the drive with it to play"
+		},
+		"NotOpened": {
+			"Title": "USB storage did not answer",
+			"Power": "• A hard drive may need more power (Y cable or supply)",
+			"Again": "• Then plug it in again"
+		},
+		"Unreadable": {
+			"Title": "{{NAME}} could not be read",
+			"FileSystem": "• Unsupported file system",
+			"Format": "• Use exFAT or FAT32"
+		}
 	}
 }

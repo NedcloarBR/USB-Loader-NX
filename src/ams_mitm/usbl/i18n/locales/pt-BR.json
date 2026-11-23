@@ -1,13 +1,44 @@
 {
 	"Notifications": {
-		"Title": "USB Loader NX",
-		"DriveReading": "Dispositivo USB encontrado. Lendo os jogos…",
-		"DriveConnected": "Dispositivo USB conectado · {{SIZE}} · Jogos: {{GAME_COUNT}} · Atualizações: {{UPDATE_COUNT}} · DLC: {{DLC_COUNT}}",
-		"DriveRemoved": "Dispositivo USB removido. Os jogos do USB ficam indisponíveis até reconectar.",
-		"FilesLeftOut": "{{COUNT}} arquivo(s) ou pasta(s) do dispositivo USB não foram lidos (caminho longo demais, pasta funda demais ou memória insuficiente). Veja usbloadernx/logs/usbloadernx.log.",
-		"DriveRequired": "Conecte o dispositivo USB com este jogo para jogar.",
-		"DriveWithoutGamesFolder": "Dispositivo USB conectado, mas sem a pasta /usbloadernx/games.",
-		"DriveNotOpened": "O dispositivo USB não respondeu. Se for um HD, dê mais energia a ele (cabo Y ou fonte) e conecte de novo.",
-		"DriveUnreadable": "Não foi possível ler o dispositivo USB: sistema de arquivos não suportado."
+		"DriveFallbackName": "Dispositivo USB",
+		"Reading": {
+			"Title": "Dispositivo USB encontrado",
+			"Wait": "• Lendo o dispositivo, aguarde"
+		},
+		"Connected": {
+			"Title": "{{NAME}} conectado",
+			"Contents": "• {{GAMES}} · {{UPDATES}} · {{DLCS}}",
+			"NoGames": "• Nenhum jogo em /usbloadernx/games",
+			"NoGamesFolder": "• Sem a pasta /usbloadernx/games",
+			"Volume": "• {{SIZE}} · {{FILESYSTEM}}",
+			"Homebrew": "• Homebrew: /usbloadernx/usb/{{SERIAL}}",
+			"LeftOut": "• {{COUNT}} item(ns) não lido(s), veja o log"
+		},
+		"Count": {
+			"GameOne": "1 jogo",
+			"GameMany": "{{COUNT}} jogos",
+			"UpdateOne": "1 atualização",
+			"UpdateMany": "{{COUNT}} atualizações",
+			"AddOnOne": "1 DLC",
+			"AddOnMany": "{{COUNT}} DLCs"
+		},
+		"Removed": {
+			"Title": "{{NAME}} removido",
+			"Games": "• Conteúdo indisponível até reconectar"
+		},
+		"Required": {
+			"Title": "Este jogo está no USB",
+			"Connect": "• Conecte o dispositivo com ele para jogar"
+		},
+		"NotOpened": {
+			"Title": "Dispositivo USB não respondeu",
+			"Power": "• Se for um HD, dê mais energia (cabo Y ou fonte)",
+			"Again": "• Depois, conecte de novo"
+		},
+		"Unreadable": {
+			"Title": "{{NAME}} não pôde ser lido",
+			"FileSystem": "• Sistema de arquivos não suportado",
+			"Format": "• Use exFAT ou FAT32"
+		}
 	}
 }

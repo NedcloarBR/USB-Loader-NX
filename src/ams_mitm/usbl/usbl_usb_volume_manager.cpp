@@ -396,16 +396,26 @@ namespace ams::mitm::usbl {
                 slot.status.add_on_count = game_files.add_ons;
             }
 
+            if (resumed) {
+                Log("drive %d: back after sleep", drive);
+            } else if (state == DriveState::Unreadable) {
+                NotifyDriveUnreadable(slot.status.name);
+            } else {
+                NotifyDriveConnected({
+                    .name             = slot.status.name,
+                    .capacity         = slot.status.capacity,
+                    .is_exfat         = slot.status.is_exfat,
+                    .has_games_folder = state == DriveState::Ready,
+                    .volume_serial    = slot.status.volume_serial,
+                    .games            = game_files.games,
+                    .updates          = game_files.updates,
+                    .add_ons          = game_files.add_ons,
+                    .left_out         = game_files.left_out,
+                });
+            }
+
             switch (state) {
                 case DriveState::Ready:
-                    if (resumed) {
-                        Log("drive %d: back after sleep", drive);
-                    } else {
-                        NotifyDriveConnected(slot.status.capacity, game_files.games, game_files.updates, game_files.add_ons);
-                        if (game_files.left_out > 0) {
-                            NotifyFilesLeftOut(game_files.left_out);
-                        }
-                    }
                     xci::ExcludeInstalledApplications();
                     if (IsDebugEnabled()) {
                         xci::SelfTestContentIndex();
@@ -422,11 +432,7 @@ namespace ams::mitm::usbl {
                     }
                     break;
                 case DriveState::NoGamesFolder:
-                    NotifyDriveWithoutGamesFolder();
-                    break;
                 case DriveState::Unreadable:
-                    NotifyDriveUnreadable();
-                    break;
                 case DriveState::Reading:
                     break;
             }
@@ -447,7 +453,7 @@ namespace ams::mitm::usbl {
                 RememberSleepingDrive(slot.identity);
             } else {
                 Log("drive %d: detached", drive);
-                NotifyDriveRemoved();
+                NotifyDriveRemoved(slot.status.name);
             }
 
             ncm::ProgramId applications[MaxApplicationsPerDrive];

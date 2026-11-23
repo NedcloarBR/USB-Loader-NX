@@ -20,7 +20,7 @@ namespace ams::mitm::usbl::i18n {
 
     /* Strings live in i18n/locales/<locale>.json (en-US is the source and the fallback), embedded at build time.
      * sd:/usbloadernx/i18n/<locale>.json overrides the embedded file or adds a language.
-     * Keys are dotted paths into the JSON ("Notifications.DriveConnected"); values use {{NAME}} placeholders. */
+     * Keys are dotted paths into the JSON ("Notifications.Connected.Title"); values use {{NAME}} placeholders. */
     struct Argument {
         const char *name;
         const char *value;
