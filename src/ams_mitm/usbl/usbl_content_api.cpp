@@ -95,6 +95,14 @@ namespace ams::mitm::usbl {
         return true;
     }
 
+    ContentSource GetBadgeSource(ncm::ProgramId program_id, ContentSource fallback) {
+        KnownContent known;
+        if (!FindKnownProgramContent(std::addressof(known), GetApplicationIdOfProgram(program_id), static_cast<u8>(NcaContentType::Program), ContentLayer::Base)) {
+            return fallback;
+        }
+        return known.source;
+    }
+
     bool IsServedProgram(ncm::ProgramId program_id) {
         return IsKnownProgram(program_id);
     }

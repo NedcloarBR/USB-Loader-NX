@@ -32,6 +32,8 @@ namespace ams::mitm::usbl {
     bool FindServedContent(ServedContent *out, ncm::ContentId content_id);
     bool FindServedProgramContent(ServedContent *out, ncm::ProgramId program_id, fssystem::NcaHeader::ContentType content_type);
     bool IsServedProgram(ncm::ProgramId program_id);
+    /* Where the game itself comes from, for its icon's badge: the Control content may be its update's (an NSP next to an XCI). */
+    ContentSource GetBadgeSource(ncm::ProgramId program_id, ContentSource fallback);
     /* An update is served with the application: its Program's RomFS only holds changes on top of the base game's. */
     bool IsServedPatchedProgram(ncm::ProgramId program_id);
 
