@@ -82,24 +82,6 @@ namespace ams::mitm::usbl {
             Log("migration: hidden_games.txt converted to %s", ::usbl::paths::HiddenGames);
         }
 
-        void MoveI18nFolder() {
-            Path from, to;
-            MakeSdPath(from, ::usbl::paths::legacy::ModuleDir, "i18n");
-            MakeSdPath(to, ::usbl::paths::I18nDir);
-            if (!Exists(from)) {
-                return;
-            }
-            if (Exists(to)) {
-                Log("migration: %s already exists, old i18n folder left in place", ::usbl::paths::I18nDir);
-                return;
-            }
-            if (const Result result = ams::fs::RenameDirectory(from, to); R_FAILED(result)) {
-                Log("migration: i18n folder not moved 2%03d-%04d", result.GetModule(), result.GetDescription());
-            } else {
-                Log("migration: i18n folder moved to %s", ::usbl::paths::I18nDir);
-            }
-        }
-
     }
 
     void MigrateLegacyFiles() {
@@ -124,7 +106,6 @@ namespace ams::mitm::usbl {
         MoveFile("config.ini", ::usbl::paths::ConfigFile);
         MoveFile("known_contents.bin", ::usbl::paths::KnownContents);
         ConvertHiddenGames();
-        MoveI18nFolder();
 
         /* Only once it is empty; anything left (an unknown file, a folder that could not move) keeps it. */
         if (R_SUCCEEDED(ams::fs::DeleteDirectory(legacy_dir))) {

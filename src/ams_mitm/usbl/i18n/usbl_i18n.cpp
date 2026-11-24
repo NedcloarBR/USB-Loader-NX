@@ -30,7 +30,6 @@ namespace ams::mitm::usbl::i18n {
     namespace {
 
         constexpr const char FallbackLocale[] = "en-US";
-        constexpr size_t MaxSdLocaleFileSize = 16_KB;
 
         /* bin2s symbols: <file>_json and <file>_json_end. */
         struct EmbeddedLocale {
@@ -73,7 +72,6 @@ namespace ams::mitm::usbl::i18n {
         constinit char g_locale[0x10] = {};
         /* Format runs on the notification threads while the Manager can switch the language. */
         constinit os::SdkMutex g_lock;
-        constinit char g_sd_file_buffer[MaxSdLocaleFileSize];
 
         /* Accepts nested objects of strings, the subset the locale files use. */
         class Flattener {
@@ -246,27 +244,6 @@ namespace ams::mitm::usbl::i18n {
             return Flattener(reinterpret_cast<const char *>(embedded.begin), embedded.end - embedded.begin, table).Parse();
         }
 
-        bool LoadFromSdCard(Table *table, const char *locale) {
-            char path[ams::fs::EntryNameLengthMax + 1];
-            util::SNPrintf(path, sizeof(path), "%s:%s/%s.json", ams::fs::impl::SdCardFileSystemMountName, ::usbl::paths::I18nDir, locale);
-
-            ams::fs::FileHandle file;
-            if (R_FAILED(ams::fs::OpenFile(std::addressof(file), path, ams::fs::OpenMode_Read))) {
-                return false;
-            }
-            ON_SCOPE_EXIT { ams::fs::CloseFile(file); };
-
-            s64 size = 0;
-            if (R_FAILED(ams::fs::GetFileSize(std::addressof(size), file)) || size <= 0 || size > static_cast<s64>(sizeof(g_sd_file_buffer))) {
-                return false;
-            }
-            if (R_FAILED(ams::fs::ReadFile(file, 0, g_sd_file_buffer, size))) {
-                return false;
-            }
-
-            return Flattener(g_sd_file_buffer, size, table).Parse();
-        }
-
         void ReadSystemLocale() {
             u64 code = 0;
             if (R_FAILED(::setGetLanguageCode(std::addressof(code)))) {
@@ -292,11 +269,6 @@ namespace ams::mitm::usbl::i18n {
 
         if (!LoadEmbedded(std::addressof(g_fallback_table), *FindEmbeddedLocale(FallbackLocale, false))) {
             Log("i18n: embedded %s failed to parse", FallbackLocale);
-        }
-
-        if (LoadFromSdCard(std::addressof(g_locale_table), g_locale)) {
-            Log("i18n: locale %s (sd card, %zu strings)", g_locale, g_locale_table.count);
-            return;
         }
 
         const EmbeddedLocale *embedded = FindEmbeddedLocale(g_locale, false);
