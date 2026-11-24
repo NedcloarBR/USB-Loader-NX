@@ -29,8 +29,11 @@ namespace usbl::paths {
     constexpr char Favorites[]     = "/usbloadernx/data/favorites.ini";
     constexpr char CacheDir[]      = "/usbloadernx/cache";
     constexpr char IconCacheDir[]  = "/usbloadernx/cache/icons";
+    /* Art downloaded from GameTDB: <kind>/<title id>.<jpg|png>, and which GameTDB entry each game is (ids.ini). */
+    constexpr char ArtCacheDir[]   = "/usbloadernx/cache/art";
+    /* The player's own matches, "<title id> = <GameTDB id>" under [gametdb], over the Manager's. */
+    constexpr char GameTdbIds[]    = "/usbloadernx/data/gametdb.ini";
     constexpr char ThemesDir[]     = "/usbloadernx/themes";
-    constexpr char I18nDir[]       = "/usbloadernx/i18n";
     constexpr char LogsDir[]       = "/usbloadernx/logs";
     constexpr char LogFile[]       = "/usbloadernx/logs/usbloadernx.log";
     /* Virtual for homebrew, only while a drive is plugged in: one folder per USB drive (by volume serial), read only. Nothing on the SD card. */
@@ -58,7 +61,7 @@ namespace usbl::formats {
     constexpr int Manager      = 1;
     constexpr int HiddenGames  = 1;
     constexpr int Favorites    = 1;
-    constexpr int Theme        = 1;
+    constexpr int Theme        = 2;
     /* Binary: the version is in the file's header. */
     constexpr int KnownContents = 1;
 

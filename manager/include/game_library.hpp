@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <gametdb.hpp>
 #include <pu/Plutonium>
 #include <string>
 #include <vector>
@@ -33,6 +34,8 @@ namespace library {
     struct Game {
         usbl::GameStatus status;
         std::string name;
+        /* The name in every language the game has, American English first (GameTDB matches any of them). */
+        std::vector<std::string> names;
         /* As the game shows it ("1.0.2"); empty when ns has no control data. */
         std::string display_version;
         /* Null when ns has no control data (e.g. the game is hidden and was never shown since boot). */
@@ -42,6 +45,9 @@ namespace library {
         /* The console asks for a newer version than the drive has: the game was played with an update that is gone
          * (avm's launch required version only goes up). HOME would only offer to download it. */
         bool update_missing = false;
+        /* What GameTDB knows of the game (developer, year, genres...), from the index built into the app. */
+        gametdb::Entry gametdb;
+        bool in_gametdb = false;
     };
 
     Result LoadGames(std::vector<Game> *out);
@@ -57,6 +63,21 @@ namespace library {
     /* Replaces the whole list (used when converting the old favorites.txt). */
     bool WriteFavorites(const std::vector<u64> &favorites);
     bool AreFavoritesFromNewerVersion();
+
+    /* Which games the library shows (ZR); a drive is one more filter per drive. */
+    enum class Filter : s32 {
+        All,
+        /* The last few games played, most recent first. */
+        ContinuePlaying,
+        Favorites,
+        Drive,
+        Xci,
+        Nsp,
+        Installed,
+        Hidden,
+    };
+    /* Keeps the games `filter` lets through (`drive` for Filter::Drive). */
+    void FilterBy(std::vector<Game> *games, Filter filter, s32 drive);
 
     enum class SortMode : s32 {
         Name,

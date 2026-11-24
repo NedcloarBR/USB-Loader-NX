@@ -15,6 +15,7 @@
  */
 #include <game_library.hpp>
 #include <algorithm>
+#include <gametdb.hpp>
 #include <cmath>
 #include <cstring>
 #include <cinttypes>
@@ -174,6 +175,19 @@ namespace library {
             if (R_SUCCEEDED(nacpGetLanguageEntry(&data->nacp, &entry)) && entry != nullptr && entry->name[0] != '\x00') {
                 game->name = entry->name;
             }
+            /* Plain names (titles_data_format 0); a compressed table (21.0.0+) leaves only the name in use. */
+            game->names.clear();
+            const size_t languages = data->nacp.titles_data_format == 0 ? std::size(data->nacp.lang_data.lang) : 0;
+            for (size_t i = 0; i < languages; ++i) {
+                const auto &language = data->nacp.lang_data.lang[i];
+                const std::string name(language.name, strnlen(language.name, sizeof(language.name)));
+                if (!name.empty() && std::find(game->names.begin(), game->names.end(), name) == game->names.end()) {
+                    game->names.push_back(name);
+                }
+            }
+            if (game->names.empty() && !game->name.empty()) {
+                game->names.push_back(game->name);
+            }
 
             const size_t icon_size = size - sizeof(data->nacp);
             if (with_icon && icon_size > 0) {
@@ -234,6 +248,7 @@ namespace library {
             if (u32 required = 0; has_versions && R_SUCCEEDED(avmGetLaunchRequiredVersion(status.application_id, &required))) {
                 game.update_missing = required > (status.has_update ? status.update_version : status.version);
             }
+            game.in_gametdb = gametdb::Find(status.application_id, game.names, &game.gametdb);
             out->push_back(std::move(game));
         }
 
@@ -312,6 +327,29 @@ namespace library {
         }
         const std::string needle = Lowercase(query);
         games->erase(std::remove_if(games->begin(), games->end(), [&](const Game &game) { return Lowercase(game.name).find(needle) == std::string::npos; }), games->end());
+    }
+
+    void FilterBy(std::vector<Game> *games, Filter filter, s32 drive) {
+        const auto keep = [filter, drive](const Game &game) {
+            switch (filter) {
+                case Filter::ContinuePlaying: return game.play.last_played != 0;
+                case Filter::Favorites:       return game.is_favorite;
+                case Filter::Drive:           return game.status.is_connected && game.status.drive == drive;
+                case Filter::Xci:             return game.status.source == usbl::GameSource::Xci;
+                case Filter::Nsp:             return game.status.source == usbl::GameSource::Nsp;
+                case Filter::Installed:       return game.status.source == usbl::GameSource::Installed;
+                case Filter::Hidden:          return game.status.is_hidden;
+                default:                      return true;
+            }
+        };
+        games->erase(std::remove_if(games->begin(), games->end(), [&](const Game &game) { return !keep(game); }), games->end());
+        if (filter == Filter::ContinuePlaying) {
+            constexpr size_t Recent = 6;
+            std::stable_sort(games->begin(), games->end(), [](const Game &a, const Game &b) { return a.play.last_played > b.play.last_played; });
+            if (games->size() > Recent) {
+                games->resize(Recent);
+            }
+        }
     }
 
     Result LaunchGame(const Game &game) {
