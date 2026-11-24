@@ -97,9 +97,9 @@ namespace ams::mitm::fs {
             NON_MOVEABLE(BadgedControlFileSystem);
             private:
                 std::shared_ptr<ams::fs::fsa::IFileSystem> m_base;
-                usbl::ContentSource m_source;
+                usbl::BadgeSource m_source;
             public:
-                BadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::ContentSource source) : m_base(std::move(base)), m_source(source) { /* ... */ }
+                BadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::BadgeSource source) : m_base(std::move(base)), m_source(source) { /* ... */ }
             private:
                 Result OpenBadgedIcon(std::unique_ptr<ams::fs::fsa::IFile> *out_file, const ams::fs::Path &path) {
                     std::unique_ptr<ams::fs::fsa::IFile> icon_file;
@@ -156,7 +156,7 @@ namespace ams::mitm::fs {
 
     }
 
-    std::shared_ptr<ams::fs::fsa::IFileSystem> MakeUsblBadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::ContentSource source) {
+    std::shared_ptr<ams::fs::fsa::IFileSystem> MakeUsblBadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::BadgeSource source) {
         if (!usbl::badge::IsEnabled()) {
             return std::move(base);
         }

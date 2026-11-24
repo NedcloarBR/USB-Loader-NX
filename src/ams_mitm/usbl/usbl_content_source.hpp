@@ -22,4 +22,10 @@ namespace ams::mitm::usbl {
     /* Where a game's content comes from; picks the icon badge. Stored in known_contents.bin, where 0 predates the field. */
     using ContentSource = ::usbl::protocol::GameSource;
 
+    /* What the icon badge shows: where the game comes from, and whether that file is compressed (an XCZ or NSZ). */
+    struct BadgeSource {
+        ContentSource source;
+        bool is_compressed;
+    };
+
 }

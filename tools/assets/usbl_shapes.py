@@ -139,8 +139,9 @@ def blocks_glyph(ox, oy, s):
     polys.append(T(rrect(27.5, 4, 15, 15, 2.6)))
     return polys
 
-def badge_usb_source(glyph, details=None, W=256, H=256):
-    """USB trident + a source glyph (game card, NSP, installed) on the dark pill."""
+def badge_usb_source(glyph, details=None, W=256, H=256, z_mark=False):
+    """USB trident + a source glyph (game card, NSP, installed) on the dark pill; z_mark adds a Z bubble on its top
+    right corner for a compressed XCZ or NSZ."""
     bw, bh, m = 98, 44, 10
     x, y = W - bw - m, H - bh - m
     sep_x = x + bw / 2
@@ -152,4 +153,10 @@ def badge_usb_source(glyph, details=None, W=256, H=256):
              (glyph(gx, gy, gs), COLORS['text'], 1.0)]
     if details is not None:
         scene.append((details(gx, gy, gs), COLORS['default'], 1.0))
+    if z_mark:
+        cx, cy, r = x + bw - 6, y + 5, 10.5
+        z = [(-4.6, -5.2), (4.6, -5.2), (4.6, -3.0), (-1.4, 3.0), (4.6, 3.0), (4.6, 5.2), (-4.6, 5.2), (-4.6, 3.0), (1.4, -3.0), (-4.6, -3.0)]
+        scene += [([circle(cx, cy, r + 2.5)], COLORS['default'], 1.0),
+                  ([circle(cx, cy, r)], COLORS['primary'], 1.0),
+                  ([[(cx + dx, cy + dy) for dx, dy in z]], COLORS['default'], 1.0)]
     return scene

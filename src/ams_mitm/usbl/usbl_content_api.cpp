@@ -26,7 +26,7 @@ namespace ams::mitm::usbl {
 
         /* A known content whose drive is not plugged in reports DriveNotConnected instead of "not found". */
         ServedContent ToServedContent(const KnownContent &known) {
-            return { .content_id = known.content_id, .program_id = known.program_id, .rights_id = known.rights_id, .key_generation = known.key_generation, .source = known.source };
+            return { .content_id = known.content_id, .program_id = known.program_id, .rights_id = known.rights_id, .key_generation = known.key_generation, .source = known.source, .is_compressed = known.is_compressed };
         }
 
         Result ToServedResult(Result result, bool is_known) {
@@ -95,12 +95,12 @@ namespace ams::mitm::usbl {
         return true;
     }
 
-    ContentSource GetBadgeSource(ncm::ProgramId program_id, ContentSource fallback) {
+    BadgeSource GetBadgeSource(const ServedContent &control) {
         KnownContent known;
-        if (!FindKnownProgramContent(std::addressof(known), GetApplicationIdOfProgram(program_id), static_cast<u8>(NcaContentType::Program), ContentLayer::Base)) {
-            return fallback;
+        if (!FindKnownProgramContent(std::addressof(known), GetApplicationIdOfProgram(control.program_id), static_cast<u8>(NcaContentType::Program), ContentLayer::Base)) {
+            return { control.source, control.is_compressed };
         }
-        return known.source;
+        return { known.source, known.is_compressed };
     }
 
     bool IsServedProgram(ncm::ProgramId program_id) {

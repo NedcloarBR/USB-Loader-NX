@@ -31,7 +31,9 @@ namespace ams::mitm::usbl {
         u8 key_generation;
         ContentSource source;
         bool is_patch;
-        u8 reserved[4];
+        /* From an NSZ or XCZ (0 in files written before the field). */
+        bool is_compressed;
+        u8 reserved[3];
     };
     static_assert(sizeof(KnownContent) == 0x38);
 

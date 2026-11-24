@@ -23,6 +23,10 @@ extern "C" {
 
     extern const u8 usbloadernx_badge_xci_rgba[];
     extern const u8 usbloadernx_badge_xci_rgba_end[];
+    extern const u8 usbloadernx_badge_xcz_rgba[];
+    extern const u8 usbloadernx_badge_xcz_rgba_end[];
+    extern const u8 usbloadernx_badge_nsz_rgba[];
+    extern const u8 usbloadernx_badge_nsz_rgba_end[];
     extern const u8 usbloadernx_badge_nsp_rgba[];
     extern const u8 usbloadernx_badge_nsp_rgba_end[];
     extern const u8 usbloadernx_badge_installed_rgba[];
@@ -80,16 +84,18 @@ namespace ams::mitm::usbl::badge {
             const u8 *end;
         };
 
-        BadgeAsset GetBadgeAsset(ContentSource source) {
-            switch (source) {
-                case ContentSource::Nsp:       return { usbloadernx_badge_nsp_rgba,       usbloadernx_badge_nsp_rgba_end };
+        BadgeAsset GetBadgeAsset(BadgeSource badge) {
+            switch (badge.source) {
+                case ContentSource::Nsp:
+                    return badge.is_compressed ? BadgeAsset{ usbloadernx_badge_nsz_rgba, usbloadernx_badge_nsz_rgba_end } : BadgeAsset{ usbloadernx_badge_nsp_rgba, usbloadernx_badge_nsp_rgba_end };
                 case ContentSource::Installed: return { usbloadernx_badge_installed_rgba, usbloadernx_badge_installed_rgba_end };
                 case ContentSource::Xci:
-                default:                       return { usbloadernx_badge_xci_rgba,       usbloadernx_badge_xci_rgba_end };
+                default:
+                    return badge.is_compressed ? BadgeAsset{ usbloadernx_badge_xcz_rgba, usbloadernx_badge_xcz_rgba_end } : BadgeAsset{ usbloadernx_badge_xci_rgba, usbloadernx_badge_xci_rgba_end };
             }
         }
 
-        bool Composite(u8 *rgb, s32 icon_size, ContentSource source) {
+        bool Composite(u8 *rgb, s32 icon_size, BadgeSource source) {
             const BadgeAsset asset = GetBadgeAsset(source);
 
             BadgeHeader header;
@@ -129,7 +135,7 @@ namespace ams::mitm::usbl::badge {
         return IsConfigEnabled(ConfigKey::Badge);
     }
 
-    Result ApplyToJpeg(std::unique_ptr<u8[]> *out, size_t *out_size, const void *jpeg, size_t jpeg_size, ContentSource source) {
+    Result ApplyToJpeg(std::unique_ptr<u8[]> *out, size_t *out_size, const void *jpeg, size_t jpeg_size, BadgeSource source) {
         R_UNLESS(jpeg_size <= static_cast<size_t>(std::numeric_limits<int>::max()), ams::fs::ResultInvalidArgument());
 
         std::scoped_lock lk(g_stb_lock);

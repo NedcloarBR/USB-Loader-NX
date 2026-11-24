@@ -2,8 +2,8 @@
 """Regenerates the embedded USB Loader NX assets in stratosphere/ams_mitm/source/usbl/assets/.
 
 usbloadernx-<state>.rgba : 50x50 RGBA8888 Ultrahand notification icons.
-usbloadernx-badge-<source>.rgba : the icon badge for games from an XCI, an NSP or installed on the
-                                  drive, cropped to its bounding box and prefixed by u16 x, y, width,
+usbloadernx-badge-<source>.rgba : the icon badge for games from an XCI, an NSP (each also compressed: XCZ,
+                                  NSZ, with a Z mark) or installed on the drive, cropped to its bounding box and prefixed by u16 x, y, width,
                                   height (little endian) in 256x256 icon space.
 """
 import os
@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import usbl_shapes as S
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'stratosphere', 'ams_mitm', 'source', 'usbl', 'assets')
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'ams_mitm', 'usbl', 'assets')
 
 def write(name, data):
     path = os.path.join(OUT_DIR, name)
@@ -34,7 +34,9 @@ def main():
 
     badges = (
         ('xci',       S.badge_usb_source(S.gamecard_silhouette, S.gamecard_details)),
+        ('xcz',       S.badge_usb_source(S.gamecard_silhouette, S.gamecard_details, z_mark=True)),
         ('nsp',       S.badge_usb_source(S.package_glyph, S.package_details)),
+        ('nsz',       S.badge_usb_source(S.package_glyph, S.package_details, z_mark=True)),
         ('installed', S.badge_usb_source(S.blocks_glyph)),
     )
     for source, scene in badges:

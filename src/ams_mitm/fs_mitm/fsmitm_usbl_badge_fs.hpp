@@ -20,6 +20,6 @@
 namespace ams::mitm::fs {
 
     /* USB Loader NX: the Control filesystem of a game served from USB, with its source's badge drawn on its icons. */
-    std::shared_ptr<ams::fs::fsa::IFileSystem> MakeUsblBadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::ContentSource source);
+    std::shared_ptr<ams::fs::fsa::IFileSystem> MakeUsblBadgedControlFileSystem(std::shared_ptr<ams::fs::fsa::IFileSystem> &&base, usbl::BadgeSource source);
 
 }

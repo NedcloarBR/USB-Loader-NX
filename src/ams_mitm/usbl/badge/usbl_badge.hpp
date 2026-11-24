@@ -22,8 +22,8 @@ namespace ams::mitm::usbl::badge {
     /* The badge on icons of games served from USB is controlled by usbloadernx!badge (default on). */
     bool IsEnabled();
 
-    /* Decodes a game icon JPEG, draws the badge for the game's source (game card, NSP, installed) and re-encodes it.
-     * Icons that are not square are left alone (ResultInvalidArgument). */
-    Result ApplyToJpeg(std::unique_ptr<u8[]> *out, size_t *out_size, const void *jpeg, size_t jpeg_size, ContentSource source);
+    /* Decodes a game icon JPEG, draws the badge for the game's source (game card, NSP, installed; a Z mark when compressed)
+     * and re-encodes it. Icons that are not square are left alone (ResultInvalidArgument). */
+    Result ApplyToJpeg(std::unique_ptr<u8[]> *out, size_t *out_size, const void *jpeg, size_t jpeg_size, BadgeSource source);
 
 }

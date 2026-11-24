@@ -124,6 +124,7 @@ namespace ams::mitm::usbl {
                 .key_generation = content.key_generation,
                 .source         = content.source,
                 .is_patch       = content.is_patch,
+                .is_compressed  = content.is_compressed,
                 .reserved       = {},
             };
         }

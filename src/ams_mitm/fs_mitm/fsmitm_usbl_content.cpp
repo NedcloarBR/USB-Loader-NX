@@ -155,7 +155,7 @@ namespace ams::mitm::fs {
 
         usbl::ServedContent content;
         if (filesystem_type == FsFileSystemType_ContentControl && usbl::FindServedProgramContent(std::addressof(content), program_id, GetNcaContentType(filesystem_type))) {
-            section_fs = MakeUsblBadgedControlFileSystem(std::move(section_fs), usbl::GetBadgeSource(content.program_id, content.source));
+            section_fs = MakeUsblBadgedControlFileSystem(std::move(section_fs), usbl::GetBadgeSource(content));
         }
 
         *out = std::move(section_fs);
@@ -232,7 +232,7 @@ namespace ams::mitm::fs {
 
         usbl::ServedContent content;
         if (filesystem_type == FsFileSystemType_ContentControl && usbl::FindServedContent(std::addressof(content), content_id)) {
-            section_fs = MakeUsblBadgedControlFileSystem(std::move(section_fs), usbl::GetBadgeSource(content.program_id, content.source));
+            section_fs = MakeUsblBadgedControlFileSystem(std::move(section_fs), usbl::GetBadgeSource(content));
         }
 
         *out = std::move(section_fs);
