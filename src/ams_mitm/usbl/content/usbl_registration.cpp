@@ -1100,8 +1100,16 @@ namespace ams::mitm::usbl::content {
             out->drive        = base.drive;
             out->fragments    = GetContainerFragments(base);
 
-            const char *name = std::strrchr(path, '/');
-            util::Strlcpy(out->file_name, name != nullptr ? name + 1 : path, sizeof(out->file_name));
+            /* 1.3: the path under usbloadernx/games/ (its folders are the Manager's shelves), else the file name. */
+            constexpr char GamesFolder[] = "usbloadernx/games/";
+            const char *name = std::strstr(path, GamesFolder);
+            if (name != nullptr) {
+                name += sizeof(GamesFolder) - 1;
+            } else {
+                name = std::strrchr(path, '/');
+                name = name != nullptr ? name + 1 : path;
+            }
+            util::Strlcpy(out->file_name, name, sizeof(out->file_name));
 
             IndexedContent patch;
             const char *patch_path;

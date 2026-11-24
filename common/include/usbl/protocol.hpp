@@ -29,8 +29,9 @@ namespace usbl::protocol {
      * through a module of another major version. */
     constexpr std::uint16_t VersionMajor = 1;
     /* 1.1: ConfigKey::HomebrewAccess, DriveStatus::volume_serial, DriveState::Reading, GetLanguage and SetLanguage.
-     * 1.2: ListLeftOutFiles. */
-    constexpr std::uint16_t VersionMinor = 2;
+     * 1.2: ListLeftOutFiles.
+     * 1.3: GameStatus::file_name is the path under usbloadernx/games/. */
+    constexpr std::uint16_t VersionMinor = 3;
 
     enum class CommandId : std::uint32_t {
         IsServedProgram      = 0,  /* loader */
@@ -157,6 +158,7 @@ namespace usbl::protocol {
         /* An update or add-on content of the game is on another drive: only the game's own drive is used. */
         bool has_parts_elsewhere;
         std::uint8_t reserved[2];
+        /* From 1.3, the path under usbloadernx/games/ ("RPG/Game.xci"); before, only the file name. */
         char file_name[0x100];
     };
     static_assert(sizeof(GameStatus) == 0x128);
