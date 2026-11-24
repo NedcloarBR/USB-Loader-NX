@@ -17,6 +17,37 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 
 Every release of USB Loader NX, newest first.
 
+## v1.2.0 — 2026-11-23
+
+### ✨ Features
+
+- **usbl:** Every ticket and title of a multi-title NSP ([`50ed3c4`](https://github.com/NedcloarBR/USB-Loader-NX/commit/50ed3c437f8da7c76bdc6d1b8721943ccddca35e) by @NedcloarBR)
+- **usbl:** Play NSZ and XCZ dumps in block mode ([`0920578`](https://github.com/NedcloarBR/USB-Loader-NX/commit/0920578885b2c94385d5100c9299427c15e41a0f) by @NedcloarBR)
+- **usbl:** Register DLC data patches ([`28421e4`](https://github.com/NedcloarBR/USB-Loader-NX/commit/28421e48d8330121e82d9b27d59a68d0fd4d6ebc) by @NedcloarBR)
+- **usbl:** Serve applications with several programs ([`d19f3bd`](https://github.com/NedcloarBR/USB-Loader-NX/commit/d19f3bdc361ecb9dce4251deca7e2e1928761696) by @NedcloarBR)
+- **usbl:** Keep what the indexing left out, and why ([`fed228d`](https://github.com/NedcloarBR/USB-Loader-NX/commit/fed228d020e71c543b239361957f59edf4a4dfa5) by @NedcloarBR)
+- **manager:** Diagnostics section for files not read ([`7abe9c6`](https://github.com/NedcloarBR/USB-Loader-NX/commit/7abe9c68a8d8bb312dab4ae83058a1a0a6f73a1a) by @NedcloarBR)
+- **fs_mitm:** Show the usb folder only while a drive is plugged in ([`c65514a`](https://github.com/NedcloarBR/USB-Loader-NX/commit/c65514a158a663f48c380345cde94c099bdee273) by @NedcloarBR)
+- **usbl:** Mark compressed games on their badge ([`0e2cd52`](https://github.com/NedcloarBR/USB-Loader-NX/commit/0e2cd5232b1f822a3403d09e3e41fd8a81f16ec2) by @NedcloarBR)
+
+### 🐛 Fixes
+
+- **usbl:** Check installed copies per application ([`c81d384`](https://github.com/NedcloarBR/USB-Loader-NX/commit/c81d38473b4389ecd323f2b27b42310f6a3f37cf) by @NedcloarBR)
+- **usbl:** Notification lines that fit ([`12e7d91`](https://github.com/NedcloarBR/USB-Loader-NX/commit/12e7d91a411901d3015cde65cca07f77c055c5a0) by @NedcloarBR)
+- **usbl:** Read XCZ dumps, whose partitions have no hashes ([`7d2eea0`](https://github.com/NedcloarBR/USB-Loader-NX/commit/7d2eea00a0b5cebe03af841c5c6838db6ec1e318) by @NedcloarBR)
+- **usbl:** Badge from the game itself, not its update ([`1858738`](https://github.com/NedcloarBR/USB-Loader-NX/commit/18587386f4a7d61c31dd2d47df98645b6ebda84c) by @NedcloarBR)
+
+### ♻️ Refactoring
+
+- **usbl:** Drop xci from names that cover NSPs too ([`ce73fef`](https://github.com/NedcloarBR/USB-Loader-NX/commit/ce73fef68ef9dd8c27ef471c98cccee9ec9284cb) by @NedcloarBR)
+
+### 📝 Documentation
+
+- Plan NSPs that hold several titles ([`86229ae`](https://github.com/NedcloarBR/USB-Loader-NX/commit/86229ae6c9ffaa6a06530ed5c4480b0c48e241e2) by @NedcloarBR)
+- Game formats ([`4828161`](https://github.com/NedcloarBR/USB-Loader-NX/commit/48281614ae488e4bff947f29fa7f359e20bae5a1) by @NedcloarBR)
+
+**Full changelog:** [v1.1.0...v1.2.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v1.1.0...v1.2.0)
+
 ## v1.1.0 — 2026-11-22
 
 ### ✨ Features
