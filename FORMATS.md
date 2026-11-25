@@ -15,7 +15,6 @@ sdmc:/usbloadernx/
 │   └── favorites.ini       the Manager's favorites
 ├── cache/icons/<id>.jpg    the games' icons for the Manager while their drive is unplugged; can be deleted at any time
 ├── themes/<name>/          Manager themes (manager/themes/README.md)
-├── i18n/<locale>.json      notification texts that replace the built-in ones
 ├── logs/usbloadernx.log    the module's log, started again at every boot
 ├── usb/                    virtual for homebrew, while a drive is plugged in: one folder per USB drive (its volume serial, A1B2-C3D4) with that drive's usbloadernx/usb/, read-only; not on the card itself
 └── games/                  reserved for playing from the SD card; not read yet
@@ -38,7 +37,6 @@ Versions before 1.0.0 kept the module's files in `atmosphere/config/usbloadernx/
 | `config.ini`, `manager.ini`, `hidden_games.ini`, `favorites.ini` | 1 | `[format]` section, `version = 1` |
 | `theme.json` | 1 | `"Format": { "Version": "1" }` |
 | `known_contents.bin` | 1 | Header: `USLK`, version, count, reserved (4 × u32), then 0x38 bytes per content |
-| `i18n/<locale>.json` | — | Keys only: an unknown key is ignored, a missing one keeps the built-in text |
 
 A text file without a version is version 1, the format of the versions before 1.0.0.
 
@@ -52,7 +50,7 @@ A version goes up only when a file can no longer be read the old way: a key movi
 
 ## `usbl` service
 
-The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor` (1.0 in USB Loader NX 1.0.0; 1.1 adds the `homebrew_access` option, the drives' volume serial, drives listed while they are read, with their free space counted afterwards, and the `language` option with `GetLanguage`/`SetLanguage`, commands 21 and 22; 1.2 adds `ListLeftOutFiles`, command 23, what the indexing left out and why), returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
+The Manager talks to the module through the `usbl` service ([`common/include/usbl/protocol.hpp`](common/include/usbl/protocol.hpp)). Its version is `VersionMajor.VersionMinor` (1.0 in USB Loader NX 1.0.0; 1.1 adds the `homebrew_access` option, the drives' volume serial, drives listed while they are read, with their free space counted afterwards, and the `language` option with `GetLanguage`/`SetLanguage`, commands 21 and 22; 1.2 adds `ListLeftOutFiles`, command 23, what the indexing left out and why; 1.3 sends a game's path under `usbloadernx/games/` in `GameStatus::file_name`, where before it was only the file name), returned by `GetVersion` (command 20) with the module's version and a flag for each kind of file left untouched for a newer version.
 
 | Change | Version |
 |---|---|

@@ -30,7 +30,7 @@ Games are never copied to the SD card or the console: USB Loader NX reads them f
 | **Homebrew** | What you put in `usbloadernx/usb/` on a USB drive, homebrew read (read-only) at `sdmc:/usbloadernx/usb/<volume serial>/` (the serial Windows shows, like `A1B2-C3D4`), without a USB driver of their own; the option `homebrew_access` turns it off |
 | **Hiding** | Hide games while their drive is unplugged, or single games from the Manager |
 | **Notifications** | Ultrahand notifications as a title and a short list: a drive found, connected (games, size, where homebrew read it, files not read), removed, unreadable or not answering; in English and Brazilian Portuguese |
-| **Manager** | [`USBLoaderNX-Manager.nro`](manager/README.md): games as a shelf or a grid, launch, details, play time, favorites, search and sorting, show or hide on HOME, drive usage, settings and [themes](manager/themes/README.md) |
+| **Manager** | [`USBLoaderNX-Manager.nro`](manager/README.md): games as a shelf, a grid, covers, cases or shelves by folder (art from [GameTDB](https://www.gametdb.com), optional, the only use of the network), launch, details, play time, favorites, search and sorting, show or hide on HOME, drive usage, settings and [themes](manager/themes/README.md) with their own fonts, images, layout and animated backgrounds |
 | **Safety** | The USB drive is mounted read-only |
 
 What comes next, from compressed dumps to installing to USB, is in [TODO.md](TODO.md).
@@ -66,8 +66,8 @@ Everything USB Loader NX and its Manager keep is in `usbloadernx/` on the SD car
 | `usbloadernx/manager.ini` | The Manager's own options |
 | `usbloadernx/data/` | What the module and the Manager remember: the games' contents (so HOME does not see them as missing while unplugged), hidden games, favorites |
 | `usbloadernx/cache/icons/` | The games' icons for the Manager while their drive is unplugged; can be deleted |
+| `usbloadernx/cache/art/` | Art downloaded from GameTDB, while Covers from GameTDB is on; can be deleted |
 | `usbloadernx/themes/` | Manager themes |
-| `usbloadernx/i18n/` | Translations of the notifications that replace the built-in ones |
 | `usbloadernx/logs/usbloadernx.log` | What USB Loader NX did: drives, games, registration, errors |
 
 ## Common problems

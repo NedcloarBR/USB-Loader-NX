@@ -4,23 +4,7 @@ What is planned for USB Loader NX, roughly in the order it will be worked on. Do
 
 ## Manager
 
-- [ ] Study how CardsNX fetches custom per-game backgrounds from an online service through its API, and add something alike: the Manager's first network feature (opt-in), saving the downloaded art to the SD card or the USB drive. Comes before the network game loading
-- [ ] Cover art from GameTDB for the carousel and grid, without the USB badge of the HOME icons (opt-in, after the background art above)
-- [ ] Download missing covers and art from GameTDB in the Manager itself, for every game on the drives
-- [ ] Shelves or folders view: the subfolders of `usbloadernx/games/` as categories (needs the GameTDB art above)
 - [ ] Reset the launch required version of a game whose update is gone (as DBI's "Reset required version" does): first only copy the candidate system saves (0x8000000000000180, 0x8000000000000045) to the SD before and after DBI's reset to learn what changes; then a risky, emuMMC-only option with backup, double confirmation and reboot
-
-## Themes
-
-The Manager's look and sound as a theme anyone can make and share, like USB Loader GX themes on the Wii.
-
-- [ ] Layout: position and size of the toolbar, carousel, dock buttons, free space bar and windows; hide any of them
-- [ ] Carousel and grid: number of covers, spacing, arc and scale of the carousel, columns and rows of the grid
-- [ ] Background image tiled
-- [ ] Animated background: GIF decoded with giflib (devkitPro's SDL2_image for Switch is still 2.0.4, first frame only), capped at about 640x360 and 60 frames for the applet's memory; or a PNG strip with a frame count
-- [ ] Frames, buttons and icons replaced by PNGs
-- [ ] Animations: easing
-- [ ] Fonts: a TTF/OTF in place of the console's shared font
 
 ## PC Manager
 
@@ -28,6 +12,7 @@ A desktop app to manage a drive's dumps and installs from the computer, written 
 
 - [ ] List the games on a drive (name, icon, version, update and DLC), read from the dumps themselves
 - [ ] Copy dumps to `usbloadernx/games`, checking free space and file system first
+- [ ] Convert solid NSZ/XCZ to block mode while copying them (the console reads block mode only): decompress and compress again with `-B`, checking the result, without a step of its own
 - [ ] Find and fix fragmented files (copy them back contiguous)
 - [ ] Remove a game with its update and DLC
 - [ ] Install to the drive (the format the console reads with "Install to USB")
