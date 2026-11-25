@@ -14,6 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <ui/settings_screen.hpp>
+#include <ui/animated_image.hpp>
+#include <ui/components.hpp>
+#include <art.hpp>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -101,6 +104,36 @@ namespace ui {
             return true;
         }
 
+        /* The download while it runs, else how many games have art. */
+        std::string ArtStatusText() {
+            if (const art::Status status = art::GetStatus(); status.running) {
+                return strings::Format(Id::ArtStatusRunning, { { "DONE", std::to_string(status.done) }, { "TOTAL", std::to_string(status.total) } });
+            }
+            const art::Report report = art::GetReport();
+            if (report.total == 0) {
+                return "—";
+            }
+            return strings::Format(Id::ArtCount, { { "COUNT", std::to_string(report.with_art) }, { "TOTAL", std::to_string(report.total) } });
+        }
+
+        Id ArtReason(art::Missing reason) {
+            switch (reason) {
+                case art::Missing::NotOnGameTdb: return Id::ArtReasonNotOnGameTdb;
+                case art::Missing::NotOnServer:  return Id::ArtReasonNotOnServer;
+                case art::Missing::NoInternet:   return Id::ArtReasonNoInternet;
+                default:                         return Id::ArtReasonFailed;
+            }
+        }
+
+        /* What the art window shows, to rebuild it only when it changes. */
+        std::string ArtSnapshot() {
+            std::string snapshot = ArtStatusText();
+            for (const auto &missing : art::GetReport().missing) {
+                snapshot += "\n" + missing.name + static_cast<char>('0' + static_cast<int>(missing.reason));
+            }
+            return snapshot;
+        }
+
         constexpr SettingOption ManagerOptions[] = {
             /* Protocol 1.1. */
             { Id::SettingLanguage, Id::SettingLanguageHelp, [] { return false; }, [](bool) { return NextLanguage(); }, [] { return usbl::GetModuleMinorVersion() >= 1; },
@@ -113,6 +146,12 @@ namespace ui {
             { Id::SettingMusicVolume, Id::SettingMusicVolumeHelp, [] { return false; }, [](bool) { return true; },
               [] { return !theme::MusicPath().empty() && sound::IsMusicEnabled(); }, nullptr, Id::SettingMusicUnavailable,
               sound::GetMusicVolume, sound::SetMusicVolume },
+            { Id::SettingBackdrop, Id::SettingBackdropHelp, theme::IsGameBackdropEnabled, theme::SetGameBackdropEnabled, [] { return true; } },
+            { Id::SettingShelves, Id::SettingShelvesHelp, [] { return false; }, [](bool) { return theme::SetShelvesByGenre(!theme::ShelvesByGenre()); }, [] { return true; },
+              [] { return strings::Get(theme::ShelvesByGenre() ? Id::ShelvesByGenre : Id::ShelvesByFolder); } },
+            { Id::SettingArt, Id::SettingArtHelp, art::IsEnabled, art::SetEnabled, [] { return true; } },
+            { Id::SettingArtStatus, Id::SettingArtStatusHelp, [] { return false; }, [](bool) { art::Retry(); return true; }, art::IsEnabled,
+              ArtStatusText, Id::SettingArtUnavailable },
         };
 
         constexpr Id SectionNames[] = { Id::SectionHome, Id::SectionManager, Id::SectionDiagnostics, Id::SectionAbout };
@@ -141,19 +180,50 @@ namespace ui {
         }
 
         /* A column of sections on the left, the section's cards on the right, the button hints at the bottom. */
-        constexpr double RailW = 360, SectionsX = 32, SectionsW = RailW - 64, SectionH = 60, SectionStep = 66, SectionsY = 112;
-        constexpr double ContentX = RailW + 56, ContentW = DesignWidth - ContentX - 56, CardsY = 122;
+        /* The theme can move the column of sections and the content (Layout.Settings.sections / .content); these
+         * follow it on every rebuild (UpdateMetrics). */
+        constexpr double SectionH = 60, SectionStep = 66;
+        double RailX = 0, RailW = 360, SectionsX = 32, SectionsW = 296, SectionsY = 112;
+        double ContentX = 416, ContentW = DesignWidth - 416 - 56, CardsY = 122;
         constexpr double CardH = 82, CardGap = 10;
         constexpr double SliderW = 260;
         constexpr s32 SliderStep = 5;
         constexpr double FooterCenterY = DesignHeight - 30;
 
-        constexpr double SectionY(s32 index) {
+        double SectionY(s32 index) {
             return SectionsY + index * SectionStep;
         }
 
-        constexpr double CardY(s32 index) {
-            return CardsY + index * (CardH + CardGap);
+        /* `slot` counts from the first card shown. */
+        double CardY(s32 slot) {
+            return CardsY + slot * (CardH + CardGap);
+        }
+
+        s32 VisibleCards = 5;
+        /* The settings' own title, placed with the rest. */
+        components::Placement TitlePlace;
+
+        void UpdateMetrics() {
+            namespace cmp = components;
+            const auto sections = cmp::Place("Settings", "sections", { true, 32, 112, 296, static_cast<double>(4 * 66) });
+            SectionsX = sections.x;
+            SectionsY = sections.y;
+            SectionsW = sections.w;
+            RailX = std::max(0.0, SectionsX - 32);
+            RailW = SectionsW + 64;
+            const auto content = cmp::Place("Settings", "content", { true, 416, 122, DesignWidth - 416 - 56, DesignHeight - 76 - 122 });
+            ContentX = content.x;
+            ContentW = content.w;
+            CardsY = content.y;
+            VisibleCards = std::max<s32>(1, static_cast<s32>((content.h + CardGap) / (CardH + CardGap)));
+            TitlePlace = cmp::Place("Settings", "title", { true, SectionsX + 16, 42, SectionsW, 40, 30 });
+        }
+
+        /* More of a list above or below: a chevron in the primary color that nudges that way. */
+        void MoreHint(double cx, double cy, bool down) {
+            const double nudge = Pulse(1.2) * 4 * (down ? 1 : -1);
+            draw::Circle(cx, cy + nudge, 15, color::WithAlpha(color::Primary, 0x30));
+            draw::ChevronVertical(cx, cy + nudge, 22, down, color::Primary);
         }
 
         /* `on` from 0 (off) to 1 (on); in between while the knob slides. */
@@ -190,18 +260,22 @@ namespace ui {
 
     void SettingsScreen::Rebuild() {
         this->Clear();
+        this->taps.clear();
+        UpdateMetrics();
         this->SetBackgroundColor(color::Ground);
         AddPaint(*this, []() {
             draw::Background();
-            draw::Rect(0, 0, RailW, DesignHeight, color::WithAlpha(color::Panel, 0x80));
+            draw::Rect(RailX, 0, RailW, DesignHeight, color::WithAlpha(color::Panel, 0x80));
         });
-        AddText(*this, SectionsX + 16, 42, strings::Get(Id::SettingsTitle), 30, color::Text);
+        if (TitlePlace.visible) {
+            AddText(*this, components::TextX(TitlePlace), TitlePlace.y, strings::Get(Id::SettingsTitle), TitlePlace.font_size, color::Text, TitlePlace.align, TitlePlace.w);
+        }
 
         this->AddSections();
         const s32 section = static_cast<s32>(this->section);
-        AddText(*this, ContentX, 44, strings::Get(SectionNames[section]), 26, color::Text);
+        AddText(*this, ContentX, CardsY - 78, strings::Get(SectionNames[section]), 26, color::Text, Align::Left, ContentW);
         if (SectionHelps[section] != Id::Count) {
-            AddText(*this, ContentX, 84, strings::Get(SectionHelps[section]), 15, color::Muted, Align::Left, ContentW);
+            AddText(*this, ContentX, CardsY - 38, strings::Get(SectionHelps[section]), 15, color::Muted, Align::Left, ContentW);
         }
         if (!this->GetOptions().empty()) {
             this->AddOptions();
@@ -210,11 +284,13 @@ namespace ui {
         } else {
             this->AddAboutSection();
         }
-        AddPaint(*this, [this]() { Veil(this->content_fade.Progress(), ContentX - 16, 36, ContentW + 32, DesignHeight - 100); });
+        AddPaint(*this, [this]() { Veil(this->content_fade.Progress(), ContentX - 16, CardsY - 86, ContentW + 32, DesignHeight - CardsY + 22); });
         this->AddFooter();
 
         if (this->focus == Focus::ThemePicker) {
             this->AddThemePicker();
+        } else if (this->focus == Focus::ArtWindow) {
+            this->AddArtWindow();
         }
 
         AddPaint(*this, [this]() { Veil(this->enter.Progress(), 0, 0, DesignWidth, DesignHeight); });
@@ -223,13 +299,21 @@ namespace ui {
     void SettingsScreen::AddSections() {
         AddPaint(*this, [this]() {
             const double y = this->section_glide.Between(this->section_from_y, SectionY(static_cast<s32>(this->section)));
-            draw::RoundRect(SectionsX, y, SectionsW, SectionH, 16, color::Raised);
+            if (!draw::Skinned(theme::Skin::CardFocused, SectionsX, y, SectionsW, SectionH)) {
+                draw::RoundRect(SectionsX, y, SectionsW, SectionH, 16, color::Raised);
+            }
             draw::Chevron(SectionsX + SectionsW - 26, y + SectionH / 2, 18, color::Primary);
             if (this->focus == Focus::Sections) {
                 draw::FocusRing(SectionsX, y, SectionsW, SectionH, 16, 4);
             }
         });
         for (s32 i = 0; i < static_cast<s32>(Section::Count); ++i) {
+            this->taps.push_back({ SectionsX, SectionY(i), SectionsW, SectionH, [this, i]() {
+                if (i != static_cast<s32>(this->section)) {
+                    this->focus = Focus::Sections;
+                    this->SelectSection(static_cast<Section>(i));
+                }
+            } });
             const bool active = i == static_cast<s32>(this->section);
             AddText(*this, SectionsX + 18, SectionY(i) + 18, strings::Get(SectionNames[i]), 18, active ? color::Text : color::Muted, Align::Left, SectionsW - 60);
         }
@@ -238,9 +322,34 @@ namespace ui {
     void SettingsScreen::AddOptions() {
         const auto options = this->GetOptions();
         const bool content_focused = this->focus == Focus::Content;
-        for (s32 i = 0; i < static_cast<s32>(options.size()); ++i) {
+        const s32 count = static_cast<s32>(options.size());
+        for (s32 i = this->first_card; i < std::min(count, this->first_card + VisibleCards); ++i) {
             const auto &option = options[i];
-            const double y = CardY(i);
+            const double y = CardY(i - this->first_card);
+            /* A tap picks the card and does what A does; on a slider it sets the value where it was tapped. */
+            this->taps.push_back({ ContentX, y, ContentW, CardH, [this, i]() {
+                this->focus = Focus::Content;
+                if (i != this->selected) {
+                    this->SelectCard(i);
+                }
+                this->ToggleSelected();
+            } });
+            if (option.slider != nullptr) {
+                const double bar_x = ContentX + ContentW - 34 - SliderW;
+                this->taps.push_back({ bar_x - 16, y, SliderW + 32, CardH, [this, i, bar_x]() {
+                    const auto &slider = this->GetOptions()[i];
+                    if (!slider.is_available()) {
+                        return;
+                    }
+                    this->focus = Focus::Content;
+                    this->selected = i;
+                    const s32 value = std::clamp(static_cast<s32>(std::lround((this->tap_x - bar_x) / SliderW * 100 / SliderStep)) * SliderStep, 0, 100);
+                    if (slider.set_slider(value)) {
+                        sound::Play(sound::Effect::Move);
+                    }
+                    this->Rebuild();
+                } });
+            }
             const bool on = option.is_on();
             const bool available = option.is_available();
             const bool toggled = i == this->toggled;
@@ -249,7 +358,9 @@ namespace ui {
             const double level = is_slider ? option.slider() / 100.0 : 0.0;
             const bool focused = content_focused && i == this->selected;
             AddPaint(*this, [this, y, on, available, toggled, is_choice, is_slider, level, focused]() {
-                draw::RoundRect(ContentX, y, ContentW, CardH, 18, focused ? color::Raised : color::Panel);
+                if (!draw::Skinned(focused ? theme::Skin::CardFocused : theme::Skin::Card, ContentX, y, ContentW, CardH)) {
+                    draw::RoundRect(ContentX, y, ContentW, CardH, 18, focused ? color::Raised : color::Panel);
+                }
                 if (is_slider) {
                     const double x = ContentX + ContentW - 34 - SliderW, cy = y + CardH / 2;
                     draw::RoundRect(x, cy - 4, SliderW, 8, 4, color::Track);
@@ -278,8 +389,16 @@ namespace ui {
             AddText(*this, ContentX + 22, y + 46, strings::Get(available ? option.help : option.unavailable_help), 14, available ? color::Muted : color::Faint, Align::Left, ContentW - 130);
         }
 
+        /* More cards above or below. */
+        if (this->first_card > 0) {
+            AddPaint(*this, []() { MoreHint(ContentX + ContentW / 2, CardsY - 14, false); });
+        }
+        if (this->first_card + VisibleCards < count) {
+            AddPaint(*this, []() { MoreHint(ContentX + ContentW / 2, CardY(VisibleCards) + 4, true); });
+        }
+
         if (content_focused) {
-            AddPaint(*this, [this]() { draw::FocusRing(ContentX, this->focus_glide.Between(this->focus_from_y, CardY(this->selected)), ContentW, CardH, 18, 4); });
+            AddPaint(*this, [this]() { draw::FocusRing(ContentX, this->focus_glide.Between(this->focus_from_y, CardY(this->selected - this->first_card)), ContentW, CardH, 18, 4); });
         }
     }
 
@@ -307,7 +426,9 @@ namespace ui {
             const auto &file = files[i];
             const double y = CardsY + i * (ItemH + ItemGap);
             AddPaint(*this, [y]() {
-                draw::RoundRect(ContentX, y, ContentW, ItemH, 18, color::Panel);
+                if (!draw::Skinned(theme::Skin::Card, ContentX, y, ContentW, ItemH)) {
+                    draw::RoundRect(ContentX, y, ContentW, ItemH, 18, color::Panel);
+                }
                 draw::IconWarning(ContentX + 30, y + ItemH / 2, 18, color::Alert);
             });
 
@@ -325,7 +446,19 @@ namespace ui {
         }
     }
 
+    void SettingsScreen::Refresh() {
+        this->Rebuild();
+    }
+
     void SettingsScreen::Poll() {
+        /* The art download's progress, while the Manager section shows it. */
+        if (this->section == Section::Manager && this->focus != Focus::ThemePicker && art::IsEnabled()) {
+            if (const std::string status = ArtSnapshot(); status != this->art_snapshot) {
+                this->art_snapshot = status;
+                this->Rebuild();
+            }
+            return;
+        }
         if (this->section != Section::Diagnostics || this->focus == Focus::ThemePicker || usbl::GetModuleMinorVersion() < 2) {
             return;
         }
@@ -338,15 +471,17 @@ namespace ui {
 
     void SettingsScreen::AddAboutSection() {
         constexpr double IconSize = 136, CardHeight = 200;
-        constexpr double TextX = ContentX + 28 + IconSize + 32, TextW = ContentW - (TextX - ContentX) - 28;
+        const double TextX = ContentX + 28 + IconSize + 32, TextW = ContentW - (TextX - ContentX) - 28;
         AddPaint(*this, [this]() {
-            draw::RoundRect(ContentX, CardsY - 38, ContentW, CardHeight, 18, color::Panel);
+            if (!draw::Skinned(theme::Skin::Card, ContentX, CardsY - 38, ContentW, CardHeight)) {
+                draw::RoundRect(ContentX, CardsY - 38, ContentW, CardHeight, 18, color::Panel);
+            }
             const double y = CardsY - 38 + (CardHeight - IconSize) / 2 + Float(3);
             if (this->app_icon != nullptr) {
                 draw::Image(this->app_icon->Get(), ContentX + 28, y, IconSize, IconSize);
             }
         });
-        constexpr double Top = CardsY - 38;
+        const double Top = CardsY - 38;
         AddText(*this, TextX, Top + 30, strings::Get(Id::AppTitle), 28, color::Text);
         AddText(*this, TextX, Top + 72, strings::Format(Id::AboutVersion, { { "VERSION", usbl::Version } }), 17, color::Muted);
         const auto summary = WrapLines(strings::Get(Id::AboutSummary), 19, TextW, 2);
@@ -356,18 +491,72 @@ namespace ui {
 
         AddText(*this, ContentX + 4, Top + CardHeight + 28, strings::Get(Id::AboutLicense), 17, color::Muted, Align::Left, ContentW - 8);
         AddText(*this, ContentX + 4, Top + CardHeight + 56, "github.com/NedcloarBR/USB-Loader-NX", 17, color::Info);
+        AddText(*this, ContentX + 4, Top + CardHeight + 92, strings::Get(Id::AboutArtCredit), 15, color::Muted, Align::Left, ContentW - 8);
+    }
+
+    namespace {
+
+        /* The theme picker, in design px: the list at the left, the preview at the right. */
+        constexpr double PickerX = 48, PickerY = 32, PickerW = DesignWidth - 2 * PickerX, PickerH = DesignHeight - 60 - 2 * PickerY + 24;
+        constexpr double PickerPad = 32, ListX = PickerX + PickerPad, ListY = PickerY + 92, ListW = 360;
+        constexpr double RowH = 56, RowGap = 8, RowStep = RowH + RowGap;
+        constexpr s32 VisibleRows = 7;
+        constexpr double PreviewX = ListX + ListW + PickerPad, PreviewW = PickerX + PickerW - PickerPad - PreviewX, PreviewH = PreviewW * 9 / 16, PreviewY = ListY;
+
+        double RowY(s32 slot) {
+            return ListY + slot * RowStep;
+        }
+
+        /* No picture: a sketch of the home screen in the theme's colors, laid out on a 224 x 126 card and scaled. */
+        void SketchTheme(const theme::Preview &preview, double x, double y, double w) {
+            const double k = w / 224;
+            draw::RoundRect(x, y, w, 126 * k, 14 * k, preview.ground);
+            draw::RoundRect(x + 10 * k, y + 22 * k, 50 * k, 50 * k, 8 * k, preview.raised);
+            draw::RoundOutline(x + 7 * k, y + 19 * k, 56 * k, 56 * k, 10 * k, 2.5 * k, preview.primary);
+            for (s32 i = 0; i < 3; ++i) {
+                draw::RoundRect(x + (72 + i * 44) * k, y + 38 * k, 38 * k, 34 * k, 6 * k, preview.panel);
+            }
+            draw::RoundRect(x + 10 * k, y + 88 * k, 90 * k, 7 * k, 3.5 * k, preview.text);
+            draw::RoundRect(x + w - 64 * k, y + 98 * k, 52 * k, 16 * k, 8 * k, preview.primary);
+        }
+
+        std::vector<std::string> ThemeFeatures(const theme::Preview &preview) {
+            std::vector<std::string> features;
+            const auto add = [&features](bool has, Id id) {
+                if (has) {
+                    features.push_back(strings::Get(id));
+                }
+            };
+            add(preview.animated, Id::ThemeFeatureAnimated);
+            add(preview.background, Id::ThemeFeatureBackground);
+            add(preview.music, Id::ThemeFeatureMusic);
+            add(preview.sounds, Id::ThemeFeatureSounds);
+            add(preview.font, Id::ThemeFeatureFont);
+            add(preview.layout, Id::ThemeFeatureLayout);
+            add(preview.images, Id::ThemeFeatureImages);
+            if (features.empty()) {
+                features.push_back(strings::Get(Id::ThemeFeatureColors));
+            }
+            return features;
+        }
+
     }
 
     void SettingsScreen::OpenThemePicker() {
         this->themes = theme::ListPreviews();
         this->theme_thumbnails.clear();
         for (const auto &preview : this->themes) {
-            SDL_Texture *texture = preview.thumbnail.empty() ? nullptr : pu::ui::render::LoadImageFromFile(preview.thumbnail);
+            /* An animated background shows its first frame (SDL_image cannot open an animated WebP). */
+            SDL_Texture *texture = preview.thumbnail.empty() ? nullptr : AnimatedImage::LoadFirstFrame(preview.thumbnail);
+            if (texture == nullptr && !preview.thumbnail.empty()) {
+                texture = pu::ui::render::LoadImageFromFile(preview.thumbnail);
+            }
             this->theme_thumbnails.push_back(texture != nullptr ? pu::sdl2::TextureHandle::New(texture) : pu::sdl2::TextureHandle::Ref());
         }
         const auto current = std::find_if(this->themes.begin(), this->themes.end(), [](const theme::Preview &preview) { return preview.name == theme::Current(); });
         this->theme_selected = current != this->themes.end() ? static_cast<s32>(current - this->themes.begin()) : 0;
-        this->theme_first = 0;
+        this->theme_first = std::max(0, this->theme_selected - VisibleRows + 1);
+        this->picker_from_y = RowY(this->theme_selected - this->theme_first);
         this->focus = Focus::ThemePicker;
         this->picker_rise.Start();
         sound::Play(sound::Effect::Open);
@@ -375,72 +564,138 @@ namespace ui {
     }
 
     void SettingsScreen::AddThemePicker() {
-        constexpr s32 Visible = 4;
-        constexpr double CardW = 224, ThumbH = 126, Gap = 24, Pad = 40;
-        constexpr double W = Visible * CardW + (Visible - 1) * Gap + 2 * Pad, X = (DesignWidth - W) / 2, H = 340, Y = (DesignHeight - 60 - H) / 2;
         const s32 count = static_cast<s32>(this->themes.size());
-        this->theme_first = std::clamp(this->theme_first, std::max(0, this->theme_selected - Visible + 1), this->theme_selected);
+        this->theme_first = std::clamp(this->theme_first, std::max(0, this->theme_selected - VisibleRows + 1), this->theme_selected);
 
         AddPaint(*this, [this]() {
             draw::Rect(0, 0, DesignWidth, DesignHeight, color::WithAlpha(color::Overlay, static_cast<u8>(color::Overlay.a * this->picker_rise.Progress())));
             draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
-            draw::RoundRect(X, Y, W, H, 30, color::Panel);
+            if (!draw::Skinned(theme::Skin::Panel, PickerX, PickerY, PickerW, PickerH)) {
+                draw::RoundRect(PickerX, PickerY, PickerW, PickerH, 30, color::Panel);
+            }
         });
-        AddText(*this, X + Pad, Y + 32, strings::Get(Id::SettingTheme), 26, color::Text);
+        AddText(*this, ListX, PickerY + 32, strings::Get(Id::SettingTheme), 26, color::Text);
 
-        for (s32 slot = 0; slot < Visible && this->theme_first + slot < count; ++slot) {
+        /* Left: one row per theme; the one in use is marked. */
+        this->taps.push_back({ 0, 0, DesignWidth, DesignHeight, [this]() { this->OnInput(HidNpadButton_B); } });
+        this->taps.push_back({ PickerX, PickerY, PickerW, PickerH, []() {} });
+        for (s32 slot = 0; slot < VisibleRows && this->theme_first + slot < count; ++slot) {
             const s32 index = this->theme_first + slot;
-            const auto &preview = this->themes[index];
-            const double x = X + Pad + slot * (CardW + Gap), y = Y + 92;
             const bool focused = index == this->theme_selected;
-            AddPaint(*this, [this, index, x, y, focused]() {
-                draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
-                const auto &preview = this->themes[index];
-                if (const auto &thumbnail = this->theme_thumbnails[index]; thumbnail != nullptr) {
-                    draw::Image(thumbnail->Get(), x, y, CardW, ThumbH);
+            const double y = RowY(slot);
+            /* The first tap picks a theme, the second applies it. */
+            this->taps.push_back({ ListX, y, ListW, RowH, [this, index]() {
+                if (index == this->theme_selected) {
+                    this->OnInput(HidNpadButton_A);
                 } else {
-                    /* No picture: a sketch of the shelf in the theme's colors. */
-                    draw::RoundRect(x, y, CardW, ThumbH, 14, preview.ground);
-                    draw::RoundRect(x + 10, y + 22, 50, 50, 8, preview.raised);
-                    draw::RoundOutline(x + 7, y + 19, 56, 56, 10, 2.5, preview.primary);
-                    for (s32 i = 0; i < 3; ++i) {
-                        draw::RoundRect(x + 72 + i * 44, y + 38, 38, 34, 6, preview.panel);
+                    this->OnInput(index < this->theme_selected ? HidNpadButton_AnyUp : HidNpadButton_AnyDown);
+                    while (this->theme_selected != index) {
+                        this->OnInput(index < this->theme_selected ? HidNpadButton_AnyUp : HidNpadButton_AnyDown);
                     }
-                    draw::RoundRect(x + 10, y + 88, 90, 7, 3.5, preview.text);
-                    draw::RoundRect(x + CardW - 64, y + 98, 52, 16, 8, preview.primary);
                 }
-                if (focused) {
-                    draw::FocusRing(x, y, CardW, ThumbH, 14, 4);
+            } });
+            AddPaint(*this, [this, y, focused]() {
+                draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
+                if (!draw::Skinned(focused ? theme::Skin::CardFocused : theme::Skin::Card, ListX, y, ListW, RowH)) {
+                    draw::RoundRect(ListX, y, ListW, RowH, 16, focused ? color::Raised : color::WithAlpha(color::Raised, 0x60));
                 }
             });
+            const auto &preview = this->themes[index];
+            const bool in_use = preview.name == theme::Current();
+            const std::string in_use_text = strings::Get(Id::ThemeInUse);
+            const double in_use_w = in_use ? pu::ui::render::GetTextWidth(Font(14), in_use_text) / Scale + 16 : 0;
             const std::string name = preview.name.empty() ? strings::Get(Id::SettingThemeDefault) : preview.display_name;
-            AddText(*this, x, y + ThumbH + 14, name, 17, focused ? color::Text : color::TextSoft, Align::Left, CardW);
-            if (preview.name == theme::Current()) {
-                AddText(*this, x, y + ThumbH + 38, strings::Get(Id::ThemeInUse), 14, color::Primary, Align::Left, CardW);
+            AddText(*this, ListX + 20, y + (RowH - 24) / 2, name, 18, focused ? color::Text : color::TextSoft, Align::Left, ListW - 40 - in_use_w);
+            if (in_use) {
+                AddText(*this, ListX + ListW - 20, y + (RowH - 20) / 2, in_use_text, 14, color::Primary, Align::Right);
             }
         }
         if (this->theme_first > 0) {
-            AddPaint(*this, []() { draw::Chevron(X + 16, Y + 92 + ThumbH / 2, 18, color::Muted); });
+            AddPaint(*this, []() { MoreHint(ListX + ListW / 2, ListY - 14, false); });
         }
-        if (this->theme_first + Visible < count) {
-            AddPaint(*this, []() { draw::Chevron(X + W - 16, Y + 92 + ThumbH / 2, 18, color::Muted); });
+        if (this->theme_first + VisibleRows < count) {
+            AddPaint(*this, []() { MoreHint(ListX + ListW / 2, RowY(VisibleRows) + 6, true); });
+        }
+        const double ring_y = RowY(this->theme_selected - this->theme_first);
+        AddPaint(*this, [this, ring_y]() {
+            draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
+            draw::FocusRing(ListX, this->picker_glide.Between(this->picker_from_y, ring_y), ListW, RowH, 16, 4);
+        });
+
+        /* Right: the focused theme large, then its name, author and version, and what it changes. */
+        if (count == 0) {
+            return;
+        }
+        const s32 index = this->theme_selected;
+        AddPaint(*this, [this, index]() {
+            draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
+            if (const auto &thumbnail = this->theme_thumbnails[index]; thumbnail != nullptr) {
+                draw::Image(thumbnail->Get(), PreviewX, PreviewY, PreviewW, PreviewH);
+            } else {
+                SketchTheme(this->themes[index], PreviewX, PreviewY, PreviewW);
+            }
+        });
+        const auto &preview = this->themes[index];
+        const double info_y = PreviewY + PreviewH + 16;
+        AddText(*this, PreviewX, info_y, preview.name.empty() ? strings::Get(Id::SettingThemeDefault) : preview.display_name, 26, color::Text, Align::Left, PreviewW);
+        std::string byline;
+        if (!preview.author.empty()) {
+            byline = strings::Format(Id::ThemeBy, { { "AUTHOR", preview.author } });
+        }
+        if (!preview.version.empty()) {
+            const std::string version = strings::Format(Id::ThemeVersion, { { "VERSION", preview.version } });
+            byline = byline.empty() ? version : byline + "  ·  " + version;
+        }
+        if (!byline.empty()) {
+            AddText(*this, PreviewX, info_y + 34, byline, 16, color::Muted, Align::Left, PreviewW);
+        }
+
+        const double chips_y = info_y + (byline.empty() ? 40 : 62);
+        std::vector<std::pair<double, double>> boxes;
+        const auto features = ThemeFeatures(preview);
+        double chip_x = PreviewX;
+        for (const auto &feature : features) {
+            const double w = pu::ui::render::GetTextWidth(Font(14), feature) / Scale + 24;
+            if (chip_x + w > PreviewX + PreviewW) {
+                break;
+            }
+            boxes.push_back({ chip_x, w });
+            chip_x += w + 8;
+        }
+        AddPaint(*this, [this, boxes, chips_y]() {
+            draw::Translate rise(0, (1.0 - this->picker_rise.Progress()) * 36);
+            for (const auto &[x, w] : boxes) {
+                if (!draw::Skinned(theme::Skin::Chip, x, chips_y, w, 30)) {
+                    draw::RoundRect(x, chips_y, w, 30, 8, color::Raised);
+                }
+            }
+        });
+        for (size_t i = 0; i < boxes.size(); ++i) {
+            AddText(*this, boxes[i].first + 12, chips_y + 6, features[i], 14, color::TextSoft);
         }
     }
 
     void SettingsScreen::OnThemePickerInput(u64 keys_down) {
         const s32 count = static_cast<s32>(this->themes.size());
+        const auto move = [this](s32 delta) {
+            sound::Play(sound::Effect::Move);
+            this->picker_from_y = this->picker_glide.Between(this->picker_from_y, RowY(this->theme_selected - this->theme_first));
+            this->theme_selected += delta;
+            /* The list scrolls under the ring: the ring glides from where the row it left now is. */
+            const s32 first = std::clamp(this->theme_first, std::max(0, this->theme_selected - VisibleRows + 1), this->theme_selected);
+            this->picker_from_y -= (first - this->theme_first) * RowStep;
+            this->theme_first = first;
+            this->picker_glide.Start();
+            this->Rebuild();
+        };
         if (keys_down & HidNpadButton_B) {
             sound::Play(sound::Effect::Back);
             this->focus = Focus::Content;
             this->Rebuild();
-        } else if ((keys_down & HidNpadButton_AnyLeft) && this->theme_selected > 0) {
-            sound::Play(sound::Effect::Move);
-            --this->theme_selected;
-            this->Rebuild();
-        } else if ((keys_down & HidNpadButton_AnyRight) && this->theme_selected < count - 1) {
-            sound::Play(sound::Effect::Move);
-            ++this->theme_selected;
-            this->Rebuild();
+        } else if ((keys_down & HidNpadButton_AnyUp) && this->theme_selected > 0) {
+            move(-1);
+        } else if ((keys_down & HidNpadButton_AnyDown) && this->theme_selected < count - 1) {
+            move(1);
         } else if (keys_down & HidNpadButton_A) {
             theme::Apply(this->themes[this->theme_selected].name);
             sound::Reload();
@@ -449,9 +704,106 @@ namespace ui {
         }
     }
 
+    void SettingsScreen::AddArtWindow() {
+        constexpr double W = 800, X = (DesignWidth - W) / 2, Pad = 40, RowH = 34, ButtonH = 56;
+        constexpr size_t MaxRows = 7;
+        const art::Report report = art::GetReport();
+        const size_t rows = std::min(report.missing.size(), MaxRows);
+        const bool more = report.missing.size() > MaxRows;
+        const double list_h = report.missing.empty() ? 40 : 36 + (rows + (more ? 1 : 0)) * RowH;
+        const double H = Pad + 40 + 34 + 20 + list_h + 24 + ButtonH + Pad, Y = std::max(24.0, (DesignHeight - 60 - H) / 2);
+
+        AddPaint(*this, [this, H, Y]() {
+            draw::Rect(0, 0, DesignWidth, DesignHeight, color::WithAlpha(color::Overlay, static_cast<u8>(color::Overlay.a * this->picker_rise.Progress())));
+            if (!draw::Skinned(theme::Skin::Panel, X, Y, W, H)) {
+                draw::RoundRect(X, Y, W, H, 30, color::Panel);
+            }
+        });
+        AddText(*this, X + Pad, Y + Pad - 4, strings::Get(Id::SettingArtStatus), 26, color::Text);
+        AddText(*this, X + Pad, Y + Pad + 40, ArtStatusText(), 17, color::Primary, Align::Left, W - 2 * Pad);
+
+        /* The games without a cover, and why. */
+        double y = Y + Pad + 40 + 34 + 20;
+        if (report.missing.empty()) {
+            if (report.total > 0) {
+                AddText(*this, X + Pad, y, strings::Get(Id::ArtAllHave), 16, color::Muted, Align::Left, W - 2 * Pad);
+            }
+        } else {
+            AddText(*this, X + Pad, y, strings::Get(Id::ArtMissingTitle), 16, color::Muted);
+            y += 36;
+            for (size_t i = 0; i < rows; ++i) {
+                const auto &missing = report.missing[i];
+                const std::string reason = strings::Get(ArtReason(missing.reason));
+                const double reason_w = pu::ui::render::GetTextWidth(Font(15), reason) / Scale;
+                AddText(*this, X + Pad, y + i * RowH, missing.name, 16, color::Text, Align::Left, W - 2 * Pad - reason_w - 24);
+                AddText(*this, X + W - Pad, y + i * RowH + 1, reason, 15, missing.reason == art::Missing::NotOnGameTdb ? color::Muted : color::Alert, Align::Right);
+            }
+            if (more) {
+                AddText(*this, X + Pad, y + rows * RowH, strings::Format(Id::ArtMissingMore, { { "COUNT", std::to_string(report.missing.size() - rows) } }), 15, color::Muted);
+            }
+        }
+
+        /* Left and Right pick one; A presses it. */
+        this->taps.push_back({ 0, 0, DesignWidth, DesignHeight, [this]() { this->OnInput(HidNpadButton_B); } });
+        this->taps.push_back({ X, Y, W, H, []() {} });
+        const double button_y = Y + H - Pad - ButtonH;
+        const std::string labels[] = { strings::Get(Id::ArtDownloadMissing), strings::Get(Id::ArtDelete) };
+        double button_x = X + Pad;
+        for (s32 i = 0; i < 2; ++i) {
+            const double w = pu::ui::render::GetTextWidth(Font(18), labels[i]) / Scale + 64;
+            this->taps.push_back({ button_x, button_y, w, ButtonH, [this, i]() {
+                this->art_button = i;
+                this->OnInput(HidNpadButton_A);
+            } });
+            const bool active = i == this->art_button;
+            AddPaint(*this, [button_x, button_y, w, active]() {
+                if (active) {
+                    if (!draw::Skinned(theme::Skin::ButtonActive, button_x, button_y, w, ButtonH)) {
+                        draw::RoundRect(button_x, button_y, w, ButtonH, ButtonH / 2, color::Primary);
+                    }
+                    draw::FocusRing(button_x, button_y, w, ButtonH, ButtonH / 2, 4);
+                } else if (!draw::Skinned(theme::Skin::Button, button_x, button_y, w, ButtonH)) {
+                    draw::RoundRect(button_x, button_y, w, ButtonH, ButtonH / 2, color::Raised);
+                    draw::RoundOutline(button_x, button_y, w, ButtonH, ButtonH / 2, 1.5, color::Track);
+                }
+            });
+            AddText(*this, button_x + w / 2, button_y + (ButtonH - 24) / 2, labels[i], 18, active ? color::OnPrimary : color::Text, Align::Center);
+            button_x += w + 16;
+        }
+    }
+
+    void SettingsScreen::OnArtWindowInput(u64 keys_down) {
+        if (keys_down & HidNpadButton_B) {
+            sound::Play(sound::Effect::Back);
+            this->focus = Focus::Content;
+            this->Rebuild();
+        } else if (keys_down & (HidNpadButton_AnyLeft | HidNpadButton_AnyRight)) {
+            const s32 button = (keys_down & HidNpadButton_AnyLeft) ? 0 : 1;
+            if (button != this->art_button) {
+                sound::Play(sound::Effect::Move);
+                this->art_button = button;
+                this->Rebuild();
+            }
+        } else if (keys_down & HidNpadButton_A) {
+            sound::Play(sound::Effect::Select);
+            if (this->art_button == 0) {
+                art::Retry();
+            } else {
+                art::DeleteAll();
+            }
+            this->Rebuild();
+        }
+    }
+
     void SettingsScreen::AddFooter() {
         if (this->focus == Focus::ThemePicker) {
-            AddHintBar(*this, DesignWidth - 48, FooterCenterY, { { "B", strings::Get(Id::HintBack) }, { "A", strings::Get(Id::HintApply) } }, color::TextSoft);
+            const double hints_x = AddHintBar(*this, DesignWidth - 48, FooterCenterY, { { "B", strings::Get(Id::HintBack) }, { "A", strings::Get(Id::HintApply) } }, color::TextSoft);
+            this->taps.push_back({ hints_x, FooterCenterY - 24, DesignWidth - 48 - hints_x, 48, [this]() { this->OnInput(HidNpadButton_B); } });
+            return;
+        }
+        if (this->focus == Focus::ArtWindow) {
+            const double hints_x = AddHintBar(*this, DesignWidth - 48, FooterCenterY, { { "B", strings::Get(Id::HintBack) }, { "A", strings::Get(Id::HintSelect) } }, color::TextSoft);
+            this->taps.push_back({ hints_x, FooterCenterY - 24, DesignWidth - 48 - hints_x, 48, [this]() { this->OnInput(HidNpadButton_B); } });
             return;
         }
         std::vector<Hint> hints = { { "B", strings::Get(Id::HintBack) } };
@@ -462,7 +814,8 @@ namespace ui {
         } else if (!this->GetOptions().empty()) {
             hints.push_back({ "A", strings::Get(Id::HintSelect) });
         }
-        AddHintBar(*this, DesignWidth - 48, FooterCenterY, hints, color::Muted);
+        const double hints_x = AddHintBar(*this, DesignWidth - 48, FooterCenterY, hints, color::Muted);
+        this->taps.push_back({ hints_x, FooterCenterY - 24, DesignWidth - 48 - hints_x, 48, [this]() { this->OnInput(HidNpadButton_B); } });
     }
 
     void SettingsScreen::SelectSection(Section section) {
@@ -471,15 +824,20 @@ namespace ui {
         this->content_fade.Start();
         this->section = section;
         this->selected = 0;
+        this->first_card = 0;
         this->toggled = -1;
         sound::Play(sound::Effect::Move);
         this->Rebuild();
     }
 
     void SettingsScreen::SelectCard(s32 index) {
-        this->focus_from_y = this->focus_glide.Between(this->focus_from_y, CardY(this->selected));
+        this->focus_from_y = this->focus_glide.Between(this->focus_from_y, CardY(this->selected - this->first_card));
         this->focus_glide.Start();
         this->selected = index;
+        /* The cards scroll under the ring: it glides from where the card it left now is. */
+        const s32 first = std::clamp(this->first_card, std::max(0, index - VisibleCards + 1), index);
+        this->focus_from_y -= (first - this->first_card) * (CardH + CardGap);
+        this->first_card = first;
         sound::Play(sound::Effect::Move);
         this->Rebuild();
     }
@@ -492,6 +850,15 @@ namespace ui {
         }
         if (option.label == Id::SettingTheme) {
             this->OpenThemePicker();
+            return;
+        }
+        if (option.label == Id::SettingArtStatus) {
+            sound::Play(sound::Effect::Open);
+            this->art_button = 0;
+            this->art_snapshot = ArtSnapshot();
+            this->focus = Focus::ArtWindow;
+            this->picker_rise.Start();
+            this->Rebuild();
             return;
         }
         if (option.slider != nullptr) {
@@ -517,9 +884,28 @@ namespace ui {
         this->Rebuild();
     }
 
+    void SettingsScreen::OnTouch(const pu::ui::TouchPoint &touch) {
+        const auto event = this->gesture.Update(touch);
+        if (event.kind == TouchGesture::Event::Kind::Swipe) {
+            if (std::abs(event.y) > std::abs(event.x)) {
+                if (this->focus == Focus::Sections && !this->GetOptions().empty()) {
+                    this->OnInput(HidNpadButton_A);
+                }
+                this->OnInput(event.y < 0 ? HidNpadButton_AnyDown : HidNpadButton_AnyUp);
+            }
+        } else if (event.kind == TouchGesture::Event::Kind::Tap) {
+            this->tap_x = event.x;
+            Tap(this->taps, event.x, event.y);
+        }
+    }
+
     void SettingsScreen::OnInput(u64 keys_down) {
         if (this->focus == Focus::ThemePicker) {
             this->OnThemePickerInput(keys_down);
+            return;
+        }
+        if (this->focus == Focus::ArtWindow) {
+            this->OnArtWindowInput(keys_down);
             return;
         }
         const s32 section = static_cast<s32>(this->section);

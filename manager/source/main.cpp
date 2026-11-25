@@ -14,6 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <main_application.hpp>
+#include <art.hpp>
+#include <ui/animated_image.hpp>
+#include <ui/theme.hpp>
 
 namespace {
 
@@ -22,8 +25,12 @@ namespace {
     /* HOME came to the front (the Manager lost focus): games a badge change took off HOME come back now, so HOME
      * fetches their new icons while it is the one on screen. */
     void OnAppletHook(AppletHookType hook, void *) {
-        if (hook == AppletHookType_OnFocusState && appletGetFocusState() != AppletFocusState_InFocus) {
-            usbl::FinishHomeRefresh();
+        if (hook == AppletHookType_OnFocusState) {
+            const bool in_focus = appletGetFocusState() == AppletFocusState_InFocus;
+            ui::AnimatedImage::SetInFocus(in_focus);
+            if (!in_focus) {
+                usbl::FinishHomeRefresh();
+            }
         }
     }
 
@@ -62,6 +69,8 @@ int main() {
         diagAbortWithResult(rc);
     }
     app->ShowWithFadeIn();
+    art::Shutdown();
+    ui::theme::Release();
     appletUnhook(&g_focus_hook);
     return 0;
 }

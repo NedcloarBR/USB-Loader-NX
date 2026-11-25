@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 #include <ui/draw.hpp>
@@ -43,6 +44,40 @@ namespace ui {
 
     /* A controller button label ("A", "ZL", "+") on a light circle or pill, centered on (cx, cy). */
     pu::ui::elm::TextBlock::Ref AddButtonHint(pu::ui::Layout &layout, double cx, double cy, const std::string &label);
+
+    /* The touch screen, frame by frame: a press that ends where it started is a tap, one that moved is a swipe. */
+    class TouchGesture {
+        public:
+            struct Event {
+                enum class Kind {
+                    None,
+                    Tap,
+                    Swipe,
+                } kind = Kind::None;
+                /* Design px: where a tap was, or how far a swipe went. */
+                double x = 0, y = 0;
+            };
+
+            /* Call every frame with the point Plutonium gives (empty when nothing touches the screen). */
+            Event Update(const pu::ui::TouchPoint &touch);
+
+        private:
+            bool down = false;
+            double start_x = 0, start_y = 0, x = 0, y = 0;
+    };
+
+    /* A rectangle that does something when tapped. */
+    struct TapTarget {
+        double x, y, w, h;
+        std::function<void()> on_tap;
+
+        bool Contains(double px, double py) const {
+            return px >= this->x && px < this->x + this->w && py >= this->y && py < this->y + this->h;
+        }
+    };
+
+    /* Runs the last target (the topmost one) under the point; false when none is. */
+    bool Tap(const std::vector<TapTarget> &targets, double x, double y);
 
     struct Hint {
         std::string button;

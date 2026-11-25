@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <strings.hpp>
+#include <unordered_map>
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -37,8 +38,6 @@ namespace strings {
             "Game.Disconnected",
             "Game.Hidden",
             "Game.PlugInDrive",
-            "Game.SourceXci",
-            "Game.SourceNsp",
             "Game.SourceInstalled",
             "Game.Version",
             "Game.Contiguous",
@@ -106,13 +105,10 @@ namespace strings {
             "Game.RowSize",
             "Game.RowFile",
             "Game.RowPlayTime",
-            "Game.RowLastPlayed",
             "Game.UpdateNone",
             "Game.UpdateInstalled",
             "Hints.Drives",
             "Hints.Settings",
-            "Hints.Grid",
-            "Hints.Carousel",
             "Hints.Exit",
             "Hints.Favorite",
             "Hints.Unfavorite",
@@ -166,6 +162,70 @@ namespace strings {
             "Settings.SectionDiagnosticsHelp",
             "Settings.DiagnosticsNone",
             "Settings.DiagnosticsNeedsNewerModule",
+            "Settings.ThemeBy",
+            "Settings.ThemeVersion",
+            "Settings.ThemeFeatureAnimated",
+            "Settings.ThemeFeatureBackground",
+            "Settings.ThemeFeatureMusic",
+            "Settings.ThemeFeatureFont",
+            "Settings.ThemeFeatureSounds",
+            "Settings.ThemeFeatureLayout",
+            "Settings.ThemeFeatureImages",
+            "Settings.ThemeFeatureColors",
+            "Settings.SettingBackdrop",
+            "Settings.SettingBackdropHelp",
+            "Settings.SettingShelves",
+            "Settings.SettingShelvesHelp",
+            "Settings.ShelvesByFolder",
+            "Settings.ShelvesByGenre",
+            "Settings.SettingArt",
+            "Settings.SettingArtHelp",
+            "Settings.SettingArtStatus",
+            "Settings.SettingArtStatusHelp",
+            "Settings.SettingArtUnavailable",
+            "Settings.ArtStatusRunning",
+            "Settings.AboutArtCredit",
+            "Settings.ArtCount",
+            "Settings.ArtMissingTitle",
+            "Settings.ArtReasonNotOnGameTdb",
+            "Settings.ArtReasonNotOnServer",
+            "Settings.ArtReasonNoInternet",
+            "Settings.ArtReasonFailed",
+            "Settings.ArtMissingMore",
+            "Settings.ArtAllHave",
+            "Settings.ArtDownloadMissing",
+            "Settings.ArtDelete",
+            "Library.ViewCarousel",
+            "Library.ViewGrid",
+            "Library.ViewCovers",
+            "Library.ViewBoxes",
+            "Library.ViewShelves",
+            "Library.ShelfRoot",
+            "Library.ShelfInstalled",
+            "Library.ShelfGames",
+            "Library.ShelfOneGame",
+            "Library.HintFlipCover",
+            "Library.TabStats",
+            "Library.HintDriveGames",
+            "Library.StatsSummary",
+            "Library.StatsMostPlayed",
+            "Library.StatsLargest",
+            "Library.StatsNonePlayed",
+            "Library.FilterAll",
+            "Library.FilterContinue",
+            "Library.FilterFavorites",
+            "Library.FilterInstalled",
+            "Library.FilterHidden",
+            "Library.NoGamesInFilter",
+            "Library.ViewList",
+            "Library.ListColumnGame",
+            "Library.ListColumnDrive",
+            "Library.ShelfNoGenre",
+            "Library.PlayersOne",
+            "Library.PlayersMany",
+            "Library.ModeTv",
+            "Library.ModeHandheld",
+            "Library.ModeTabletop",
         };
         static_assert(std::size(Keys) == static_cast<size_t>(Id::Count));
 
@@ -190,6 +250,8 @@ namespace strings {
 
         std::array<std::string, static_cast<size_t>(Id::Count)> g_strings;
         std::string g_decimal_separator = ".";
+        constexpr char GenrePrefix[] = "Genres.";
+        std::unordered_map<std::string, std::string> g_genres;
 
     }
 
@@ -211,6 +273,12 @@ namespace strings {
         if (const auto found = table.find(DecimalSeparatorKey); found != table.end()) {
             g_decimal_separator = found->second;
         }
+        g_genres.clear();
+        for (const auto &[key, value] : table) {
+            if (key.rfind(GenrePrefix, 0) == 0) {
+                g_genres[key.substr(sizeof(GenrePrefix) - 1)] = value;
+            }
+        }
     }
 
     const std::string &Get(Id id) {
@@ -230,6 +298,17 @@ namespace strings {
 
     std::string Count(u64 count, Id one, Id many) {
         return Format(count == 1 ? one : many, { { "COUNT", std::to_string(count) } });
+    }
+
+    std::string Genre(const std::string &name) {
+        if (const auto found = g_genres.find(name); found != g_genres.end()) {
+            return found->second;
+        }
+        std::string text = name;
+        if (!text.empty() && text[0] >= 'a' && text[0] <= 'z') {
+            text[0] = static_cast<char>(text[0] - 'a' + 'A');
+        }
+        return text;
     }
 
     std::string Size(u64 bytes) {

@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <ui/widgets.hpp>
+#include <cmath>
 #include <vector>
 
 namespace ui {
@@ -137,6 +138,41 @@ namespace ui {
             x -= glyph + 26;
         }
         return x;
+    }
+
+    TouchGesture::Event TouchGesture::Update(const pu::ui::TouchPoint &touch) {
+        if (!touch.IsEmpty()) {
+            const double px = touch.x / Scale, py = touch.y / Scale;
+            if (!this->down) {
+                this->down = true;
+                this->start_x = px;
+                this->start_y = py;
+            }
+            this->x = px;
+            this->y = py;
+            return {};
+        }
+        if (!this->down) {
+            return {};
+        }
+        this->down = false;
+        constexpr double Swipe = 60;
+        const double dx = this->x - this->start_x, dy = this->y - this->start_y;
+        if (std::abs(dx) >= Swipe || std::abs(dy) >= Swipe) {
+            return { Event::Kind::Swipe, dx, dy };
+        }
+        return { Event::Kind::Tap, this->start_x, this->start_y };
+    }
+
+    bool Tap(const std::vector<TapTarget> &targets, double x, double y) {
+        for (auto it = targets.rbegin(); it != targets.rend(); ++it) {
+            if (it->Contains(x, y)) {
+                const auto run = it->on_tap;
+                run();
+                return true;
+            }
+        }
+        return false;
     }
 
 }

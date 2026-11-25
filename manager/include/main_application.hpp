@@ -41,6 +41,10 @@ namespace ui {
             /* Browsing the library: sort order (kept in manager.ini) and the search typed with ZL. */
             library::SortMode sort_mode = library::SortMode::Name;
             std::string search;
+            /* ZR: which games show (not kept); a drive filter remembers the drive. */
+            library::Filter filter = library::Filter::All;
+            s32 filter_drive = 0;
+            std::string filter_name;
 
             void ShowLibrary();
             void ShowSettings();
@@ -53,6 +57,7 @@ namespace ui {
             void ToggleHidden(const library::Game &game);
             void ToggleFavorite(const library::Game &game);
             void NextSort();
+            void NextFilter();
             void Search();
             void Quit();
 

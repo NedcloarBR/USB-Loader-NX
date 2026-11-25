@@ -15,6 +15,7 @@
  */
 #pragma once
 #include <pu/Plutonium>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,26 @@ namespace ui {
         }
     }
 
+    /* Where the home screen puts things, in design px; the defaults are the approved design. A theme replaces any of
+     * them (theme::Apply, which keeps values that would not fit the screen at their defaults). */
+    struct Layout {
+        double edge = 48;
+        bool toolbar = true;
+        double toolbar_y = 0, toolbar_h = 80;
+        bool free_space = true;
+        bool dock = true;
+        double dock_h = 60;
+        /* The carousel: the selected cover large at the left, `count` more queued after it. Each queued cover is
+         * `scale` times the one before it, and the last one sits `arc` px lower than the first, along a curve. */
+        double carousel_y = 104, big_cover = 280, small_cover = 184, carousel_gap = 24, carousel_arc = 0, carousel_scale = 1;
+        s32 carousel_count = 5;
+        s32 grid_columns = 5, grid_rows = 2;
+        double grid_y = 104, grid_cover = 200, grid_gap_x = 32, grid_gap_y = 24;
+        /* The game window. */
+        double window_w = 960, window_h = 516;
+    };
+    inline Layout layout;
+
     /* Manager themes: sdmc:/config/usbloadernx-manager/themes/<name>/ with a theme.json (colors, animations, background
      * image, music; see manager/themes/README.md) and optionally sfx/<effect>.wav in place of the built-in sounds.
      * Anything a theme leaves out keeps the default. */
@@ -81,6 +102,12 @@ namespace ui {
         void Apply(const std::string &name);
         /* The theme saved in manager.ini, applied at start. */
         void ApplySaved();
+        /* Applies the theme again when any of its files changed since it was applied (a theme edited over FTP or
+         * MTP, or sent by an editor); true when it did. Reads only the folders' listings. */
+        bool ReloadIfChanged();
+
+        /* Stops the animated background and frees the theme's textures while the renderer is still there. */
+        void Release();
         const std::string &Current();
         /* The theme's "Theme.Name", else its folder name. */
         std::string DisplayName();
@@ -94,6 +121,70 @@ namespace ui {
         /* The theme's own file for `relative` (e.g. "sfx/move.wav") when it has one, else "". */
         std::string FindAsset(const std::string &relative);
 
+        /* The renderer's font for `design_size`: the theme's "Fonts.Regular" (scaled by "Fonts.Scale") over the
+         * console's fonts, else the console's. */
+        std::string FontName(u32 design_size);
+
+        /* Theme images drawn in place of the built-in shapes (Images.<name>, stretched as nine slices: the corners
+         * `border` texture px wide stay as they are). */
+        enum class Skin {
+            Panel,
+            Card,
+            CardFocused,
+            Chip,
+            Button,
+            ButtonActive,
+            FocusRing,
+            Count,
+        };
+        struct SkinImage {
+            SDL_Texture *texture;
+            double border;
+        };
+        /* Null when the theme has no image for it. */
+        const SkinImage *GetSkin(Skin skin);
+
+        /* Theme icons (Images.Icon.<name>) drawn in place of the built-in strokes. */
+        enum class Icon {
+            Usb,
+            Clock,
+            Warning,
+            Chevron,
+            Star,
+            Package,
+            Grid,
+            Count,
+        };
+        SDL_Texture *GetIcon(Icon icon);
+        /* Images.IconTint: icons take the color they are drawn in (their own colors otherwise). */
+        bool TintsIcons();
+
+        /* The selected game's art, blurred, behind the home screen: the player's choice (manager.ini game_backdrop, on
+         * by default) and the theme's (Images.GameBackdrop; a theme with its own background turns it on itself). */
+        bool IsGameBackdropEnabled();
+        bool SetGameBackdropEnabled(bool enabled);
+        bool ShowsGameBackdrop();
+
+        /* How the Shelves view groups games: by folder under usbloadernx/games (false) or by GameTDB genre (true);
+         * manager.ini shelves_by_genre. */
+        bool ShelvesByGenre();
+        bool SetShelvesByGenre(bool by_genre);
+
+        /* Layout.<Screen>.<component>.<Property> as written in theme.json ("Layout.Home.info.name.X" -> screen "Home",
+         * component "info.name", property "X"); null when the theme says nothing of that component. ui/components
+         * reads them. */
+        using ComponentProperties = std::map<std::string, std::string>;
+        const ComponentProperties *FindComponent(const std::string &screen, const std::string &id);
+        /* Every component the theme names on a screen, by id. */
+        const std::map<std::string, ComponentProperties> &ScreenComponents(const std::string &screen);
+        /* A file in the theme's folder, "" when it has none (or it would leave the folder). */
+        std::string ThemeAsset(const std::string &relative);
+
+        /* Views.Enabled: the home screen views the theme offers ("carousel,grid,covers,boxes,shelves"); empty for
+         * all of them. Views.Default: the one it starts in ("" when it does not say). */
+        std::vector<std::string> EnabledViews();
+        std::string DefaultView();
+
         /* What the theme picker shows of a theme without applying it. */
         struct Preview {
             /* The folder name; "" for the built-in theme. */
@@ -102,7 +193,11 @@ namespace ui {
             std::string display_name;
             /* "Images.Thumbnail", else thumb.png or thumb.jpg, else the background image; "" when it has none. */
             std::string thumbnail;
+            /* "Theme.Author" and "Theme.Version"; empty when the theme does not say. */
+            std::string author, version;
             pu::ui::Color ground, panel, raised, primary, text;
+            /* What the theme changes besides colors. */
+            bool animated = false, background = false, music = false, font = false, sounds = false, layout = false, images = false;
         };
 
         /* The built-in theme first, then the installed ones, sorted. */
@@ -117,7 +212,7 @@ namespace ui {
     constexpr u32 FontSizes[] = { 13, 14, 15, 16, 17, 18, 19, 20, 21, 26, 28, 30, 40, 46 };
 
     inline std::string Font(u32 design_size) {
-        return pu::ui::MakeDefaultFontName(S(design_size));
+        return theme::FontName(design_size);
     }
 
 }

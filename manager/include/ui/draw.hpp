@@ -50,6 +50,28 @@ namespace ui::draw {
     /* A texture stretched to the rectangle, with `alpha` opacity. */
     void Image(SDL_Texture *texture, double x, double y, double w, double h, u8 alpha = 0xFF);
 
+    /* Part of a texture (`source`, in texture px) stretched to the rectangle. */
+    void ImagePart(SDL_Texture *texture, const SDL_Rect &source, double x, double y, double w, double h, u8 alpha = 0xFF);
+    /* A texture drawn `w` x `h` centered on (cx, cy), turned `degrees` clockwise around its center. */
+    void ImageTurned(SDL_Texture *texture, double cx, double cy, double w, double h, double degrees, u8 alpha = 0xFF);
+
+    /* A texture mapped onto any four corners (top left, top right, bottom right, bottom left), each with its own
+     * opacity; `flip` turns the picture upside down (a reflection), showing only its bottom `span` (0..1). */
+    struct Corner {
+        double x, y;
+        u8 alpha;
+    };
+    void ImageQuad(SDL_Texture *texture, const Corner (&corners)[4], bool flip = false, double span = 1.0);
+
+    /* `source` center-cropped to 16:9 and shrunk to a few pixels; drawn back over the screen with linear filtering, it
+     * is a soft blur of the picture. Null when the renderer cannot draw into a texture. */
+    SDL_Texture *MakeBlurred(SDL_Texture *source);
+
+    /* A texture stretched to the rectangle as nine slices: its corners, `border` texture px wide, keep their size. */
+    void NineSlice(SDL_Texture *texture, double border, double x, double y, double w, double h, u8 alpha = 0xFF);
+    /* The theme's image for `skin` over the rectangle; false when the theme has none (draw the built-in shape then). */
+    bool Skinned(theme::Skin skin, double x, double y, double w, double h, u8 alpha = 0xFF);
+
     /* The screen behind everything: the theme's image when it has one, and the drifting specks, unless the theme
      * turns them off. */
     void Background();
@@ -76,6 +98,10 @@ namespace ui::draw {
     void IconClock(double cx, double cy, double size, Color c);
     void IconWarning(double cx, double cy, double size, Color c);
     void Chevron(double cx, double cy, double size, Color c);
+    /* A chevron pointing left: more of a row before. */
+    void ChevronLeft(double cx, double cy, double size, Color c);
+    /* A chevron pointing up or down: more of a list above or below. */
+    void ChevronVertical(double cx, double cy, double size, bool down, Color c);
     /* A five-pointed star (favorites), `r` from its center to a point. */
     void Star(double cx, double cy, double r, Color c);
     /* A parcel: an eShop download (NSP). */

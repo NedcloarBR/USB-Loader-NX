@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <main_application.hpp>
+#include <art.hpp>
 #include <algorithm>
 #include <cinttypes>
 #include <iterator>
@@ -109,6 +110,20 @@ namespace ui {
             .exit          = [this]() { this->Quit(); },
             .toggle_favorite = [this](const library::Game &game) { this->ToggleFavorite(game); },
             .next_sort     = [this]() { this->NextSort(); },
+            .next_filter   = [this]() { this->NextFilter(); },
+            .show_drive    = [this](s32 drive) {
+                std::vector<usbl::DriveStatus> drives;
+                usbl::ListDrives(&drives);
+                for (const auto &item : drives) {
+                    if (item.drive == drive) {
+                        this->filter = library::Filter::Drive;
+                        this->filter_drive = drive;
+                        this->filter_name = item.name;
+                        this->ShowLibrary();
+                        return;
+                    }
+                }
+            },
             .search        = [this]() { this->Search(); },
             .clear_search  = [this]() {
                 sound::Play(sound::Effect::Back);
@@ -132,11 +147,13 @@ namespace ui {
         this->ShowSystemNotice();
 
         this->AddRenderCallback([this]() { this->PollLibrary(); });
-        this->SetOnInput([this](const u64 pressed, const u64, const u64 keys_held, const pu::ui::TouchPoint) {
+        this->SetOnInput([this](const u64 pressed, const u64, const u64 keys_held, const pu::ui::TouchPoint touch) {
             const u64 keys_down = g_direction_repeat.Apply(pressed, keys_held);
             if (this->screen == Screen::Library) {
+                this->library_screen->OnTouch(touch);
                 this->library_screen->OnInput(keys_down);
             } else {
+                this->settings_screen->OnTouch(touch);
                 this->settings_screen->OnInput(keys_down);
             }
         });
@@ -162,26 +179,49 @@ namespace ui {
             message = strings::Format(strings::Id::ActionFailed, { { "CODE", FormatResult(rc) } });
         } else {
             usbl::ListDrives(&drives);
+            std::vector<art::Game> art_games;
+            for (const auto &game : games) {
+                art_games.push_back({ game.status.application_id, game.name, game.names });
+            }
+            art::SetGames(std::move(art_games));
             library::SortGames(&games, this->sort_mode);
+            this->library_screen->SetAllGames(games);
+            library::FilterBy(&games, this->filter, this->filter_drive);
             library::FilterGames(&games, this->search);
             if (games.empty() && !this->search.empty()) {
                 message = strings::Format(strings::Id::NoMatch, { { "QUERY", this->search } });
+            } else if (games.empty() && this->filter != library::Filter::All) {
+                message = strings::Format(strings::Id::NoGamesInFilter, { { "FILTER", this->filter_name } });
             }
         }
 
         this->library_drive_count = drives.size();
         this->next_poll_tick = armGetSystemTick() + armNsToTicks(PollIntervalNs);
         this->library_screen->Show(std::move(games), std::move(drives), std::move(message),
-                                   { .sort_name = strings::Get(SortNames[static_cast<size_t>(this->sort_mode)]), .query = this->search });
+                                   { .sort_name = strings::Get(SortNames[static_cast<size_t>(this->sort_mode)]), .query = this->search,
+                                     .filter_name = this->filter == library::Filter::All ? strings::Get(strings::Id::FilterAll) : this->filter_name });
         this->screen = Screen::Library;
         this->LoadLayout(this->library_screen);
     }
 
     void MainApplication::PollLibrary() {
-        if (!this->service_available || armGetSystemTick() < this->next_poll_tick) {
+        if (armGetSystemTick() < this->next_poll_tick) {
             return;
         }
         this->next_poll_tick = armGetSystemTick() + armNsToTicks(PollIntervalNs);
+        /* A theme edited while the Manager is open shows at once. */
+        if (ui::theme::ReloadIfChanged()) {
+            sound::Reload();
+            if (this->screen == Screen::Settings) {
+                this->settings_screen->Refresh();
+            } else {
+                this->ShowLibrary();
+            }
+            return;
+        }
+        if (!this->service_available) {
+            return;
+        }
         if (this->screen == Screen::Settings) {
             this->settings_screen->Poll();
             return;
@@ -321,6 +361,44 @@ namespace ui {
     void MainApplication::NextSort() {
         this->sort_mode = static_cast<library::SortMode>((static_cast<s32>(this->sort_mode) + 1) % static_cast<s32>(library::SortMode::Count));
         settings::SetInt(SortKey, static_cast<s32>(this->sort_mode));
+        sound::Play(sound::Effect::Whoosh);
+        this->ShowLibrary();
+    }
+
+    /* All, continue playing, favorites, each plugged-in drive, then by format and the hidden ones; back to all. */
+    void MainApplication::NextFilter() {
+        struct Choice {
+            library::Filter filter;
+            s32 drive;
+            std::string name;
+        };
+        std::vector<Choice> choices = {
+            { library::Filter::All, 0, strings::Get(strings::Id::FilterAll) },
+            { library::Filter::ContinuePlaying, 0, strings::Get(strings::Id::FilterContinue) },
+            { library::Filter::Favorites, 0, strings::Get(strings::Id::FilterFavorites) },
+        };
+        std::vector<usbl::DriveStatus> drives;
+        if (this->service_available && R_SUCCEEDED(usbl::ListDrives(&drives)) && drives.size() > 1) {
+            for (const auto &drive : drives) {
+                choices.push_back({ library::Filter::Drive, drive.drive, drive.name });
+            }
+        }
+        choices.push_back({ library::Filter::Xci, 0, "XCI / XCZ" });
+        choices.push_back({ library::Filter::Nsp, 0, "NSP / NSZ" });
+        choices.push_back({ library::Filter::Installed, 0, strings::Get(strings::Id::FilterInstalled) });
+        choices.push_back({ library::Filter::Hidden, 0, strings::Get(strings::Id::FilterHidden) });
+
+        size_t at = 0;
+        for (size_t i = 0; i < choices.size(); ++i) {
+            if (choices[i].filter == this->filter && (this->filter != library::Filter::Drive || choices[i].drive == this->filter_drive)) {
+                at = i;
+                break;
+            }
+        }
+        const Choice &next = choices[(at + 1) % choices.size()];
+        this->filter = next.filter;
+        this->filter_drive = next.drive;
+        this->filter_name = next.name;
         sound::Play(sound::Effect::Whoosh);
         this->ShowLibrary();
     }
