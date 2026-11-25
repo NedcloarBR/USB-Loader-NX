@@ -1,11 +1,11 @@
 {
 	"Format": {
-		"Version": "1"
+		"Version": "2"
 	},
 	"Theme": {
 		"Name": "Midnight",
 		"Author": "NedcloarBR",
-		"Version": "1.0"
+		"Version": "1.1"
 	},
 	"Colors": {
 		"Ground": "#0F1424",
@@ -34,6 +34,11 @@
 	"Animations": {
 		"Speed": "0.8",
 		"Particles": "off",
-		"FocusPulse": "2.2"
+		"FocusPulse": "2.2",
+		"Easing": "in-out-sine"
+	},
+	"Carousel": {
+		"Arc": "36",
+		"Scale": "0.9"
 	}
 }

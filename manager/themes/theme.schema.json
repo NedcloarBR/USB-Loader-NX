@@ -1,0 +1,825 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "USB Loader NX Manager theme",
+	"description": "theme.json of a Manager theme; generated from theme-spec.json. Every value is a string.",
+	"type": "object",
+	"properties": {
+		"Theme": {
+			"type": "object",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"description": "Shown in the theme picker (the folder name otherwise)"
+				},
+				"Author": {
+					"type": "string",
+					"description": "Shown in the theme picker as \"by …\""
+				},
+				"Version": {
+					"type": "string",
+					"description": "The theme's own version, whatever its author likes"
+				}
+			}
+		},
+		"Format": {
+			"type": "object",
+			"properties": {
+				"Version": {
+					"type": "string",
+					"description": "The version of this format the theme was made for",
+					"enum": [
+						"1",
+						"2"
+					],
+					"default": "1"
+				}
+			}
+		},
+		"Images": {
+			"type": "object",
+			"properties": {
+				"Thumbnail": {
+					"type": "string",
+					"description": "The preview in the theme picker (16:9, 320x180 is enough); without it `thumb.png`, `thumb.jpg`, then the background are tried, and with none of them the picker sketches the screen in the theme's colors",
+					"pattern": "(?i)\\.(png|jpg)$"
+				},
+				"Background": {
+					"type": "string",
+					"description": "Drawn behind everything, over the `Ground` color. An animated GIF or WebP plays in a loop: up to 1280x720, 30 frames a second at most and 32 MB; WebP looks better and weighs less than GIF (256 colors)",
+					"pattern": "(?i)\\.(jpg|png|gif|webp)$"
+				},
+				"BackgroundMode": {
+					"type": "string",
+					"description": "How the background fills the screen",
+					"enum": [
+						"stretch",
+						"tile"
+					],
+					"default": "stretch"
+				},
+				"BackgroundDim": {
+					"type": "string",
+					"description": "How much of `Ground` covers the background image so text stays readable; over an image, the text areas also get a veil of `Ground`",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 0.9,
+					"default": "0.4"
+				},
+				"Panel": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"Card": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"CardFocused": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"Chip": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"Button": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"ButtonActive": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"FocusRing": {
+					"type": "string",
+					"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size",
+					"pattern": "(?i)\\.(png)$"
+				},
+				"PanelBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"CardBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"CardFocusedBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"ChipBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"ButtonBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"ButtonActiveBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"FocusRingBorder": {
+					"type": "string",
+					"description": "How wide those corners are, in the image's px",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 256,
+					"default": "16"
+				},
+				"Icon": {
+					"type": "object",
+					"properties": {
+						"Usb": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Clock": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Warning": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Chevron": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Star": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Package": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						},
+						"Grid": {
+							"type": "string",
+							"description": "PNGs in place of the built-in icons",
+							"pattern": "(?i)\\.(png)$"
+						}
+					}
+				},
+				"IconTint": {
+					"type": "string",
+					"description": "`on`: icons and the focus ring image take the color they are drawn in (draw them white); otherwise they keep their own",
+					"enum": [
+						"on",
+						"off"
+					],
+					"default": "off"
+				},
+				"GameBackdrop": {
+					"type": "string",
+					"description": "The selected game's cover or icon, blurred, behind the home screen (the player can turn it off too); on by default unless the theme has its own `Images.Background`",
+					"enum": [
+						"on",
+						"off"
+					],
+					"default": "on"
+				}
+			}
+		},
+		"Fonts": {
+			"type": "object",
+			"properties": {
+				"Regular": {
+					"type": "string",
+					"description": "A TTF or OTF (up to 16 MB) for all the text; letters it lacks (other scripts, button glyphs) come from the console's font",
+					"pattern": "(?i)\\.(ttf|otf)$"
+				},
+				"Scale": {
+					"type": "string",
+					"description": "The font's size against the console's",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0.8,
+					"maximum": 1.25,
+					"default": "1"
+				}
+			}
+		},
+		"Sounds": {
+			"type": "object",
+			"properties": {
+				"Music": {
+					"type": "string",
+					"description": "Background music, under the sound effects; the player can turn it off in the settings",
+					"pattern": "(?i)\\.(ogg|mp3|wav)$"
+				}
+			}
+		},
+		"Animations": {
+			"type": "object",
+			"properties": {
+				"Speed": {
+					"type": "string",
+					"description": "How fast transitions run (`1` as designed)",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0.25,
+					"maximum": 4,
+					"default": "1"
+				},
+				"Floating": {
+					"type": "string",
+					"description": "`off` keeps covers and icons still",
+					"enum": [
+						"on",
+						"off"
+					],
+					"default": "on"
+				},
+				"Particles": {
+					"type": "string",
+					"description": "`off` removes the drifting specks",
+					"enum": [
+						"on",
+						"off"
+					],
+					"default": "on"
+				},
+				"Easing": {
+					"type": "string",
+					"description": "How transitions move (`out-back` goes a little past and settles, `out-elastic` springs)",
+					"enum": [
+						"out-cubic",
+						"linear",
+						"out-quad",
+						"in-out-sine",
+						"out-back",
+						"out-elastic"
+					],
+					"default": "out-cubic"
+				},
+				"FocusPulse": {
+					"description": "Seconds for the focus ring to go from `Focus` to `FocusAlt` and back; `off` keeps it still",
+					"anyOf": [
+						{
+							"type": "string",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$"
+						},
+						{
+							"enum": [
+								"off"
+							]
+						}
+					],
+					"minimum": 0.5,
+					"maximum": 6,
+					"default": "1.6"
+				}
+			}
+		},
+		"Layout": {
+			"type": "object",
+			"properties": {
+				"Edge": {
+					"type": "string",
+					"description": "The margin at the left and right",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 24,
+					"maximum": 96,
+					"default": "48"
+				},
+				"Toolbar": {
+					"type": "object",
+					"properties": {
+						"Visible": {
+							"type": "string",
+							"description": "The bar at the top",
+							"enum": [
+								"on",
+								"off"
+							],
+							"default": "on"
+						},
+						"Y": {
+							"type": "string",
+							"description": "The bar's distance from the top",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+							"minimum": 0,
+							"maximum": 40,
+							"default": "0"
+						},
+						"Height": {
+							"type": "string",
+							"description": "The bar's height",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+							"minimum": 56,
+							"maximum": 120,
+							"default": "80"
+						}
+					}
+				},
+				"FreeSpace": {
+					"type": "object",
+					"properties": {
+						"Visible": {
+							"type": "string",
+							"description": "The drives' free space on the toolbar",
+							"enum": [
+								"on",
+								"off"
+							],
+							"default": "on"
+						}
+					}
+				},
+				"Dock": {
+					"type": "object",
+					"properties": {
+						"Visible": {
+							"type": "string",
+							"description": "The button hints at the bottom",
+							"enum": [
+								"on",
+								"off"
+							],
+							"default": "on"
+						},
+						"Height": {
+							"type": "string",
+							"description": "Their height",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+							"minimum": 44,
+							"maximum": 90,
+							"default": "60"
+						}
+					}
+				},
+				"Window": {
+					"type": "object",
+					"properties": {
+						"Width": {
+							"type": "string",
+							"description": "The game window's width",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+							"minimum": 760,
+							"maximum": 1200,
+							"default": "960"
+						},
+						"Height": {
+							"type": "string",
+							"description": "The game window's height",
+							"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+							"minimum": 440,
+							"maximum": 640,
+							"default": "516"
+						}
+					}
+				},
+				"Home": {
+					"type": "object",
+					"description": "Components of the Home screen: logo, title, chip.filter, chip.sort, chip.search, chip.drives, info.drive, info.name, info.chips, info.stats, info.alert, button.launch, button.details, counter, hints, or any other name with a Type.",
+					"additionalProperties": {
+						"$ref": "#/$defs/component"
+					}
+				},
+				"Game": {
+					"type": "object",
+					"description": "Components of the Game screen: window, cover, title, details, button.launch, button.hide, or any other name with a Type.",
+					"additionalProperties": {
+						"$ref": "#/$defs/component"
+					}
+				},
+				"Drives": {
+					"type": "object",
+					"description": "Components of the Drives screen: window, title, total, cards, or any other name with a Type.",
+					"additionalProperties": {
+						"$ref": "#/$defs/component"
+					}
+				},
+				"Settings": {
+					"type": "object",
+					"description": "Components of the Settings screen: title, sections, content, or any other name with a Type.",
+					"additionalProperties": {
+						"$ref": "#/$defs/component"
+					}
+				}
+			}
+		},
+		"Carousel": {
+			"type": "object",
+			"properties": {
+				"Y": {
+					"type": "string",
+					"description": "Where the carousel's covers start",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 400,
+					"default": "104"
+				},
+				"BigCover": {
+					"type": "string",
+					"description": "The selected cover",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 160,
+					"maximum": 360,
+					"default": "280"
+				},
+				"SmallCover": {
+					"type": "string",
+					"description": "The covers after it",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 80,
+					"maximum": 280,
+					"default": "184"
+				},
+				"Count": {
+					"type": "string",
+					"description": "Covers after the selected one",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 1,
+					"maximum": 8,
+					"default": "5"
+				},
+				"Gap": {
+					"type": "string",
+					"description": "Between covers",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 80,
+					"default": "24"
+				},
+				"Arc": {
+					"type": "string",
+					"description": "How much lower (or higher) the last cover sits, along a curve (`0`, a straight shelf)",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": -120,
+					"maximum": 200,
+					"default": "0"
+				},
+				"Scale": {
+					"type": "string",
+					"description": "Each next cover this much the size of the one before",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0.6,
+					"maximum": 1,
+					"default": "1"
+				}
+			}
+		},
+		"Grid": {
+			"type": "object",
+			"properties": {
+				"Columns": {
+					"type": "string",
+					"description": "Columns of the grid (the Covers view has two more)",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 3,
+					"maximum": 8,
+					"default": "5"
+				},
+				"Rows": {
+					"type": "string",
+					"description": "Rows of the grid",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 1,
+					"maximum": 4,
+					"default": "2"
+				},
+				"Y": {
+					"type": "string",
+					"description": "Where the grid starts",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 400,
+					"default": "104"
+				},
+				"Cover": {
+					"type": "string",
+					"description": "Its covers",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 100,
+					"maximum": 300,
+					"default": "200"
+				},
+				"GapX": {
+					"type": "string",
+					"description": "Between columns",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 80,
+					"default": "32"
+				},
+				"GapY": {
+					"type": "string",
+					"description": "Between rows",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 0,
+					"maximum": 80,
+					"default": "24"
+				}
+			}
+		},
+		"Views": {
+			"type": "object",
+			"properties": {
+				"Enabled": {
+					"type": "string",
+					"description": "The views the theme offers, comma separated (`boxes` is the Cover Flow)",
+					"pattern": "^\\s*(carousel|grid|covers|boxes|shelves|list)(\\s*,\\s*(carousel|grid|covers|boxes|shelves|list))*\\s*$",
+					"default": "carousel,grid,covers,boxes,shelves,list"
+				},
+				"Default": {
+					"type": "string",
+					"description": "The view to start in when the player has not picked one",
+					"enum": [
+						"carousel",
+						"grid",
+						"covers",
+						"boxes",
+						"shelves",
+						"list"
+					],
+					"default": "carousel"
+				}
+			}
+		},
+		"Colors": {
+			"type": "object",
+			"properties": {
+				"Ground": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#1E1F22",
+					"description": "Screen background, and the gap between a focused item and its ring"
+				},
+				"Panel": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#2B2D31",
+					"description": "Windows, cards, chips"
+				},
+				"Raised": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#35373C",
+					"description": "Selected cards and sections, cards inside windows"
+				},
+				"Track": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#404249",
+					"description": "Lines, borders, empty bars, switches turned off"
+				},
+				"Text": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#F2F3F5",
+					"description": "Text and button glyphs, and softer text and icons"
+				},
+				"TextSoft": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#DBDEE1",
+					"description": "Text and button glyphs, and softer text and icons"
+				},
+				"Muted": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#A3A6AD",
+					"description": "Secondary text, from strongest to faintest"
+				},
+				"MutedSoft": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#B5BAC1",
+					"description": "Secondary text, from strongest to faintest"
+				},
+				"Faint": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#80848E",
+					"description": "Secondary text, from strongest to faintest"
+				},
+				"Primary": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#00C26F",
+					"description": "The app mark, the main buttons, switches turned on"
+				},
+				"OnPrimary": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#0E1A13",
+					"description": "Text and glyphs on `Primary`"
+				},
+				"Focus": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#00C26F",
+					"description": "The focus ring pulses between the two, with a glow"
+				},
+				"FocusAlt": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#00B8C2",
+					"description": "The focus ring pulses between the two, with a glow"
+				},
+				"Info": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#00B8C2",
+					"description": "Links"
+				},
+				"Star": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#E3C800",
+					"description": "Favorites"
+				},
+				"Warning": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#C2B200",
+					"description": "With `Primary`, the drive usage bar: `Primary` up to 60%, then these up to 100%"
+				},
+				"Pending": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#C27800",
+					"description": "With `Primary`, the drive usage bar: `Primary` up to 60%, then these up to 100%"
+				},
+				"Error": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#C20E00",
+					"description": "With `Primary`, the drive usage bar: `Primary` up to 60%, then these up to 100%"
+				},
+				"ErrorText": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#FF6B5E",
+					"description": "Almost full drives, errors"
+				},
+				"Alert": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#E89A2E",
+					"description": "What needs attention: an update on another drive, fragmentation (line, box, box text)"
+				},
+				"AlertSurface": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#3A3020",
+					"description": "What needs attention: an update on another drive, fragmentation (line, box, box text)"
+				},
+				"AlertText": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#F3D3A0",
+					"description": "What needs attention: an update on another drive, fragmentation (line, box, box text)"
+				},
+				"Overlay": {
+					"type": "string",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$",
+					"default": "#0C0C0ED1",
+					"description": "Over the screen behind a window (use `#RRGGBBAA`)"
+				}
+			}
+		}
+	},
+	"$defs": {
+		"component": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"Anchor": {
+					"type": "string",
+					"description": "The screen's point the component's own same point sits at",
+					"enum": [
+						"top-left",
+						"top",
+						"top-right",
+						"left",
+						"center",
+						"right",
+						"bottom-left",
+						"bottom",
+						"bottom-right"
+					],
+					"default": "top-left"
+				},
+				"X": {
+					"type": "string",
+					"description": "The offset from that point (without `Anchor`, from the screen's top left); without `X`, `Y` or `Anchor` the component stays where the Manager puts it",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": -1280,
+					"maximum": 1280,
+					"default": "0"
+				},
+				"Y": {
+					"type": "string",
+					"description": "The same, down",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": -720,
+					"maximum": 720,
+					"default": "0"
+				},
+				"Width": {
+					"type": "string",
+					"description": "Its width",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 1,
+					"maximum": 1280
+				},
+				"Height": {
+					"type": "string",
+					"description": "Its height",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 1,
+					"maximum": 720
+				},
+				"FontSize": {
+					"type": "string",
+					"description": "For components with text",
+					"pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+					"minimum": 8,
+					"maximum": 72
+				},
+				"Align": {
+					"type": "string",
+					"description": "The text within the component's width",
+					"enum": [
+						"left",
+						"center",
+						"right"
+					],
+					"default": "left"
+				},
+				"Visible": {
+					"type": "string",
+					"description": "`off` hides it",
+					"enum": [
+						"on",
+						"off"
+					],
+					"default": "on"
+				},
+				"Type": {
+					"type": "string",
+					"description": "Makes it a component of the theme's own (see the types)",
+					"enum": [
+						"clock",
+						"battery",
+						"text",
+						"image",
+						"cover",
+						"box",
+						"icon"
+					]
+				},
+				"Text": {
+					"type": "string",
+					"description": "For `text`"
+				},
+				"Image": {
+					"type": "string",
+					"description": "For `image`",
+					"pattern": "(?i)\\.(png|jpg)$"
+				},
+				"Color": {
+					"type": "string",
+					"description": "The text color of `clock`, `battery` and `text` (`Text` by default)",
+					"pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+				}
+			}
+		}
+	}
+}

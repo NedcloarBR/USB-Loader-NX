@@ -1,0 +1,959 @@
+{
+	"format": 2,
+	"keys": [
+		{
+			"keys": [
+				"Theme.Name"
+			],
+			"type": "string",
+			"description": "Shown in the theme picker (the folder name otherwise)"
+		},
+		{
+			"keys": [
+				"Theme.Author"
+			],
+			"type": "string",
+			"description": "Shown in the theme picker as \"by …\""
+		},
+		{
+			"keys": [
+				"Theme.Version"
+			],
+			"type": "string",
+			"description": "The theme's own version, whatever its author likes"
+		},
+		{
+			"keys": [
+				"Format.Version"
+			],
+			"type": "enum",
+			"values": [
+				"1",
+				"2"
+			],
+			"default": "1",
+			"description": "The version of this format the theme was made for"
+		},
+		{
+			"keys": [
+				"Images.Thumbnail"
+			],
+			"type": "file",
+			"formats": [
+				"png",
+				"jpg"
+			],
+			"description": "The preview in the theme picker (16:9, 320x180 is enough); without it `thumb.png`, `thumb.jpg`, then the background are tried, and with none of them the picker sketches the screen in the theme's colors"
+		},
+		{
+			"keys": [
+				"Images.Background"
+			],
+			"type": "file",
+			"formats": [
+				"jpg",
+				"png",
+				"gif",
+				"webp"
+			],
+			"description": "Drawn behind everything, over the `Ground` color. An animated GIF or WebP plays in a loop: up to 1280x720, 30 frames a second at most and 32 MB; WebP looks better and weighs less than GIF (256 colors)"
+		},
+		{
+			"keys": [
+				"Images.BackgroundMode"
+			],
+			"type": "enum",
+			"values": [
+				"stretch",
+				"tile"
+			],
+			"default": "stretch",
+			"description": "How the background fills the screen"
+		},
+		{
+			"keys": [
+				"Images.BackgroundDim"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 0.9,
+			"default": 0.4,
+			"description": "How much of `Ground` covers the background image so text stays readable; over an image, the text areas also get a veil of `Ground`"
+		},
+		{
+			"keys": [
+				"Images.Panel",
+				"Images.Card",
+				"Images.CardFocused",
+				"Images.Chip",
+				"Images.Button",
+				"Images.ButtonActive",
+				"Images.FocusRing"
+			],
+			"type": "file",
+			"formats": [
+				"png"
+			],
+			"description": "PNGs in place of windows, cards (and the focused one), the small chips, buttons (and the one A presses) and the focus ring; stretched in nine slices, so their corners keep their size"
+		},
+		{
+			"keys": [
+				"Images.PanelBorder",
+				"Images.CardBorder",
+				"Images.CardFocusedBorder",
+				"Images.ChipBorder",
+				"Images.ButtonBorder",
+				"Images.ButtonActiveBorder",
+				"Images.FocusRingBorder"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 256,
+			"default": 16,
+			"description": "How wide those corners are, in the image's px"
+		},
+		{
+			"keys": [
+				"Images.Icon.Usb",
+				"Images.Icon.Clock",
+				"Images.Icon.Warning",
+				"Images.Icon.Chevron",
+				"Images.Icon.Star",
+				"Images.Icon.Package",
+				"Images.Icon.Grid"
+			],
+			"type": "file",
+			"formats": [
+				"png"
+			],
+			"description": "PNGs in place of the built-in icons"
+		},
+		{
+			"keys": [
+				"Images.IconTint"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "off",
+			"description": "`on`: icons and the focus ring image take the color they are drawn in (draw them white); otherwise they keep their own"
+		},
+		{
+			"keys": [
+				"Images.GameBackdrop"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "The selected game's cover or icon, blurred, behind the home screen (the player can turn it off too); on by default unless the theme has its own `Images.Background`"
+		},
+		{
+			"keys": [
+				"Fonts.Regular"
+			],
+			"type": "file",
+			"formats": [
+				"ttf",
+				"otf"
+			],
+			"description": "A TTF or OTF (up to 16 MB) for all the text; letters it lacks (other scripts, button glyphs) come from the console's font"
+		},
+		{
+			"keys": [
+				"Fonts.Scale"
+			],
+			"type": "number",
+			"min": 0.8,
+			"max": 1.25,
+			"default": 1,
+			"description": "The font's size against the console's"
+		},
+		{
+			"keys": [
+				"Sounds.Music"
+			],
+			"type": "file",
+			"formats": [
+				"ogg",
+				"mp3",
+				"wav"
+			],
+			"description": "Background music, under the sound effects; the player can turn it off in the settings"
+		},
+		{
+			"keys": [
+				"Animations.Speed"
+			],
+			"type": "number",
+			"min": 0.25,
+			"max": 4,
+			"default": 1,
+			"description": "How fast transitions run (`1` as designed)"
+		},
+		{
+			"keys": [
+				"Animations.Floating"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "`off` keeps covers and icons still"
+		},
+		{
+			"keys": [
+				"Animations.Particles"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "`off` removes the drifting specks"
+		},
+		{
+			"keys": [
+				"Animations.Easing"
+			],
+			"type": "enum",
+			"values": [
+				"out-cubic",
+				"linear",
+				"out-quad",
+				"in-out-sine",
+				"out-back",
+				"out-elastic"
+			],
+			"default": "out-cubic",
+			"description": "How transitions move (`out-back` goes a little past and settles, `out-elastic` springs)"
+		},
+		{
+			"keys": [
+				"Animations.FocusPulse"
+			],
+			"type": "number",
+			"min": 0.5,
+			"max": 6,
+			"default": 1.6,
+			"also": [
+				"off"
+			],
+			"description": "Seconds for the focus ring to go from `Focus` to `FocusAlt` and back; `off` keeps it still"
+		}
+	],
+	"layoutKeys": [
+		{
+			"keys": [
+				"Layout.Edge"
+			],
+			"type": "number",
+			"min": 24,
+			"max": 96,
+			"default": 48,
+			"description": "The margin at the left and right"
+		},
+		{
+			"keys": [
+				"Layout.Toolbar.Visible"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "The bar at the top"
+		},
+		{
+			"keys": [
+				"Layout.Toolbar.Y"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 40,
+			"default": 0,
+			"description": "The bar's distance from the top"
+		},
+		{
+			"keys": [
+				"Layout.Toolbar.Height"
+			],
+			"type": "number",
+			"min": 56,
+			"max": 120,
+			"default": 80,
+			"description": "The bar's height"
+		},
+		{
+			"keys": [
+				"Layout.FreeSpace.Visible"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "The drives' free space on the toolbar"
+		},
+		{
+			"keys": [
+				"Layout.Dock.Visible"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "The button hints at the bottom"
+		},
+		{
+			"keys": [
+				"Layout.Dock.Height"
+			],
+			"type": "number",
+			"min": 44,
+			"max": 90,
+			"default": 60,
+			"description": "Their height"
+		},
+		{
+			"keys": [
+				"Layout.Window.Width"
+			],
+			"type": "number",
+			"min": 760,
+			"max": 1200,
+			"default": 960,
+			"description": "The game window's width"
+		},
+		{
+			"keys": [
+				"Layout.Window.Height"
+			],
+			"type": "number",
+			"min": 440,
+			"max": 640,
+			"default": 516,
+			"description": "The game window's height"
+		},
+		{
+			"keys": [
+				"Carousel.Y"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 400,
+			"default": 104,
+			"description": "Where the carousel's covers start"
+		},
+		{
+			"keys": [
+				"Carousel.BigCover"
+			],
+			"type": "number",
+			"min": 160,
+			"max": 360,
+			"default": 280,
+			"description": "The selected cover"
+		},
+		{
+			"keys": [
+				"Carousel.SmallCover"
+			],
+			"type": "number",
+			"min": 80,
+			"max": 280,
+			"default": 184,
+			"description": "The covers after it"
+		},
+		{
+			"keys": [
+				"Carousel.Count"
+			],
+			"type": "number",
+			"min": 1,
+			"max": 8,
+			"default": 5,
+			"description": "Covers after the selected one"
+		},
+		{
+			"keys": [
+				"Carousel.Gap"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 80,
+			"default": 24,
+			"description": "Between covers"
+		},
+		{
+			"keys": [
+				"Carousel.Arc"
+			],
+			"type": "number",
+			"min": -120,
+			"max": 200,
+			"default": 0,
+			"description": "How much lower (or higher) the last cover sits, along a curve (`0`, a straight shelf)"
+		},
+		{
+			"keys": [
+				"Carousel.Scale"
+			],
+			"type": "number",
+			"min": 0.6,
+			"max": 1,
+			"default": 1,
+			"description": "Each next cover this much the size of the one before"
+		},
+		{
+			"keys": [
+				"Grid.Columns"
+			],
+			"type": "number",
+			"min": 3,
+			"max": 8,
+			"default": 5,
+			"description": "Columns of the grid (the Covers view has two more)"
+		},
+		{
+			"keys": [
+				"Grid.Rows"
+			],
+			"type": "number",
+			"min": 1,
+			"max": 4,
+			"default": 2,
+			"description": "Rows of the grid"
+		},
+		{
+			"keys": [
+				"Grid.Y"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 400,
+			"default": 104,
+			"description": "Where the grid starts"
+		},
+		{
+			"keys": [
+				"Grid.Cover"
+			],
+			"type": "number",
+			"min": 100,
+			"max": 300,
+			"default": 200,
+			"description": "Its covers"
+		},
+		{
+			"keys": [
+				"Grid.GapX"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 80,
+			"default": 32,
+			"description": "Between columns"
+		},
+		{
+			"keys": [
+				"Grid.GapY"
+			],
+			"type": "number",
+			"min": 0,
+			"max": 80,
+			"default": 24,
+			"description": "Between rows"
+		},
+		{
+			"keys": [
+				"Views.Enabled"
+			],
+			"type": "list",
+			"values": [
+				"carousel",
+				"grid",
+				"covers",
+				"boxes",
+				"shelves",
+				"list"
+			],
+			"default": "carousel,grid,covers,boxes,shelves,list",
+			"description": "The views the theme offers, comma separated (`boxes` is the Cover Flow)"
+		},
+		{
+			"keys": [
+				"Views.Default"
+			],
+			"type": "enum",
+			"values": [
+				"carousel",
+				"grid",
+				"covers",
+				"boxes",
+				"shelves",
+				"list"
+			],
+			"default": "carousel",
+			"description": "The view to start in when the player has not picked one"
+		}
+	],
+	"colors": [
+		{
+			"names": [
+				"Ground"
+			],
+			"defaults": [
+				"#1E1F22"
+			],
+			"description": "Screen background, and the gap between a focused item and its ring"
+		},
+		{
+			"names": [
+				"Panel"
+			],
+			"defaults": [
+				"#2B2D31"
+			],
+			"description": "Windows, cards, chips"
+		},
+		{
+			"names": [
+				"Raised"
+			],
+			"defaults": [
+				"#35373C"
+			],
+			"description": "Selected cards and sections, cards inside windows"
+		},
+		{
+			"names": [
+				"Track"
+			],
+			"defaults": [
+				"#404249"
+			],
+			"description": "Lines, borders, empty bars, switches turned off"
+		},
+		{
+			"names": [
+				"Text",
+				"TextSoft"
+			],
+			"defaults": [
+				"#F2F3F5",
+				"#DBDEE1"
+			],
+			"description": "Text and button glyphs, and softer text and icons"
+		},
+		{
+			"names": [
+				"Muted",
+				"MutedSoft",
+				"Faint"
+			],
+			"defaults": [
+				"#A3A6AD",
+				"#B5BAC1",
+				"#80848E"
+			],
+			"description": "Secondary text, from strongest to faintest"
+		},
+		{
+			"names": [
+				"Primary"
+			],
+			"defaults": [
+				"#00C26F"
+			],
+			"description": "The app mark, the main buttons, switches turned on"
+		},
+		{
+			"names": [
+				"OnPrimary"
+			],
+			"defaults": [
+				"#0E1A13"
+			],
+			"description": "Text and glyphs on `Primary`"
+		},
+		{
+			"names": [
+				"Focus",
+				"FocusAlt"
+			],
+			"defaults": [
+				"#00C26F",
+				"#00B8C2"
+			],
+			"description": "The focus ring pulses between the two, with a glow"
+		},
+		{
+			"names": [
+				"Info"
+			],
+			"defaults": [
+				"#00B8C2"
+			],
+			"description": "Links"
+		},
+		{
+			"names": [
+				"Star"
+			],
+			"defaults": [
+				"#E3C800"
+			],
+			"description": "Favorites"
+		},
+		{
+			"names": [
+				"Warning",
+				"Pending",
+				"Error"
+			],
+			"defaults": [
+				"#C2B200",
+				"#C27800",
+				"#C20E00"
+			],
+			"description": "With `Primary`, the drive usage bar: `Primary` up to 60%, then these up to 100%"
+		},
+		{
+			"names": [
+				"ErrorText"
+			],
+			"defaults": [
+				"#FF6B5E"
+			],
+			"description": "Almost full drives, errors"
+		},
+		{
+			"names": [
+				"Alert",
+				"AlertSurface",
+				"AlertText"
+			],
+			"defaults": [
+				"#E89A2E",
+				"#3A3020",
+				"#F3D3A0"
+			],
+			"description": "What needs attention: an update on another drive, fragmentation (line, box, box text)"
+		},
+		{
+			"names": [
+				"Overlay"
+			],
+			"defaults": [
+				"#0C0C0ED1"
+			],
+			"description": "Over the screen behind a window (use `#RRGGBBAA`)"
+		}
+	],
+	"componentProperties": [
+		{
+			"keys": [
+				"Anchor"
+			],
+			"type": "enum",
+			"values": [
+				"top-left",
+				"top",
+				"top-right",
+				"left",
+				"center",
+				"right",
+				"bottom-left",
+				"bottom",
+				"bottom-right"
+			],
+			"default": "top-left",
+			"description": "The screen's point the component's own same point sits at"
+		},
+		{
+			"keys": [
+				"X"
+			],
+			"type": "number",
+			"min": -1280,
+			"max": 1280,
+			"default": 0,
+			"description": "The offset from that point (without `Anchor`, from the screen's top left); without `X`, `Y` or `Anchor` the component stays where the Manager puts it"
+		},
+		{
+			"keys": [
+				"Y"
+			],
+			"type": "number",
+			"min": -720,
+			"max": 720,
+			"default": 0,
+			"description": "The same, down"
+		},
+		{
+			"keys": [
+				"Width"
+			],
+			"type": "number",
+			"min": 1,
+			"max": 1280,
+			"description": "Its width"
+		},
+		{
+			"keys": [
+				"Height"
+			],
+			"type": "number",
+			"min": 1,
+			"max": 720,
+			"description": "Its height"
+		},
+		{
+			"keys": [
+				"FontSize"
+			],
+			"type": "number",
+			"min": 8,
+			"max": 72,
+			"description": "For components with text"
+		},
+		{
+			"keys": [
+				"Align"
+			],
+			"type": "enum",
+			"values": [
+				"left",
+				"center",
+				"right"
+			],
+			"default": "left",
+			"description": "The text within the component's width"
+		},
+		{
+			"keys": [
+				"Visible"
+			],
+			"type": "enum",
+			"values": [
+				"on",
+				"off"
+			],
+			"default": "on",
+			"description": "`off` hides it"
+		},
+		{
+			"keys": [
+				"Type"
+			],
+			"type": "enum",
+			"values": [
+				"clock",
+				"battery",
+				"text",
+				"image",
+				"cover",
+				"box",
+				"icon"
+			],
+			"description": "Makes it a component of the theme's own (see the types)"
+		},
+		{
+			"keys": [
+				"Text"
+			],
+			"type": "string",
+			"description": "For `text`"
+		},
+		{
+			"keys": [
+				"Image"
+			],
+			"type": "file",
+			"formats": [
+				"png",
+				"jpg"
+			],
+			"description": "For `image`"
+		},
+		{
+			"keys": [
+				"Color"
+			],
+			"type": "color",
+			"description": "The text color of `clock`, `battery` and `text` (`Text` by default)"
+		}
+	],
+	"screens": {
+		"Home": [
+			{
+				"ids": [
+					"logo",
+					"title"
+				],
+				"description": "The app's icon and name, on the toolbar"
+			},
+			{
+				"ids": [
+					"chip.filter",
+					"chip.sort",
+					"chip.search",
+					"chip.drives"
+				],
+				"description": "The toolbar's chips (ZR, X, ZL and the drives' free space); each one's default place follows the ones to its right"
+			},
+			{
+				"ids": [
+					"info.drive",
+					"info.name",
+					"info.chips",
+					"info.stats",
+					"info.alert"
+				],
+				"description": "Under the carousel: the drive, the name, the format/version/DLC/size chips, the play time and what needs attention"
+			},
+			{
+				"ids": [
+					"button.launch",
+					"button.details"
+				],
+				"description": "The carousel's buttons"
+			},
+			{
+				"ids": [
+					"counter",
+					"hints"
+				],
+				"description": "On the dock: \"3 of 40\" and the button hints (they end at the component's right edge)"
+			}
+		],
+		"Game": [
+			{
+				"ids": [
+					"window"
+				],
+				"description": "The game window itself"
+			},
+			{
+				"ids": [
+					"cover"
+				],
+				"description": "The cover (its smaller side is the size), with the format and drive under it"
+			},
+			{
+				"ids": [
+					"title"
+				],
+				"description": "The name, with the favorite star after it"
+			},
+			{
+				"ids": [
+					"details"
+				],
+				"description": "GameTDB's line and chips, the rows and what needs attention, from its top left"
+			},
+			{
+				"ids": [
+					"button.launch",
+					"button.hide"
+				],
+				"description": "Launch, and Hide from / Show on HOME"
+			}
+		],
+		"Drives": [
+			{
+				"ids": [
+					"window"
+				],
+				"description": "The USB drives window"
+			},
+			{
+				"ids": [
+					"title",
+					"total"
+				],
+				"description": "Its title and the line with the free space and games of all drives"
+			},
+			{
+				"ids": [
+					"cards"
+				],
+				"description": "Where the drives' cards start, and how wide they are"
+			}
+		],
+		"Settings": [
+			{
+				"ids": [
+					"title"
+				],
+				"description": "\"Settings\" at the top of the sections"
+			},
+			{
+				"ids": [
+					"sections"
+				],
+				"description": "The column of sections (its panel follows it)"
+			},
+			{
+				"ids": [
+					"content"
+				],
+				"description": "The section's title, help and cards"
+			}
+		]
+	},
+	"componentTypes": [
+		{
+			"type": "clock",
+			"description": "The console's time (HH:MM)"
+		},
+		{
+			"type": "battery",
+			"description": "The battery's charge"
+		},
+		{
+			"type": "text",
+			"description": "`Text`, with the fields of the selected game"
+		},
+		{
+			"type": "image",
+			"description": "`Image`, a file of the theme, stretched to the component"
+		},
+		{
+			"type": "cover",
+			"description": "The selected game's GameTDB cover (else its icon), fitted inside the component"
+		},
+		{
+			"type": "box",
+			"description": "The selected game's GameTDB case (else its cover, else its icon), fitted inside the component"
+		},
+		{
+			"type": "icon",
+			"description": "The selected game's icon"
+		}
+	],
+	"textFields": [
+		"game.name",
+		"game.version",
+		"game.size",
+		"game.drive",
+		"game.playtime",
+		"game.developer",
+		"game.publisher",
+		"game.year",
+		"game.genre",
+		"games.count"
+	]
+}
