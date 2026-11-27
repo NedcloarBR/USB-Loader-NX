@@ -17,6 +17,30 @@ An Atmosphère fork with a library manager in the spirit of USB Loader GX for th
 
 Every release of USB Loader NX, newest first.
 
+## v1.3.0 — 2026-11-25
+
+### ✨ Features
+
+- **usbl:** Report the game's folder under games/ ([`8fa328d`](https://github.com/NedcloarBR/USB-Loader-NX/commit/8fa328d484c8e1b7eca24136f393588e30e69c07) by @NedcloarBR)
+- **manager:** Animated theme backgrounds ([`7f33daa`](https://github.com/NedcloarBR/USB-Loader-NX/commit/7f33daa10f5af40c111d813c0cb4aea775d02997) by @NedcloarBR)
+- **manager:** Cover art and details from GameTDB ([`986e453`](https://github.com/NedcloarBR/USB-Loader-NX/commit/986e453fff1d17345dbfa20e3844f483dd43a943) by @NedcloarBR)
+- **manager:** Theme components placed by the layout ([`3a0c833`](https://github.com/NedcloarBR/USB-Loader-NX/commit/3a0c83308ae0ef2f66bc25ef9dc19c748ef012e3) by @NedcloarBR)
+- **manager:** Theme format 2, new views, filters and touch ([`706ca5b`](https://github.com/NedcloarBR/USB-Loader-NX/commit/706ca5b153cd1728718dff11e0fc09b6c4d7da6b) by @NedcloarBR)
+
+### ♻️ Refactoring
+
+- **usbl:** Keep only the embedded strings ([`acaa1a4`](https://github.com/NedcloarBR/USB-Loader-NX/commit/acaa1a4461f5cf2e72b17233664c73fb2f0f9250) by @NedcloarBR)
+
+### 📝 Documentation
+
+- Manager and themes for 1.3.0 ([`c033154`](https://github.com/NedcloarBR/USB-Loader-NX/commit/c03315499c6fe11dbdd86eaba6c9bede1dc49662) by @NedcloarBR)
+
+### 🏗️ Build and CI
+
+- **themes:** One theme spec for the schema and docs ([`49e79a8`](https://github.com/NedcloarBR/USB-Loader-NX/commit/49e79a8f7dd4858ea7e16c9a211101274ba5124d) by @NedcloarBR)
+
+**Full changelog:** [v1.2.0...v1.3.0](https://github.com/NedcloarBR/USB-Loader-NX/compare/v1.2.0...v1.3.0)
+
 ## v1.2.0 — 2026-11-23
 
 ### ✨ Features
